@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="docs\" />
+    <Folder Include="Docs\" />
   </ItemGroup>
 
 </Project>

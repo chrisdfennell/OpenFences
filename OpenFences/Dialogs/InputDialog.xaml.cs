@@ -12,6 +12,10 @@ namespace OpenFences
             TitleText.Text = title;
             PromptText.Text = prompt;
             InputBox.Text = defaultValue ?? "";
+
+            // Center over a parent window (see note below)
+            Owner = System.Windows.Application.Current?.MainWindow;
+
             Loaded += (_, __) => { InputBox.Focus(); InputBox.SelectAll(); };
         }
 

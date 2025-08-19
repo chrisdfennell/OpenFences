@@ -1,14 +1,30 @@
 ﻿<Window x:Class="OpenFences.FenceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         WindowStyle="None"
-        ResizeMode="CanResizeWithGrip"
-        Background="#1A1A1A"
-        AllowsTransparency="False"
+        ResizeMode="CanResize"
+        Background="Transparent"
+        AllowsTransparency="True"
         ShowInTaskbar="False"
         Topmost="False"
         Width="420" Height="260">
-    <Border CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1" Background="#202020">
+
+    <!-- Borderless chrome (keeps resize handles, no caption) -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="8"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="6"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <!-- Root border gets the translucent background -->
+    <Border x:Name="RootBorder" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.40" Color="#000000"/>
+        </Border.Effect>
+
         <DockPanel>
             <!-- Title bar -->
             <Grid DockPanel.Dock="Top" Height="34" Background="#2B2B2B"
@@ -29,11 +45,22 @@
                     <Button Content="×" Width="28" Height="24" Click="Close_Click" ToolTip="Close Fence"/>
                 </StackPanel>
 
-                <!-- Right-click menu on the title bar -->
+                <!-- Context menu -->
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
                         <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
+                        <MenuItem Header="Transparency">
+                            <MenuItem Header="Opaque"            Tag="1.00" Click="Transparency_Click"/>
+                            <MenuItem Header="Slight (90%)"      Tag="0.90" Click="Transparency_Click"/>
+                            <MenuItem Header="Medium (75%)"      Tag="0.75" Click="Transparency_Click"/>
+                            <MenuItem Header="High (60%)"        Tag="0.60" Click="Transparency_Click"/>
+                            <MenuItem Header="Very High (40%)"   Tag="0.40" Click="Transparency_Click"/>
+                            <MenuItem Header="Glass (20%)"       Tag="0.20" Click="Transparency_Click"/>
+                            <MenuItem Header="Invisible (0%)"    Tag="0.00" Click="Transparency_Click"/>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="Close Fence" Click="Close_Click"/>
                     </ContextMenu>
@@ -41,7 +68,7 @@
             </Grid>
 
             <!-- Items area -->
-            <ScrollViewer x:Name="Scroller" Margin="6" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer x:Name="Scroller" Margin="6" VerticalScrollBarVisibility="Auto" Background="Transparent">
                 <ItemsControl x:Name="Items">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -53,8 +80,7 @@
                             <StackPanel Margin="8" Width="84" MouseLeftButtonDown="Item_MouseLeftButtonDown">
                                 <Image Width="48" Height="48" Source="{Binding Icon}" Stretch="Uniform"/>
                                 <TextBlock Text="{Binding DisplayName}" Foreground="#EAEAEA"
-                                           TextAlignment="Center" TextWrapping="Wrap"
-                                           Margin="0,6,0,0" FontSize="12"/>
+                                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="12"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -7,7 +7,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+
+// Alias to avoid WinForms clash (if you still reference it elsewhere)
 using MessageBox = System.Windows.MessageBox;
+// Optional alias for Color to avoid ambiguity:
+using MediaColor = System.Windows.Media.Color;
 
 namespace OpenFences
 {
@@ -28,17 +33,19 @@ namespace OpenFences
             Left = model.Left; Top = model.Top;
             Width = model.Width; Height = model.Height;
 
+            ApplyBackground();
+
             AllowDrop = true;
             DragEnter += FenceWindow_DragEnter;
             Drop += FenceWindow_Drop;
 
-            // Ensure fence folder exists
+            // Ensure folder exists
             Directory.CreateDirectory(_model.FolderPath);
 
             // Load items
             ReloadItems();
 
-            // Watch for changes
+            // Watch changes
             _watcher = new FileSystemWatcher(_model.FolderPath)
             {
                 EnableRaisingEvents = true,
@@ -58,6 +65,13 @@ namespace OpenFences
             SizeChanged += (_, __) => SaveGeometry(null, null);
         }
 
+        private void ApplyBackground()
+        {
+            var baseColor = MediaColor.FromRgb(0x20, 0x20, 0x20); // #202020
+            byte a = (byte)Math.Round(255 * Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0));
+            RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, baseColor.R, baseColor.G, baseColor.B));
+        }
+
         public void EnsureBottomZOrder()
         {
             DesktopHelper.SendToDesktopLayer(new WindowInteropHelper(this).Handle);
@@ -69,12 +83,11 @@ namespace OpenFences
             _model.Width = Width; _model.Height = Height;
         }
 
-        private void ReloadItems()
+        public void ReloadItems()
         {
             ItemsSource.Clear();
             var files = Directory.EnumerateFiles(_model.FolderPath)
                                  .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));
-
             foreach (var path in files)
             {
                 var disp = Path.GetFileNameWithoutExtension(path);
@@ -83,10 +96,16 @@ namespace OpenFences
             }
         }
 
+        // Pause/Resume watcher (used during bulk changes)
+        public void SetWatcherEnabled(bool enabled)
+        {
+            try { _watcher.EnableRaisingEvents = enabled; } catch { /* ignore */ }
+        }
+
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2) SetCollapsed(!_model.Collapsed);
-            else DragMove();
+            else if (e.LeftButton == MouseButtonState.Pressed) DragMove();
         }
 
         private void SetCollapsed(bool collapsed)
@@ -112,7 +131,7 @@ namespace OpenFences
             }
         }
 
-        // Use WPF DragEventArgs explicitly (no WinForms here)
+        // WPF DragEventArgs explicitly
         private void FenceWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
         {
             e.Effects = (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
@@ -130,7 +149,6 @@ namespace OpenFences
             {
                 try
                 {
-                    // Create a .lnk shortcut inside fence folder
                     string linkName = Path.Combine(_model.FolderPath, $"{Path.GetFileNameWithoutExtension(p)}.lnk");
                     ShellLink.CreateShortcut(linkName, p);
                 }
@@ -141,7 +159,10 @@ namespace OpenFences
 
         private void Rename_Click(object sender, RoutedEventArgs e)
         {
-            var prompt = new InputDialog("Rename Fence", "Enter a new name for this fence:", _model.Name);
+            var prompt = new InputDialog("Rename Fence", "Enter a new name for this fence:", _model.Name)
+            {
+                Owner = this
+            };
             if (prompt.ShowDialog() == true)
             {
                 var newName = prompt.Value.Trim();
@@ -172,7 +193,7 @@ namespace OpenFences
                     {
                         if (Directory.Exists(newFolder))
                         {
-                            // If target exists, just repoint (optionally merge in future)
+                            // target exists -> just repoint
                         }
                         else
                         {
@@ -212,9 +233,34 @@ namespace OpenFences
             catch { /* ignore */ }
         }
 
+        private void AddSystemShortcuts_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                SetWatcherEnabled(false);
+                int count = SystemShortcuts.AddToFolder(_model.FolderPath);
+                ReloadItems();
+                MessageBox.Show($"Added {count} system shortcut(s).",
+                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally
+            {
+                SetWatcherEnabled(true);
+            }
+        }
+
+        private void Transparency_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && double.TryParse(Convert.ToString(mi.Tag), out double alpha))
+            {
+                _model.BackgroundOpacity = Math.Clamp(alpha, 0.0, 1.0);
+                ApplyBackground();
+            }
+        }
+
         private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            // Placeholder if you want dynamic enable/disable
+            // Placeholder for dynamic enable/disable in future
         }
     }
 }

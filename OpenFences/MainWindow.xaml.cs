@@ -4,11 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
-using MessageBox = System.Windows.MessageBox;
+using System.Windows.Input;
 
-// aliases to avoid ambiguity with WinForms types
+// alias WinForms types for tray
 using WinForms = System.Windows.Forms;
 using Drawing = System.Drawing;
+using MessageBox = System.Windows.MessageBox;
 
 namespace OpenFences
 {
@@ -38,7 +39,16 @@ namespace OpenFences
             InitTrayIcon();
         }
 
-        // ---------------- TRAY ----------------
+        // ---------- Borderless window header ----------
+        private void Header_MouseLeftButtonDown(object? sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
+                DragMove();
+        }
+        private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
+
+        // ---------- Tray ----------
         private void InitTrayIcon()
         {
             _trayMenu = new WinForms.ContextMenuStrip();
@@ -62,7 +72,7 @@ namespace OpenFences
             _tray = new WinForms.NotifyIcon
             {
                 Text = "OpenFences",
-                Icon = Drawing.SystemIcons.Application,
+                Icon = Drawing.SystemIcons.Application, // replace with your .ico if desired
                 Visible = true,
                 ContextMenuStrip = _trayMenu
             };
@@ -97,7 +107,7 @@ namespace OpenFences
             Activate();
         }
 
-        // ---------------- CONFIG ----------------
+        // ---------- Config ----------
         private void LoadConfig()
         {
             if (!File.Exists(_configPath)) return;
@@ -132,7 +142,17 @@ namespace OpenFences
             }
         }
 
-        // ---------------- UI COMMANDS ----------------
+        // ---------- Helpers for bulk ops ----------
+        private void SetAllWatchers(bool enabled)
+        {
+            foreach (var w in _openWindows) w.SetWatcherEnabled(enabled);
+        }
+        private void RefreshAllFences()
+        {
+            foreach (var w in _openWindows) w.ReloadItems();
+        }
+
+        // ---------- Menu / Buttons ----------
         private void NewFence_Click(object? sender, RoutedEventArgs? e)
         {
             string baseName = "Fence";
@@ -169,16 +189,13 @@ namespace OpenFences
 
         private void About_Click(object? sender, RoutedEventArgs? e)
         {
-            MessageBox.Show("OpenFences (sample)\nCreate movable/resizable desktop fences.\n\n" +
+            MessageBox.Show("OpenFences\nCreate movable/resizable desktop fences.\n\n" +
                             "Drag files onto a fence to create shortcuts.\n" +
                             "Config stored in %AppData%\\OpenFences\\config.json",
                             "About", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void ToggleDesktopIcons_Click(object? sender, RoutedEventArgs? e)
-        {
-            DesktopHelper.ToggleDesktopIcons();
-        }
+        private void ToggleDesktopIcons_Click(object? sender, RoutedEventArgs? e) => DesktopHelper.ToggleDesktopIcons();
 
         private void ShowAll_Click(object? sender, RoutedEventArgs? e)
         {
@@ -205,75 +222,72 @@ namespace OpenFences
             catch { /* ignore */ }
         }
 
-        // ---------------- AUTO IMPORT ----------------
+        // ---------- Auto-Import ----------
         private void AutoImportDesktop_Click(object? sender, RoutedEventArgs? e)
         {
-            // Ensure fences
-            var appsFence = EnsureFence("Apps", left: 80, top: 80);
-            var docsFence = EnsureFence("Documents", left: 520, top: 80);
-            var systemFence = EnsureFence("System", left: 80, top: 380);
-
-            int apps = 0, docs = 0, sys = 0;
-
-            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var fencesRoot = Path.Combine(desktop, "Fences");
-
-            // Enumerate top-level items on Desktop (skip our Fences root)
-            IEnumerable<string> items = Directory.EnumerateFileSystemEntries(desktop)
-                                                 .Where(p => !string.Equals(p, fencesRoot, StringComparison.OrdinalIgnoreCase));
-
-            foreach (var path in items)
+            try
             {
-                try
-                {
-                    bool isDir = Directory.Exists(path);
-                    string ext = Path.GetExtension(path).ToLowerInvariant();
+                SetAllWatchers(false);
 
-                    // classification
-                    if (ext == ".lnk")
+                var appsFence = EnsureFence("Apps", left: 80, top: 80);
+                var docsFence = EnsureFence("Documents", left: 520, top: 80);
+                var systemFence = EnsureFence("System", left: 80, top: 380);
+
+                int apps = 0, docs = 0;
+
+                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                var fencesRoot = Path.Combine(desktop, "Fences");
+                var items = Directory.EnumerateFileSystemEntries(desktop)
+                                     .Where(p => !string.Equals(p, fencesRoot, StringComparison.OrdinalIgnoreCase));
+
+                foreach (var path in items)
+                {
+                    try
                     {
-                        var target = ShellLink.GetShortcutTarget(path);
-                        if (IsExecutableTarget(target))
+                        bool isDir = Directory.Exists(path);
+                        string ext = Path.GetExtension(path).ToLowerInvariant();
+
+                        if (ext == ".lnk")
                         {
-                            // copy the .lnk into Apps fence
-                            if (CopyShortcut(path, appsFence.FolderPath)) apps++;
+                            var target = ShellLink.GetShortcutTarget(path);
+                            if (IsExecutableTarget(target))
+                                apps += CopyShortcut(path, appsFence.FolderPath) ? 1 : 0;
+                            else
+                                docs += CopyShortcut(path, docsFence.FolderPath) ? 1 : 0;
+                        }
+                        else if (ext is ".exe" or ".url" or ".appref-ms" or ".msi" or ".bat" or ".cmd" or ".ps1")
+                        {
+                            if (CreateLinkIfMissing(appsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) apps++;
+                        }
+                        else if (isDir || IsDocumentExtension(ext))
+                        {
+                            if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileName(path), path)) docs++;
                         }
                         else
                         {
-                            if (CopyShortcut(path, docsFence.FolderPath)) docs++;
+                            if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) docs++;
                         }
                     }
-                    else if (ext == ".exe" || ext == ".url" || ext == ".appref-ms" || ext == ".msi" || ext == ".bat" || ext == ".cmd" || ext == ".ps1")
-                    {
-                        // create shortcut to this file in Apps
-                        if (CreateLinkIfMissing(appsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) apps++;
-                    }
-                    else if (isDir || IsDocumentExtension(ext))
-                    {
-                        if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileName(path), path)) docs++;
-                    }
-                    else
-                    {
-                        // everything else -> Documents (catch-all)
-                        if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) docs++;
-                    }
+                    catch { /* skip single item */ }
                 }
-                catch { /* ignore a single item and continue */ }
+
+                // System fence: CLSIDs + Home
+                int sys = SystemShortcuts.AddToFolder(systemFence.FolderPath);
+
+                SaveConfig();
+                RefreshAllFences();
+
+                MessageBox.Show($"Auto-import complete.\n\nApps: {apps}\nDocuments: {docs}\nSystem: {sys}",
+                                "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-
-            // Add common system shortcuts (these are independent of what’s on Desktop)
-            sys += CreateSystemShortcuts(systemFence.FolderPath);
-
-            SaveConfig();
-
-            MessageBox.Show(
-                $"Auto-import complete.\n\n" +
-                $"Apps: {apps}\n" +
-                $"Documents: {docs}\n" +
-                $"System: {sys}",
-                "OpenFences",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            catch (Exception ex)
+            {
+                MessageBox.Show("Auto-import failed:\n" + ex.Message, "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                SetAllWatchers(true);
+            }
         }
 
         private FenceModel EnsureFence(string name, double left, double top)
@@ -315,7 +329,6 @@ namespace OpenFences
 
         private static bool IsDocumentExtension(string ext)
         {
-            // extend as you like
             return new[]
             {
                 ".txt",".md",".rtf",".pdf",
@@ -353,46 +366,11 @@ namespace OpenFences
 
         private static string SanitizeFileName(string name)
         {
-            var invalid = Path.GetInvalidFileNameChars();
-            foreach (var c in invalid) name = name.Replace(c, '_');
+            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
             return name.Trim();
         }
 
-        private static int CreateSystemShortcuts(string systemFenceFolder)
-        {
-            int created = 0;
-
-            created += CreateShellShortcut(systemFenceFolder, "This PC", "MyComputerFolder") ? 1 : 0;
-            created += CreateShellShortcut(systemFenceFolder, "Control Panel", "ControlPanelFolder") ? 1 : 0;
-            created += CreateShellShortcut(systemFenceFolder, "Network", "NetworkPlacesFolder") ? 1 : 0;
-            created += CreateShellShortcut(systemFenceFolder, "Recycle Bin", "RecycleBinFolder") ? 1 : 0;
-
-            // Home: use the actual folder name for niceness (e.g., "Christopher Fennell")
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            var homeName = new DirectoryInfo(userProfile).Name;
-            created += CreateLinkIfMissing(systemFenceFolder, homeName, userProfile) ? 1 : 0;
-
-            return created;
-        }
-
-        private static bool CreateShellShortcut(string destFolder, string displayName, string shellToken)
-        {
-            try
-            {
-                string link = Path.Combine(destFolder, SanitizeFileName(displayName) + ".lnk");
-                if (File.Exists(link)) return false;
-
-                // Use explorer.exe with shell:… argument for reliability
-                ShellLink.CreateShortcut(link,
-                    targetPath: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"),
-                    arguments: $"shell:{shellToken}");
-
-                return true;
-            }
-            catch { return false; }
-        }
-
-        // ---------------- SHUTDOWN ----------------
+        // ---------- Shutdown ----------
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);

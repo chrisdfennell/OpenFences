@@ -96,7 +96,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 
 ---
 
-##🧭 Roadmap (ideas)
+## 🧭 Roadmap (ideas)
 - Acrylic/Mica effects for fences (Win11)
 - Roll‑up/peek animation (title‑bar only)
 - Snap‑to‑grid & alignment guides
