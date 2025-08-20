@@ -41,11 +41,8 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 
 ## 📷 Screenshots
 
-_Add your screenshots here once you run the app._
-
-/docs/screenshot-main.png
-/docs/screenshot-fences.png
-
+![Main Window](/docs/Screenshot-1 "Main Window")
+![Main Fence](/docs/Screenshot-2 "Main Fence")
 
 ---
 
