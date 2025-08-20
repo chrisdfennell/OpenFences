@@ -93,49 +93,43 @@
 
             <!-- Items area -->
             <ScrollViewer x:Name="Scroller"
-                          Margin="6"
-                          VerticalScrollBarVisibility="Auto"
-                          Background="Transparent"
-                          PreviewMouseWheel="Scroller_PreviewMouseWheel"
-                          PanningMode="Both"
-                          CanContentScroll="False">
+              Margin="6"
+              VerticalScrollBarVisibility="Auto"
+              Background="Transparent"
+              PreviewMouseWheel="Scroller_PreviewMouseWheel"
+              CanContentScroll="False"
+              PanningMode="None">
 
-                <ItemsControl x:Name="Items">
-                    <!-- wrap icons -->
+                <ItemsControl x:Name="Items" SnapsToDevicePixels="True">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel ItemWidth="156"/>
+                            <!-- Fixed size tiles => stable extent & scrolling -->
+                            <WrapPanel ItemWidth="156" ItemHeight="112" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
 
-                    <!-- icon + ellipsized name; tooltip shows full name -->
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
+                            <!-- Total width must match ItemWidth minus margins: 156 - (8+8) = 140 -->
                             <StackPanel Width="140"
-                Margin="8"
-                MouseLeftButtonDown="Item_MouseLeftButtonDown"
-                ToolTipService.ShowDuration="60000"
-                ToolTip="{Binding DisplayName}">
+                    Margin="8"
+                    ToolTipService.ShowDuration="60000"
+                    ToolTip="{Binding DisplayName}"
+                    MouseLeftButtonDown="Item_MouseLeftButtonDown">
                                 <Image Width="48" Height="48"
-             Source="{Binding Icon}"
-             Stretch="Uniform"
-             SnapsToDevicePixels="True"
-             UseLayoutRounding="True"/>
+                 Source="{Binding Icon}"
+                 Stretch="Uniform"
+                 SnapsToDevicePixels="True"
+                 UseLayoutRounding="True"/>
+                                <!-- Force one-line label so row height is constant -->
                                 <TextBlock Text="{Binding DisplayName}"
-                 Foreground="#EAEAEA"
-                 FontSize="12"
-                 Margin="0,6,0,0"
-                 TextAlignment="Center"
-                 TextWrapping="NoWrap"
-                 TextTrimming="CharacterEllipsis"/>
-                                <StackPanel.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Open" Click="Item_Open_Click"/>
-                                        <MenuItem Header="Open containing folder" Click="Item_OpenFolder_Click"/>
-                                        <Separator/>
-                                        <MenuItem Header="Delete shortcut" Click="Item_Delete_Click"/>
-                                    </ContextMenu>
-                                </StackPanel.ContextMenu>
+                     Foreground="#EAEAEA"
+                     FontSize="12"
+                     Margin="0,6,0,0"
+                     TextAlignment="Center"
+                     TextWrapping="NoWrap"
+                     TextTrimming="CharacterEllipsis"
+                     Height="16"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -1,0 +1,8 @@
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\OpenFences.pdb
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\Assets\open-fence.ico
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\D3DCompiler_47_cor3.dll
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\PenImc_cor3.dll
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\PresentationNative_cor3.dll
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\vcruntime140_cor3.dll
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\wpfgfx_cor3.dll
+C:\Users\Infan\OneDrive\Programming\C#\OpenFences\artifacts\OpenFences\win-x64\OpenFences.exe

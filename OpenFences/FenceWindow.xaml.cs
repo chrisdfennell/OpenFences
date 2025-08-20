@@ -26,27 +26,28 @@ namespace OpenFences
         public event EventHandler? FenceRenamed;
         public event EventHandler? DeleteRequested;
 
-        // Normalized wheel: down = content down (offset increases), up = content up (offset decreases)
         private void Scroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (sender is not ScrollViewer sc) return;
+            if (sender is not ScrollViewer sv) return;
 
-            // Prevent parent/ancestor viewers from also scrolling (which can invert or double it)
+            // Wheel down => positive "notches" (scroll content down)
+            double notches = -e.Delta / 120.0;
+            const double stepPerNotch = 96; // ~a row or two; tweak to taste
+
+            double target = sv.VerticalOffset - (notches * stepPerNotch);
+
+            // Clamp with a tiny epsilon to defeat rounding "dead bands"
+            double max = Math.Max(0, sv.ExtentHeight - sv.ViewportHeight);
+            const double eps = 0.75;
+
+            if (target < eps) target = 0;
+            else if (max - target < eps) target = max;
+            else target = Math.Max(0, Math.Min(target, max));
+
+            sv.ScrollToVerticalOffset(target);
             e.Handled = true;
-
-            // How many lines per notch; fallback if system says 0
-            int lines = SystemParameters.WheelScrollLines;
-            if (lines <= 0) lines = 3;
-
-            // Convert "lines" to pixels-ish (works well with icon grids)
-            double pixels = lines * 16.0;
-
-            // e.Delta: +120 (wheel up), -120 (wheel down)
-            if (e.Delta > 0)  // wheel down
-                sc.ScrollToVerticalOffset(sc.VerticalOffset + pixels);
-            else if (e.Delta < 0) // wheel up
-                sc.ScrollToVerticalOffset(sc.VerticalOffset - pixels);
         }
+
 
         public FenceWindow(FenceModel model)
         {
