@@ -28,7 +28,7 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
   Click the ✎ on a fence titlebar (or right-click) to rename, e.g., “Apps”, “Games”, etc.
 
 - **Persisted layout**  
-  Sizes/positions saved to `%AppData%\OpenFences\config.json`.
+  Sizes/positions saved to `%AppData%\\OpenFences\\config.json`.
 
 - **Minimize to tray**  
   The main controller window hides to the system tray; double-click the tray icon to restore.
@@ -50,7 +50,7 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 
 ## 📷 Screenshots
 
-![Main Window](https://github.com/chrisdfennell/OpenFences/blob/master/OpenFences/Docs/Screenshot-1.png "Main Window")
+![Main Window](https://github.com/chrisdfennell/OpenFences/blob/master/OpenFences/Docs/Screenshot-1.png "Main Window")  
 ![Main Fence](https://github.com/chrisdfennell/OpenFences/blob/master/OpenFences/Docs/Screenshot-2.png "Main Fence")
 
 ---
@@ -66,13 +66,13 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 ## 🔧 Build & Run
 
 ### Prerequisites
-- Windows 10/11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- (Optional) Visual Studio 2022 with “.NET desktop development”
+- Windows 10/11  
+- [.NET 8 SDK](https://dotnet.microsoft.com/download)  
+- (Optional) Visual Studio 2022 with “.NET desktop development” workload
 
 ### Via Visual Studio
-1. Open the solution.
-2. Set **OpenFences** as the startup project.
+1. Open the solution.  
+2. Set **OpenFences** as the startup project.  
 3. Build & Run (F5).
 
 ### Via CLI
@@ -85,57 +85,60 @@ dotnet run --project OpenFences/OpenFences.csproj
 
 ## 📁 Where things go
 
-- Fence backing folders:C:\Users\<you>\Desktop\Fences\<FenceName>
-- Config:%AppData%\OpenFences\config.json
-- Uninstall = close the app, delete the exe/folder, and (optionally) delete the config + Desktop\Fences if you don’t want to keep your shortcuts.
+- **Fence backing folders:** `C:\\Users\\<you>\\Desktop\\Fences\\<FenceName>`  
+- **Config:** `%AppData%\\OpenFences\\config.json`  
+- **Uninstall:** close the app, delete the EXE/folder, and (optionally) delete the config + `Desktop\\Fences` if you don’t want to keep your shortcuts.
 
 ---
 
 ## 🚀 Usage
 
-- Create a fence: File → New Fence or the ➕ New Fence button.
-- Drag files/folders onto the fence to add shortcuts inside it.
-- Rename: click ✎ on a fence title bar → enter a new name.
-- Auto‑import: click ⚡ Auto‑Import Desktop Icons to populate Apps, Documents, System fences.
-- Hide desktop icons: View → Toggle Desktop Icons.
+- Create a fence: **File → New Fence** or the **➕ New Fence** button.  
+- Drag files/folders onto the fence to add shortcuts inside it.  
+- Rename: click **✎** on a fence title bar → enter a new name.  
+- Auto-import: click **⚡ Auto-Import Desktop Icons** to populate *Apps*, *Documents*, *System* fences.  
+- Hide desktop icons: **View → Toggle Desktop Icons**.  
 - Hide controller: minimize the main window; restore via tray icon.
 
 ---
 
 ## 🧭 Roadmap (ideas)
-- Acrylic/Mica effects for fences (Win11)
-- Roll‑up/peek animation (title‑bar only)
-- Snap‑to‑grid & alignment guides
-- Pages / quick layouts
-- Per‑fence rules (e.g., only images/docs)
-- Global hotkeys (show/hide all, new fence)
+
+- Acrylic/Mica effects for fences (Win11)  
+- Roll-up/peek animation (title-bar only)  
+- Snap-to-grid & alignment guides  
+- Pages / quick layouts  
+- Per-fence rules (e.g., only images/docs)  
+- Global hotkeys (show/hide all, new fence)  
 - Stronger desktop parenting (WorkerW reparent)
 
 ---
 
 ## ⚠️ Known limitations
-- Z‑order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows.
-- Auto‑import creates shortcuts; it does not move or delete your actual desktop items.
-- Multi‑monitor coordinates are persisted as absolute positions (future: per‑monitor DPI/arrangement awareness).
+
+- Z-order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows.  
+- Auto-import creates shortcuts; it does not move or delete your actual desktop items.  
+- Multi-monitor coordinates are persisted as absolute positions (future: per-monitor DPI/arrangement awareness).
 
 ---
 
 ## 🤝 Contributing
 
-- PRs and issues welcome!If you’re proposing a new feature, please include a quick mock or description of the UI/UX.
-- Fork, create a feature branch
-- dotnet build to ensure it compiles
-- Open a PR with a clear summary and screenshots if UI changes
+PRs and issues welcome! If you’re proposing a new feature, please include a quick mock or description of the UI/UX.
+
+- Fork and create a feature branch  
+- `dotnet build` to ensure it compiles  
+- Open a PR with a clear summary and screenshots if there are UI changes
 
 ---
 
 ## 📝 License
 
-MIT © Christopehr Fennell
+MIT © Christopher Fennell
 
 ---
 
 ## 🙏 Credits & Trademarks
 
-- Built with .NET, WPF, and portions of the Windows Shell APIs.
+- Built with .NET, WPF, and portions of the Windows Shell APIs.  
 - Not affiliated with Stardock. “Fences” is a trademark of its respective owner.
