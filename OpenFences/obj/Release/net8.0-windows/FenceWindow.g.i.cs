@@ -85,7 +85,7 @@ namespace OpenFences {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/OpenFences;V1.0.0.0;component/fencewindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/OpenFences;component/fencewindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\FenceWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

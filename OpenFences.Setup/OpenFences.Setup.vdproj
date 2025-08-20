@@ -25,6 +25,12 @@
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
+        "Entry"
+        {
+        "MsmKey" = "8:_CAF98CBE00904C4E8052579B9A10B7B2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
     }
     "Configurations"
     {
@@ -43,6 +49,14 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+            }
         }
         "Release"
         {
@@ -59,6 +73,22 @@
         "PrivateKeyFile" = "8:"
         "TimeStampServer" = "8:"
         "InstallerBootstrapper" = "3:2"
+            "BootstrapperCfg:{63ACBE69-63AA-4F98-B2B6-99F9E24495F2}"
+            {
+            "Enabled" = "11:TRUE"
+            "PromptEnabled" = "11:TRUE"
+            "PrerequisitesLocation" = "2:1"
+            "Url" = "8:"
+            "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
+            }
         }
     }
     "Deployable"
@@ -167,7 +197,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:OpenFences"
         "ProductCode" = "8:{11D6C0D0-EB3E-4551-B413-ACCC726782C3}"
-        "PackageCode" = "8:{B52E0192-D777-466E-B232-24AC308CDE3C}"
+        "PackageCode" = "8:{5242B762-8312-4B48-ABE0-1E0E950829F8}"
         "UpgradeCode" = "8:{8158E016-B781-48C1-BD3D-589BB6D4D31D}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
@@ -287,7 +317,7 @@
         }
         "Shortcut"
         {
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_180A613358404741AC3B6892F2C2E40C"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_B4284FA5D66044128BBA4467321FA262"
             {
             "Name" = "8:OpenFences"
             "Arguments" = "8:"
@@ -295,7 +325,7 @@
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_A1F0090E7AFD4E85A5C3B7F0A81D756B"
+            "Target" = "8:_CAF98CBE00904C4E8052579B9A10B7B2"
             "Folder" = "8:_E4A6060994B04601AFDE1D5260C54BFC"
             "WorkingFolder" = "8:_3890A03AF9B448278F725931E2843B42"
             "Icon" = "8:_5608F7EE4A5C488291522308CDFD72D8"
@@ -722,6 +752,34 @@
             "ProjectOutputGroupRegister" = "3:1"
             "OutputConfiguration" = "8:"
             "OutputGroupCanonicalName" = "8:Built"
+            "OutputProjectGuid" = "8:{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}"
+            "ShowKeyOutput" = "11:TRUE"
+                "ExcludeFilters"
+                {
+                }
+            }
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_CAF98CBE00904C4E8052579B9A10B7B2"
+            {
+            "SourcePath" = "8:..\\OpenFences\\obj\\Release\\net8.0-windows\\apphost.exe"
+            "TargetName" = "8:"
+            "Tag" = "8:"
+            "Folder" = "8:_3890A03AF9B448278F725931E2843B42"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            "ProjectOutputGroupRegister" = "3:1"
+            "OutputConfiguration" = "8:"
+            "OutputGroupCanonicalName" = "8:PublishItems"
             "OutputProjectGuid" = "8:{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
