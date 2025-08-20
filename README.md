@@ -4,6 +4,8 @@
 ![Arch](https://img.shields.io/badge/Arch-x64%20%7C%20ARM64-555)
 [![License: MIT](https://img.shields.io/badge/License-MIT-34D058)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/chrisdfennell/OpenFences?include_prereleases&label=release)](https://github.com/chrisdfennell/OpenFences/releases)
+[![GitHub stars](https://img.shields.io/github/stars/chrisdfennell/OpenFences?style=social)](https://github.com/chrisdfennell/OpenFences/stargazers)
+[![Issues](https://img.shields.io/github/issues/chrisdfennell/OpenFences)](https://github.com/chrisdfennell/OpenFences/issues)
 
 # OpenFences
 
