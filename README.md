@@ -41,8 +41,8 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 
 ## 📷 Screenshots
 
-![Main Window](/docs/Screenshot-1 "Main Window")
-![Main Fence](/docs/Screenshot-2 "Main Fence")
+![Main Window](/OpenFences/docs/Screenshot-1 "Main Window")
+![Main Fence](/OpenFences/docs/Screenshot-2 "Main Fence")
 
 ---
 
