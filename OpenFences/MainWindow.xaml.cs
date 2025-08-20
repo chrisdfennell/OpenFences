@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
-// alias WinForms types for tray
+// aliases — keep EXACTLY ONE set in this file
 using WinForms = System.Windows.Forms;
 using Drawing = System.Drawing;
 using MessageBox = System.Windows.MessageBox;
@@ -15,11 +17,14 @@ namespace OpenFences
 {
     public partial class MainWindow : Window
     {
+        // Config lives at %AppData%\OpenFences\config.json
         private readonly string _configPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "OpenFences", "config.json");
 
-        private readonly List<FenceModel> _fences = new();
+        private AppConfig _config = new();
+        private List<FenceModel> _fences => _config.Fences;
+
         private readonly List<FenceWindow> _openWindows = new();
 
         // Tray
@@ -30,21 +35,57 @@ namespace OpenFences
         {
             InitializeComponent();
 
+            // Desktop plumbing (WorkerW / SHELLDLL_DefView)
+            DesktopHelper.InitializeDesktopHandles();
+
+            // Config
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath)!);
             LoadConfig();
+
+            // Initialize Settings checkboxes
+            ChkRunAtStartup.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
+            ChkHideIconsOnStart.IsChecked = _config.Options.HideIconsOnStartup;
+            ChkDoubleClickDesktop.IsChecked = _config.Options.DoubleClickDesktopToToggleIcons;
+
+            // Apply behaviors on launch
+            if (ChkRunAtStartup.IsChecked == true) StartupHelper.SetRunAtStartup(true);
+            if (ChkHideIconsOnStart.IsChecked == true) DesktopHelper.ShowDesktopIcons(false);
+            if (ChkDoubleClickDesktop.IsChecked == true) DesktopDoubleClickMonitor.Start();
+
+            // Spawn fences
             SpawnFencesFromConfig();
 
-            // minimize to tray
+            // Minimize to tray behavior
             StateChanged += MainWindow_StateChanged;
             InitTrayIcon();
         }
 
-        // ---------- Borderless window header ----------
-        private void Header_MouseLeftButtonDown(object? sender, MouseButtonEventArgs e)
+        // ---------- Borderless header interactions ----------
+        private void Header_PreviewMouseLeftButtonDown(object? sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
-                DragMove();
+            var d = e.OriginalSource as DependencyObject;
+
+            while (d != null)
+            {
+                // Don't drag when clicking buttons/menu items
+                if (d is System.Windows.Controls.Primitives.ButtonBase) return;
+                if (d is System.Windows.Controls.MenuItem) return;
+
+                d = GetParentSafe(d);
+            }
+
+            try { DragMove(); } catch { /* ignore */ }
         }
+
+        private static DependencyObject? GetParentSafe(DependencyObject current)
+        {
+            if (current is Visual || current is System.Windows.Media.Media3D.Visual3D)
+                return VisualTreeHelper.GetParent(current);
+            if (current is System.Windows.Documents.TextElement te)
+                return te.Parent;
+            return LogicalTreeHelper.GetParent(current);
+        }
+
         private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
 
@@ -69,10 +110,14 @@ namespace OpenFences
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(exit);
 
+            // Load icon from embedded WPF resource (works in single-file publish)
+            var uri = new Uri("pack://application:,,,/OpenFences;component/Assets/open-fence.ico");
+            var res = System.Windows.Application.GetResourceStream(uri);
+
             _tray = new WinForms.NotifyIcon
             {
                 Text = "OpenFences",
-                Icon = Drawing.SystemIcons.Application, // replace with your .ico if desired
+                Icon = (res != null) ? new Drawing.Icon(res.Stream) : Drawing.SystemIcons.Application,
                 Visible = true,
                 ContextMenuStrip = _trayMenu
             };
@@ -107,15 +152,24 @@ namespace OpenFences
             Activate();
         }
 
-        // ---------- Config ----------
+        // ---------- Config I/O ----------
         private void LoadConfig()
         {
-            if (!File.Exists(_configPath)) return;
             try
             {
+                if (!File.Exists(_configPath)) return;
                 var json = File.ReadAllText(_configPath);
-                var list = JsonSerializer.Deserialize<List<FenceModel>>(json);
-                if (list != null) _fences.AddRange(list);
+
+                // Back-compat: old format was just a list of FenceModel
+                if (json.TrimStart().StartsWith("["))
+                {
+                    var legacy = JsonSerializer.Deserialize<List<FenceModel>>(json);
+                    if (legacy != null) _config.Fences = legacy;
+                    return;
+                }
+
+                var cfg = JsonSerializer.Deserialize<AppConfig>(json);
+                if (cfg != null) _config = cfg;
             }
             catch { /* ignore parse errors for now */ }
         }
@@ -124,7 +178,7 @@ namespace OpenFences
         {
             try
             {
-                var json = JsonSerializer.Serialize(_fences, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_configPath, json);
             }
             catch { /* ignore */ }
@@ -132,17 +186,17 @@ namespace OpenFences
 
         private void SpawnFencesFromConfig()
         {
-            foreach (var m in _fences)
+            foreach (var m in _fences.ToList())
             {
                 var win = new FenceWindow(m);
                 win.FenceRenamed += (_, __) => SaveConfig();
+                win.DeleteRequested += (_, alsoDeleteFolder) => DeleteFence(win, m, alsoDeleteFolder);
                 win.Closed += (_, __) => _openWindows.Remove(win);
                 _openWindows.Add(win);
                 win.Show();
             }
         }
 
-        // ---------- Helpers for bulk ops ----------
         private void SetAllWatchers(bool enabled)
         {
             foreach (var w in _openWindows) w.SetWatcherEnabled(enabled);
@@ -180,6 +234,7 @@ namespace OpenFences
 
             var win = new FenceWindow(model);
             win.FenceRenamed += (_, __) => SaveConfig();
+            win.DeleteRequested += (_, alsoDeleteFolder) => DeleteFence(win, model, alsoDeleteFolder);
             win.Closed += (_, __) => _openWindows.Remove(win);
             _openWindows.Add(win);
             win.Show();
@@ -189,13 +244,24 @@ namespace OpenFences
 
         private void About_Click(object? sender, RoutedEventArgs? e)
         {
-            MessageBox.Show("OpenFences\nCreate movable/resizable desktop fences.\n\n" +
-                            "Drag files onto a fence to create shortcuts.\n" +
-                            "Config stored in %AppData%\\OpenFences\\config.json",
-                            "About", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                var dlg = new AboutDialog { Owner = this };
+                dlg.ShowDialog();
+            }
+            catch
+            {
+                MessageBox.Show("OpenFences\nCreate movable/resizable desktop fences.\n\n" +
+                                "Drag files onto a fence to create shortcuts.\n" +
+                                "Config stored in %AppData%\\OpenFences\\config.json",
+                                "About", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
-        private void ToggleDesktopIcons_Click(object? sender, RoutedEventArgs? e) => DesktopHelper.ToggleDesktopIcons();
+        private void ToggleDesktopIcons_Click(object? sender, RoutedEventArgs? e)
+        {
+            DesktopHelper.ToggleDesktopIcons();
+        }
 
         private void ShowAll_Click(object? sender, RoutedEventArgs? e)
         {
@@ -220,6 +286,28 @@ namespace OpenFences
                 });
             }
             catch { /* ignore */ }
+        }
+
+        // ---------- Settings checkbox handlers ----------
+        private void ChkRunAtStartup_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            _config.Options.RunAtStartup = ChkRunAtStartup.IsChecked == true;
+            StartupHelper.SetRunAtStartup(_config.Options.RunAtStartup);
+            SaveConfig();
+        }
+
+        private void ChkHideIconsOnStart_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            _config.Options.HideIconsOnStartup = ChkHideIconsOnStart.IsChecked == true;
+            SaveConfig();
+        }
+
+        private void ChkDoubleClickDesktop_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            _config.Options.DoubleClickDesktopToToggleIcons = ChkDoubleClickDesktop.IsChecked == true;
+            if (ChkDoubleClickDesktop.IsChecked == true) DesktopDoubleClickMonitor.Start();
+            else DesktopDoubleClickMonitor.Stop();
+            SaveConfig();
         }
 
         // ---------- Auto-Import ----------
@@ -313,6 +401,7 @@ namespace OpenFences
 
             var win = new FenceWindow(model);
             win.FenceRenamed += (_, __) => SaveConfig();
+            win.DeleteRequested += (_, alsoDeleteFolder) => DeleteFence(win, model, alsoDeleteFolder);
             win.Closed += (_, __) => _openWindows.Remove(win);
             _openWindows.Add(win);
             win.Show();
@@ -370,12 +459,48 @@ namespace OpenFences
             return name.Trim();
         }
 
+        // ---------- Delete fence ----------
+        private void DeleteFence(FenceWindow win, FenceModel model, bool alsoDeleteFolder)
+        {
+            try
+            {
+                win.SetWatcherEnabled(false);
+                _openWindows.Remove(win);
+                try { win.Close(); } catch { /* ignore */ }
+
+                _fences.Remove(model);
+                SaveConfig();
+
+                if (alsoDeleteFolder && Directory.Exists(model.FolderPath))
+                {
+                    try
+                    {
+                        // Try recycle bin
+                        Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(
+                            model.FolderPath,
+                            Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                            Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    }
+                    catch
+                    {
+                        // Hard delete fallback
+                        try { Directory.Delete(model.FolderPath, recursive: true); } catch { /* ignore */ }
+                    }
+                }
+            }
+            catch
+            {
+                MessageBox.Show("Failed to delete the fence.", "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         // ---------- Shutdown ----------
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
 
             SaveConfig();
+            DesktopDoubleClickMonitor.Stop();
 
             if (_tray is not null)
             {

@@ -9,7 +9,7 @@
         WindowStyle="None"
         ResizeMode="CanResize">
 
-    <!-- Borderless window with resize handles -->
+    <!-- Borderless window with resize grips; we drag via code -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
             CaptionHeight="0"
@@ -21,41 +21,83 @@
 
     <DockPanel>
 
-        <!-- Custom header: draggable + menu + window buttons -->
-        <Grid DockPanel.Dock="Top" Height="36" Background="#14141A"
-              MouseLeftButtonDown="Header_MouseLeftButtonDown">
+        <!-- Header -->
+        <Grid DockPanel.Dock="Top"
+              Height="36"
+              Background="#14141A"
+              PreviewMouseLeftButtonDown="Header_PreviewMouseLeftButtonDown">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Menu (dark style from Themes/DarkMenu.xaml still applies) -->
-            <Menu Background="#14141A" Foreground="#EDEDED" BorderThickness="0" VerticalAlignment="Stretch">
+            <!-- Menu -->
+            <Menu Background="#14141A"
+                  Foreground="#EDEDED"
+                  BorderThickness="0"
+                  VerticalAlignment="Stretch">
                 <MenuItem Header="_File">
                     <MenuItem Header="_New Fence" Click="NewFence_Click"/>
                     <Separator/>
                     <MenuItem Header="E_xit" Click="Exit_Click"/>
                 </MenuItem>
+
                 <MenuItem Header="_View">
                     <MenuItem Header="_Toggle Desktop Icons" Click="ToggleDesktopIcons_Click"/>
                     <MenuItem Header="_Show All Fences" Click="ShowAll_Click"/>
                     <MenuItem Header="_Hide All Fences" Click="HideAll_Click"/>
                 </MenuItem>
+
+                <!-- Settings with real checkboxes -->
+                <MenuItem Header="_Settings">
+                    <!-- Start with Windows -->
+                    <MenuItem StaysOpenOnClick="True">
+                        <MenuItem.Header>
+                            <CheckBox x:Name="ChkRunAtStartup"
+                                      Content="Start with Windows"
+                                      Checked="ChkRunAtStartup_CheckedChanged"
+                                      Unchecked="ChkRunAtStartup_CheckedChanged"/>
+                        </MenuItem.Header>
+                    </MenuItem>
+
+                    <!-- Hide desktop icons on startup -->
+                    <MenuItem StaysOpenOnClick="True">
+                        <MenuItem.Header>
+                            <CheckBox x:Name="ChkHideIconsOnStart"
+                                      Content="Hide desktop icons on startup"
+                                      Checked="ChkHideIconsOnStart_CheckedChanged"
+                                      Unchecked="ChkHideIconsOnStart_CheckedChanged"/>
+                        </MenuItem.Header>
+                    </MenuItem>
+
+                    <!-- Double-click empty desktop toggles icons -->
+                    <MenuItem StaysOpenOnClick="True">
+                        <MenuItem.Header>
+                            <CheckBox x:Name="ChkDoubleClickDesktop"
+                                      Content="Double-click empty desktop toggles icons"
+                                      Checked="ChkDoubleClickDesktop_CheckedChanged"
+                                      Unchecked="ChkDoubleClickDesktop_CheckedChanged"/>
+                        </MenuItem.Header>
+                    </MenuItem>
+                </MenuItem>
+
                 <MenuItem Header="_Help">
                     <MenuItem Header="_About" Click="About_Click"/>
                 </MenuItem>
             </Menu>
 
             <!-- Window buttons -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="0,0,6,0">
                 <Button Width="36" Height="24" Padding="0" Content="—" ToolTip="Minimize" Click="MinimizeButton_Click"/>
                 <Button Width="36" Height="24" Padding="0" Content="×" ToolTip="Close" Click="CloseButton_Click"/>
             </StackPanel>
         </Grid>
 
-        <!-- Main content -->
+        <!-- Main content (unchanged) -->
         <Grid>
-            <!-- Subtle background gradient -->
             <Grid.Background>
                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                     <GradientStop Color="#1A2A2A36" Offset="0"/>
@@ -63,15 +105,9 @@
                 </LinearGradientBrush>
             </Grid.Background>
 
-            <Border
-                MaxWidth="820"
-                Padding="24"
-                CornerRadius="18"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                BorderBrush="#333845"
-                BorderThickness="1"
-                Background="#B31A1A20">
+            <Border MaxWidth="820" Padding="24" CornerRadius="18"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    BorderBrush="#333845" BorderThickness="1" Background="#B31A1A20">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.45" Color="#000000"/>
                 </Border.Effect>
@@ -84,56 +120,26 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Title -->
                     <StackPanel Grid.Row="0" Margin="0,0,0,14">
                         <TextBlock Text="OpenFences" FontSize="28" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                         <TextBlock Text="Lightweight desktop fences for Windows" FontSize="14" Foreground="#B5B8C7"/>
                     </StackPanel>
 
-                    <!-- Quick actions -->
                     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,18">
-                        <Button Content="➕  New Fence"
-                                Margin="0,0,10,0"
-                                Padding="14,8"
-                                Click="NewFence_Click"/>
-                        <Button Content="📂  Open Fences Folder"
-                                Margin="0,0,10,0"
-                                Padding="14,8"
-                                Click="OpenFencesFolder_Click"/>
-                        <Button Content="⚡  Auto-Import Desktop Icons"
-                                Padding="14,8"
-                                ToolTip="Create Apps, Documents, and System fences and populate them with shortcuts from your Desktop."
-                                Click="AutoImportDesktop_Click"/>
+                        <Button Content="➕  New Fence" Margin="0,0,10,0" Padding="14,8" Click="NewFence_Click"/>
+                        <Button Content="📂  Open Fences Folder" Margin="0,0,10,0" Padding="14,8" Click="OpenFencesFolder_Click"/>
+                        <Button Content="⚡  Auto-Import Desktop Icons" Padding="14,8" Click="AutoImportDesktop_Click"/>
                     </StackPanel>
 
-                    <!-- How-to -->
                     <StackPanel Grid.Row="2" Margin="0,0,0,12">
                         <TextBlock Text="Quick Start" FontSize="16" FontWeight="SemiBold" Foreground="#EDEDED" />
-                        <StackPanel Margin="0,6,0,0">
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="• " Foreground="#9FA6B2"/>
-                                <TextBlock Foreground="#D7DAE5" TextWrapping="Wrap" Text="Use File → New Fence (or “➕ New Fence”) to create your first fence."/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="• " Foreground="#9FA6B2"/>
-                                <TextBlock Foreground="#D7DAE5" TextWrapping="Wrap" Text="Drag files/folders onto a fence to create shortcuts inside it."/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="• " Foreground="#9FA6B2"/>
-                                <TextBlock Foreground="#D7DAE5" TextWrapping="Wrap" Text="Click the ✎ icon on a fence title bar to rename it (e.g., “Apps”, “Games”)."/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="• " Foreground="#9FA6B2"/>
-                                <TextBlock Foreground="#D7DAE5" TextWrapping="Wrap" Text="Minimize this window — the app hides to the system tray. Double-click the tray icon to restore."/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="• " Foreground="#9FA6B2"/>
-                                <TextBlock Foreground="#D7DAE5" TextWrapping="Wrap" Text="View → Toggle Desktop Icons hides/shows the default desktop icons behind your fences."/>
-                            </StackPanel>
-                        </StackPanel>
+                        <TextBlock Margin="0,6,0,0" Foreground="#D7DAE5" TextWrapping="Wrap">
+                            Use File → New Fence (or “➕ New Fence”) to create your first fence.
+                            Drag files/folders onto a fence to create shortcuts inside it.
+                            Minimize to hide to tray; toggle desktop icons from View.
+                        </TextBlock>
                     </StackPanel>
 
-                    <!-- Footer -->
                     <Border Grid.Row="3" Padding="12" CornerRadius="12" Background="#251F2A38" BorderBrush="#3A4453" BorderThickness="1">
                         <TextBlock TextWrapping="Wrap" Foreground="#C9CEDB">
                             Tip: Right-click a fence to open its folder or close it. Layout saves automatically on exit.

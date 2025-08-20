@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
+
 // Alias to avoid WinForms clash (if you still reference it elsewhere)
 using MessageBox = System.Windows.MessageBox;
 // Optional alias for Color to avoid ambiguity:
@@ -23,6 +24,24 @@ namespace OpenFences
         public ObservableCollection<FenceItem> ItemsSource { get; } = new();
 
         public event EventHandler? FenceRenamed;
+        public event EventHandler<bool>? DeleteRequested; // bool = also delete backing folder
+
+        // Helper class for items in the fence
+        private void DeleteFence_Click(object sender, RoutedEventArgs e)
+        {
+            // First confirm removal
+            var result = MessageBox.Show(
+                "Delete this fence?\n\nChoose Yes to also delete its backing folder and shortcuts from disk.\nChoose No to remove the fence but keep the folder.\nCancel to abort.",
+                "Delete Fence",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            if (result == MessageBoxResult.Cancel) return;
+
+            bool alsoDeleteFolder = (result == MessageBoxResult.Yes);
+            DeleteRequested?.Invoke(this, alsoDeleteFolder);
+        }
 
         public FenceWindow(FenceModel model)
         {

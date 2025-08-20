@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36310.24 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenFences", "OpenFences\OpenFences.csproj", "{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "OpenFences.Setup", "OpenFences.Setup\OpenFences.Setup.vdproj", "{E669E9A3-6AF0-2A99-2DC9-C1863D409A11}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,8 @@ Global
 		{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4DBE62F-B94E-4BFB-BA08-2F0A899474C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E669E9A3-6AF0-2A99-2DC9-C1863D409A11}.Debug|Any CPU.ActiveCfg = Debug
+		{E669E9A3-6AF0-2A99-2DC9-C1863D409A11}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

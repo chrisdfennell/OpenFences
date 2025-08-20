@@ -1,260 +1,226 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+﻿<!-- Themes/DarkMenu.xaml -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- ===== Palette ===== -->
-    <SolidColorBrush x:Key="MenuBgBrush"       Color="#14141A"/>
-    <SolidColorBrush x:Key="MenuBorderBrush"   Color="#2A2F3A"/>
-    <SolidColorBrush x:Key="MenuFgBrush"       Color="#EDEFF5"/>
-    <SolidColorBrush x:Key="MenuHoverBg"       Color="#233047"/>
-    <SolidColorBrush x:Key="MenuPressedBg"     Color="#2F3B54"/>
-    <SolidColorBrush x:Key="MenuDisabledFg"    Color="#6A7080"/>
-    <SolidColorBrush x:Key="SubmenuBg"         Color="#171A20"/>
+    <!-- ===== Colors ===== -->
+    <SolidColorBrush x:Key="DarkMenu.Background" Color="#151821"/>
+    <SolidColorBrush x:Key="DarkMenu.Border"     Color="#242938"/>
+    <SolidColorBrush x:Key="DarkMenu.Foreground" Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="DarkMenu.Subtle"     Color="#A8AEBD"/>
 
-    <!-- ===== Top Menu bar ===== -->
+    <SolidColorBrush x:Key="DarkMenu.ItemHover"  Color="#232A39"/>
+    <SolidColorBrush x:Key="DarkMenu.ItemPress"  Color="#2D3547"/>
+    <SolidColorBrush x:Key="DarkMenu.Accent"     Color="#3B82F6"/>
+
+    <SolidColorBrush x:Key="DarkMenu.Separator"  Color="#30384A"/>
+
+    <!-- ===== Menu (top bar) ===== -->
     <Style TargetType="Menu">
-        <Setter Property="Background" Value="{StaticResource MenuBgBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource MenuFgBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource MenuBorderBrush}"/>
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
+        <Setter Property="Background" Value="#11141B"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkMenu.Border}"/>
+        <Setter Property="Padding" Value="4,0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Menu">
                     <Border Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="0,0,0,1">
-                        <ItemsPresenter KeyboardNavigation.TabNavigation="Cycle"/>
+                  BorderThickness="{TemplateBinding BorderThickness}">
+                        <ItemsPresenter Margin="2,0,2,0"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- ===== ContextMenu / Submenu popup container (with dark scrollbars) ===== -->
+    <!-- ===== ContextMenu (dropdown panel root) ===== -->
     <Style TargetType="ContextMenu">
-        <Setter Property="Background" Value="{StaticResource SubmenuBg}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource MenuBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="4"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
+        <Setter Property="Background" Value="{StaticResource DarkMenu.Background}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkMenu.Border}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="6"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
                     <Border Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="8">
-                        <Border.Effect>
-                            <DropShadowEffect Color="Black" Opacity="0.35" BlurRadius="16" ShadowDepth="2"/>
-                        </Border.Effect>
-
-                        <!-- Scope dark scrollbars to menus only -->
-                        <Border.Resources>
-
-                            <!-- Thumb for scrollbar -->
-                            <Style x:Key="MenuScrollThumb" TargetType="Thumb">
-                                <Setter Property="Background" Value="#56617A"/>
-                                <Setter Property="Width" Value="8"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Thumb">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#6B7693"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-
-                            <!-- Slim dark vertical scrollbar (no arrows) -->
-                            <Style TargetType="ScrollBar">
-                                <Setter Property="Width" Value="10"/>
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="ScrollBar">
-                                            <Grid x:Name="Root" Background="Transparent">
-                                                <Track x:Name="PART_Track" IsDirectionReversed="true">
-                                                    <Track.DecreaseRepeatButton>
-                                                        <RepeatButton Visibility="Collapsed" />
-                                                    </Track.DecreaseRepeatButton>
-                                                    <Track.IncreaseRepeatButton>
-                                                        <RepeatButton Visibility="Collapsed" />
-                                                    </Track.IncreaseRepeatButton>
-                                                    <Track.Thumb>
-                                                        <Thumb Style="{StaticResource MenuScrollThumb}"/>
-                                                    </Track.Thumb>
-                                                </Track>
-                                            </Grid>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="Orientation" Value="Horizontal">
-                                                    <Setter TargetName="Root" Property="Height" Value="10"/>
-                                                    <Setter Property="Width" Value="Auto"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-
-                            <!-- ScrollViewer defaults for menus -->
-                            <Style TargetType="ScrollViewer">
-                                <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                                <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                                <Setter Property="BorderThickness" Value="0"/>
-                                <Setter Property="Background" Value="Transparent"/>
-                            </Style>
-
-                        </Border.Resources>
-
-                        <ScrollViewer CanContentScroll="True">
-                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
-                        </ScrollViewer>
+                  CornerRadius="10"
+                  SnapsToDevicePixels="True">
+                        <StackPanel IsItemsHost="True"
+                        KeyboardNavigation.DirectionalNavigation="Cycle"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- ===== Separator ===== -->
-    <Style TargetType="Separator">
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Separator">
-                    <Border Height="1" Margin="6,6" Background="{StaticResource MenuBorderBrush}"/>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- ===== MenuItem (top level and submenus) ===== -->
+    <!-- ===== MenuItem (top-level & submenu) ===== -->
     <Style TargetType="MenuItem">
-        <Setter Property="Foreground" Value="{StaticResource MenuFgBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="12,8"/>
-        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <Grid SnapsToDevicePixels="True">
-                        <!-- Header -->
-                        <Border x:Name="HeaderBd" Background="{TemplateBinding Background}" CornerRadius="6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ContentPresenter
-                    Margin="{TemplateBinding Padding}"
-                    Content="{TemplateBinding Header}"
-                    ContentTemplate="{TemplateBinding HeaderTemplate}"
-                    VerticalAlignment="Center"
-                    RecognizesAccessKey="True"/>
-                                <!-- Submenu arrow -->
-                                <Path x:Name="Arrow" Grid.Column="1" Margin="12,0,6,0" Width="8" Height="8"
-                      Data="M 0 0 L 4 4 L 0 8 Z"
-                      Fill="{StaticResource MenuFgBrush}"
-                      Visibility="Collapsed" Stretch="Uniform"/>
-                            </Grid>
-                        </Border>
+                        <!-- Hover/press bg -->
+                        <Border x:Name="Bg"
+                    Background="{TemplateBinding Background}"
+                    CornerRadius="8"
+                    Margin="2"/>
 
-                        <!-- Popup for subitems -->
-                        <Popup x:Name="SubMenu" Placement="Bottom" Focusable="False"
-                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
-                   AllowsTransparency="True" PopupAnimation="Fade">
-                            <Border Background="{StaticResource SubmenuBg}" BorderBrush="{StaticResource MenuBorderBrush}"
-                      BorderThickness="1" CornerRadius="8" Padding="4">
+                        <!-- Layout for icon + header + gesture -->
+                        <Grid Margin="6,2" x:Name="LayoutRoot">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                                <!-- Scope dark scrollbars to submenu -->
-                                <Border.Resources>
-                                    <Style x:Key="MenuScrollThumb" TargetType="Thumb">
-                                        <Setter Property="Background" Value="#56617A"/>
-                                        <Setter Property="Width" Value="8"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Thumb">
-                                                    <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="#6B7693"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
+                            <ContentPresenter x:Name="Icon"
+                                Grid.Column="0"
+                                ContentSource="Icon"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"/>
 
-                                    <Style TargetType="ScrollBar">
-                                        <Setter Property="Width" Value="10"/>
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="ScrollBar">
-                                                    <Grid x:Name="Root" Background="Transparent">
-                                                        <Track x:Name="PART_Track" IsDirectionReversed="true">
-                                                            <Track.DecreaseRepeatButton>
-                                                                <RepeatButton Visibility="Collapsed" />
-                                                            </Track.DecreaseRepeatButton>
-                                                            <Track.IncreaseRepeatButton>
-                                                                <RepeatButton Visibility="Collapsed" />
-                                                            </Track.IncreaseRepeatButton>
-                                                            <Track.Thumb>
-                                                                <Thumb Style="{StaticResource MenuScrollThumb}"/>
-                                                            </Track.Thumb>
-                                                        </Track>
-                                                    </Grid>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="Orientation" Value="Horizontal">
-                                                            <Setter TargetName="Root" Property="Height" Value="10"/>
-                                                            <Setter Property="Width" Value="Auto"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
+                            <ContentPresenter Grid.Column="1"
+                                x:Name="HeaderHost"
+                                ContentSource="Header"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
 
-                                    <Style TargetType="ScrollViewer">
-                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                                        <Setter Property="BorderThickness" Value="0"/>
-                                        <Setter Property="Background" Value="Transparent"/>
-                                    </Style>
-                                </Border.Resources>
+                            <TextBlock Grid.Column="2"
+                         Margin="12,0,6,0"
+                         VerticalAlignment="Center"
+                         Foreground="{StaticResource DarkMenu.Subtle}"
+                         Text="{TemplateBinding InputGestureText}"/>
+                        </Grid>
 
-                                <ScrollViewer CanContentScroll="True">
-                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        <!-- Right arrow when this item has children -->
+                        <Path x:Name="Arrow"
+                  Grid.Column="2"
+                  Margin="8,0,8,0"
+                  HorizontalAlignment="Right"
+                  VerticalAlignment="Center"
+                  Width="8" Height="8"
+                  Fill="{StaticResource DarkMenu.Subtle}"
+                  Data="M 0 0 L 8 4 L 0 8 Z"
+                  Visibility="Collapsed"/>
+
+                        <!-- *** Submenu Popup (required for menus to open) *** -->
+                        <Popup x:Name="SubmenuPopup"
+                   Placement="Bottom"
+                   AllowsTransparency="True"
+                   Focusable="False"
+                   StaysOpen="False"
+                   PopupAnimation="Fade"
+                   IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{StaticResource DarkMenu.Background}"
+                      BorderBrush="{StaticResource DarkMenu.Border}"
+                      BorderThickness="1"
+                      CornerRadius="10"
+                      Padding="6">
+                                <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel IsItemsHost="True"
+                              KeyboardNavigation.DirectionalNavigation="Cycle"/>
                                 </ScrollViewer>
                             </Border>
                         </Popup>
                     </Grid>
 
                     <ControlTemplate.Triggers>
-                        <!-- Role-specific behavior -->
-                        <Trigger Property="Role" Value="TopLevelHeader">
-                            <Setter TargetName="SubMenu" Property="Placement" Value="Bottom"/>
+                        <!-- Hover / Press -->
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource DarkMenu.ItemHover}"/>
                         </Trigger>
-                        <Trigger Property="Role" Value="SubmenuHeader">
-                            <Setter TargetName="SubMenu" Property="Placement" Value="Right"/>
-                            <Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
-                            <Setter Property="Padding" Value="10,6"/>
-                        </Trigger>
-                        <Trigger Property="Role" Value="TopLevelItem">
-                            <Setter Property="Padding" Value="12,8"/>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource DarkMenu.ItemPress}"/>
                         </Trigger>
 
-                        <!-- States -->
-                        <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="HeaderBd" Property="Background" Value="{StaticResource MenuHoverBg}"/>
+                        <!-- Top bar header spacing -->
+                        <Trigger Property="Role" Value="TopLevelHeader">
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter TargetName="SubmenuPopup" Property="Placement" Value="Bottom"/>
                         </Trigger>
+
+                        <!-- Submenu header shows arrow and opens to the right -->
+                        <Trigger Property="Role" Value="SubmenuHeader">
+                            <Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="SubmenuPopup" Property="Placement" Value="Right"/>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55"/>
+                        </Trigger>
+
                         <Trigger Property="IsSubmenuOpen" Value="True">
-                            <Setter TargetName="HeaderBd" Property="Background" Value="{StaticResource MenuPressedBg}"/>
+                            <Setter Property="Background" Value="{StaticResource DarkMenu.ItemHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+        <!-- Apply same style to children -->
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== Separator ===== -->
+    <Style TargetType="Separator">
+        <Setter Property="Margin" Value="10,6"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Background="{StaticResource DarkMenu.Separator}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===== CheckBox (for controls embedded inside menus) ===== -->
+    <Style TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="4,2"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" SnapsToDevicePixels="True">
+                        <Border x:Name="Box"
+                    Width="14" Height="14"
+                    CornerRadius="3"
+                    BorderThickness="1"
+                    Margin="0,0,8,0"
+                    BorderBrush="#556079"
+                    Background="#1E2430"/>
+                        <ContentPresenter VerticalAlignment="Center"
+                              RecognizesAccessKey="True"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource DarkMenu.Accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource DarkMenu.Accent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource DarkMenu.Accent}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Foreground" Value="{StaticResource MenuDisabledFg}"/>
+                            <Setter Property="Opacity" Value="0.6"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -262,9 +228,44 @@
         </Setter>
     </Style>
 
-    <!-- Nice fade for all menu popups -->
-    <Style TargetType="Popup">
-        <Setter Property="PopupAnimation" Value="Fade"/>
+    <!-- ===== ScrollBar + Thumb (dark) ===== -->
+    <Style TargetType="Thumb" x:Key="DarkThumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Width="{TemplateBinding Width}"
+                  Height="{TemplateBinding Height}"
+                  Background="#30394B"
+                  BorderBrush="#3B4458"
+                  BorderThickness="1"
+                  CornerRadius="3"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Width" Value="6"/>
+        <Setter Property="Background" Value="#10141C"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton IsEnabled="False" Opacity="0"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton IsEnabled="False" Opacity="0"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Height="24" Width="6" Style="{StaticResource DarkThumb}"/>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

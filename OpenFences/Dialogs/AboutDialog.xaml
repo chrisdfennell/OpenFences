@@ -1,0 +1,75 @@
+﻿<Window x:Class="OpenFences.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About OpenFences"
+        Width="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        Background="#14141A"
+        AllowsTransparency="False">
+    <Border Margin="10" CornerRadius="14" Background="#1E1F27" BorderBrush="#323645" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="16"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Background="#191B22" MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <TextBlock Text="About OpenFences"
+                           VerticalAlignment="Center"
+                           Margin="14,0,0,0"
+                           Foreground="#EDEDED"
+                           FontWeight="SemiBold"/>
+                <Button Content="×"
+                        Width="30" Height="28"
+                        HorizontalAlignment="Right" Margin="0,8,8,8"
+                        Padding="0"
+                        Click="Close_Click"/>
+            </Grid>
+
+            <!-- Icon + Title -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,16,16,8">
+                <!-- NOTE: mark Assets/open-fence.ico as Build Action=Resource -->
+                <Image Source="pack://application:,,,/OpenFences;component/Assets/open-fence.ico"
+                       Width="40" Height="40" Margin="0,0,12,0"/>
+                <StackPanel>
+                    <TextBlock Text="OpenFences"
+                               FontSize="22" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                    <TextBlock x:Name="VersionText" Foreground="#AAB1C6" FontSize="12"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Description -->
+            <TextBlock Grid.Row="2" Margin="16,4,16,4" Foreground="#C9CEDB" TextWrapping="Wrap">
+                Lightweight desktop fences for Windows. Create/rename fences, drag files to auto-create shortcuts,
+                minimize to tray, toggle desktop icons, and auto-import your desktop into Apps, Documents, and System fences.
+            </TextBlock>
+
+            <!-- Link -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="16,6,16,8">
+                <TextBlock Foreground="#B5B8C7" Margin="0,0,6,0">GitHub:</TextBlock>
+                <TextBlock>
+                    <Hyperlink NavigateUri="https://github.com/chrisdfennell/OpenFences"
+                               RequestNavigate="Hyperlink_RequestNavigate">
+                        github.com/chrisdfennell/OpenFences
+                    </Hyperlink>
+                </TextBlock>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Grid.Row="4" Height="1" Background="#2D3342" Margin="16,0,16,0"/>
+
+            <!-- Buttons -->
+            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,10,12">
+                <Button Width="90" Height="28" Content="OK" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

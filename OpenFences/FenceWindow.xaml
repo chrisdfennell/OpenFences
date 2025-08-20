@@ -62,6 +62,8 @@
                             <MenuItem Header="Invisible (0%)"    Tag="0.00" Click="Transparency_Click"/>
                         </MenuItem>
                         <Separator/>
+                        <MenuItem Header="Delete Fence…" Click="DeleteFence_Click"/>
+                        <Separator/>
                         <MenuItem Header="Close Fence" Click="Close_Click"/>
                     </ContextMenu>
                 </Grid.ContextMenu>

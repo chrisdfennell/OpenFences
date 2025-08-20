@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,7 +7,25 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <!-- App/EXE icon -->
+    <ApplicationIcon>Assets\open-fence.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <!-- Prevent default wildcard from including the ico as <None> -->
+  <ItemGroup>
+    <None Remove="Assets\open-fence.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- For WPF pack URI in About dialog -->
+    <Resource Include="Assets\open-fence.ico" />
+
+    <!-- For tray icon: ensure file exists at runtime -->
+    <Content Include="Assets\open-fence.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Docs\" />
