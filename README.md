@@ -1,3 +1,10 @@
+[![.NET 8.0](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/8.0)
+![WPF](https://img.shields.io/badge/WPF-Desktop-0A84FF?logo=windows&logoColor=white)
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
+![Arch](https://img.shields.io/badge/Arch-x64%20%7C%20ARM64-555)
+[![License: MIT](https://img.shields.io/badge/License-MIT-34D058)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/chrisdfennell/OpenFences?include_prereleases&label=release)](https://github.com/chrisdfennell/OpenFences/releases)
+
 # OpenFences
 
 OpenFences is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
