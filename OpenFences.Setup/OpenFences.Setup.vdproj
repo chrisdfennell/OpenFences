@@ -76,6 +76,16 @@
         {
             "LaunchCondition"
             {
+                "{A06ECF26-33A3-4562-8140-9B0E340D4F24}:_44CC419B0D4648A196724B56FC30520C"
+                {
+                "Name" = "8:.NET Core"
+                "Message" = "8:[VSDNETCOREMSG]"
+                "AllowLaterVersions" = "11:FALSE"
+                "InstallUrl" = "8:https://dotnet.microsoft.com/download/dotnet-core/[NetCoreVerMajorDotMinor]"
+                "IsNETCore" = "11:TRUE"
+                "Architecture" = "2:0"
+                "Runtime" = "2:0"
+                }
             }
         }
         "File"
@@ -277,6 +287,20 @@
         }
         "Shortcut"
         {
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_180A613358404741AC3B6892F2C2E40C"
+            {
+            "Name" = "8:OpenFences"
+            "Arguments" = "8:"
+            "Description" = "8:"
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_A1F0090E7AFD4E85A5C3B7F0A81D756B"
+            "Folder" = "8:_E4A6060994B04601AFDE1D5260C54BFC"
+            "WorkingFolder" = "8:_3890A03AF9B448278F725931E2843B42"
+            "Icon" = "8:_5608F7EE4A5C488291522308CDFD72D8"
+            "Feature" = "8:"
+            }
         }
         "UserInterface"
         {

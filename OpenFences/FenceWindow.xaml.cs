@@ -8,11 +8,10 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Input;
 
-
-// Alias to avoid WinForms clash (if you still reference it elsewhere)
+// Avoid WinForms clash
 using MessageBox = System.Windows.MessageBox;
-// Optional alias for Color to avoid ambiguity:
 using MediaColor = System.Windows.Media.Color;
 
 namespace OpenFences
@@ -21,26 +20,32 @@ namespace OpenFences
     {
         private readonly FenceModel _model;
         private readonly FileSystemWatcher _watcher;
+
         public ObservableCollection<FenceItem> ItemsSource { get; } = new();
 
         public event EventHandler? FenceRenamed;
-        public event EventHandler<bool>? DeleteRequested; // bool = also delete backing folder
+        public event EventHandler? DeleteRequested;
 
-        // Helper class for items in the fence
-        private void DeleteFence_Click(object sender, RoutedEventArgs e)
+        // Normalized wheel: down = content down (offset increases), up = content up (offset decreases)
+        private void Scroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            // First confirm removal
-            var result = MessageBox.Show(
-                "Delete this fence?\n\nChoose Yes to also delete its backing folder and shortcuts from disk.\nChoose No to remove the fence but keep the folder.\nCancel to abort.",
-                "Delete Fence",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Warning,
-                MessageBoxResult.No);
+            if (sender is not ScrollViewer sc) return;
 
-            if (result == MessageBoxResult.Cancel) return;
+            // Prevent parent/ancestor viewers from also scrolling (which can invert or double it)
+            e.Handled = true;
 
-            bool alsoDeleteFolder = (result == MessageBoxResult.Yes);
-            DeleteRequested?.Invoke(this, alsoDeleteFolder);
+            // How many lines per notch; fallback if system says 0
+            int lines = SystemParameters.WheelScrollLines;
+            if (lines <= 0) lines = 3;
+
+            // Convert "lines" to pixels-ish (works well with icon grids)
+            double pixels = lines * 16.0;
+
+            // e.Delta: +120 (wheel up), -120 (wheel down)
+            if (e.Delta > 0)  // wheel down
+                sc.ScrollToVerticalOffset(sc.VerticalOffset + pixels);
+            else if (e.Delta < 0) // wheel up
+                sc.ScrollToVerticalOffset(sc.VerticalOffset - pixels);
         }
 
         public FenceWindow(FenceModel model)
@@ -54,21 +59,22 @@ namespace OpenFences
 
             ApplyBackground();
 
+            // DnD for dropping files to create shortcuts
             AllowDrop = true;
             DragEnter += FenceWindow_DragEnter;
             Drop += FenceWindow_Drop;
 
-            // Ensure folder exists
+            // Ensure backing folder exists
             Directory.CreateDirectory(_model.FolderPath);
 
-            // Load items
+            // Load initial items
             ReloadItems();
 
-            // Watch changes
+            // Watch for folder changes
             _watcher = new FileSystemWatcher(_model.FolderPath)
             {
-                EnableRaisingEvents = true,
-                IncludeSubdirectories = false
+                IncludeSubdirectories = false,
+                EnableRaisingEvents = true
             };
             _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
             _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
@@ -80,9 +86,12 @@ namespace OpenFences
 
             Loaded += (_, __) => EnsureBottomZOrder();
             Activated += (_, __) => EnsureBottomZOrder();
+
             LocationChanged += SaveGeometry;
             SizeChanged += (_, __) => SaveGeometry(null, null);
         }
+
+        // ---------- UI/Background ----------
 
         private void ApplyBackground()
         {
@@ -98,8 +107,10 @@ namespace OpenFences
 
         private void SaveGeometry(object? sender, EventArgs? e)
         {
-            _model.Left = Left; _model.Top = Top;
-            _model.Width = Width; _model.Height = Height;
+            _model.Left = Left;
+            _model.Top = Top;
+            _model.Width = Width;
+            _model.Height = Height;
         }
 
         public void ReloadItems()
@@ -110,21 +121,82 @@ namespace OpenFences
             foreach (var path in files)
             {
                 var disp = Path.GetFileNameWithoutExtension(path);
-                var icon = IconHelper.GetImageSourceForFile(path);
+                var icon = OpenFences.Services.IconHelper.GetImageSourceForPath(path);
                 ItemsSource.Add(new FenceItem { Path = path, DisplayName = disp, Icon = icon });
             }
         }
+        // ---------- Context menu ----------
+        private FenceItem? MenuSenderToItem(object sender)
+        {
+            if (sender is FrameworkElement fe)
+                return fe.DataContext as FenceItem;
+            return null;
+        }
 
-        // Pause/Resume watcher (used during bulk changes)
+        // ---------- Context menu actions ----------
+        private void Item_Open_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuSenderToItem(sender) is not FenceItem item) return;
+            try
+            {
+                var psi = new ProcessStartInfo(item.Path) { UseShellExecute = true };
+                Process.Start(psi);
+            }
+            catch { /* ignore */ }
+        }
+
+        private void Item_OpenFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuSenderToItem(sender) is not FenceItem item) return;
+            try
+            {
+                var dir = Path.GetDirectoryName(item.Path);
+                if (!string.IsNullOrEmpty(dir))
+                    Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+            }
+            catch { /* ignore */ }
+        }
+
+        private void Item_Delete_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuSenderToItem(sender) is not FenceItem item) return;
+
+            var confirm = MessageBox.Show(
+                $"Delete this shortcut?\n\n{item.DisplayName}.lnk",
+                "Delete Shortcut",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirm != MessageBoxResult.Yes) return;
+
+            try
+            {
+                File.Delete(item.Path); // delete only the .lnk in the fence folder
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not delete shortcut:\n" + ex.Message,
+                                "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            // Remove from UI list
+            ItemsSource.Remove(item);
+        }
+
         public void SetWatcherEnabled(bool enabled)
         {
             try { _watcher.EnableRaisingEvents = enabled; } catch { /* ignore */ }
         }
 
+        // ---------- Title bar ----------
+
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) SetCollapsed(!_model.Collapsed);
-            else if (e.LeftButton == MouseButtonState.Pressed) DragMove();
+            if (e.ClickCount == 2)
+                SetCollapsed(!_model.Collapsed);
+            else if (e.LeftButton == MouseButtonState.Pressed)
+                DragMove();
         }
 
         private void SetCollapsed(bool collapsed)
@@ -138,6 +210,8 @@ namespace OpenFences
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
+        // ---------- Items ----------
+
         private void Item_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2 && sender is FrameworkElement fe && fe.DataContext is FenceItem item)
@@ -150,10 +224,10 @@ namespace OpenFences
             }
         }
 
-        // WPF DragEventArgs explicitly
+        // WPF DragEventArgs explicitly (avoid WinForms ambiguity)
         private void FenceWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
         {
-            e.Effects = (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+            e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
                 ? System.Windows.DragDropEffects.Copy
                 : System.Windows.DragDropEffects.None;
             e.Handled = true;
@@ -173,8 +247,11 @@ namespace OpenFences
                 }
                 catch { /* ignore */ }
             }
+
             ReloadItems();
         }
+
+        // ---------- Context menu actions ----------
 
         private void Rename_Click(object sender, RoutedEventArgs e)
         {
@@ -219,11 +296,11 @@ namespace OpenFences
                             Directory.Move(oldFolder, newFolder);
                         }
 
-                        _model.FolderPath = newFolder;
-
                         _watcher.EnableRaisingEvents = false;
                         _watcher.Path = newFolder;
                         _watcher.EnableRaisingEvents = true;
+
+                        _model.FolderPath = newFolder;
                     }
 
                     _model.Name = newName;
@@ -279,7 +356,22 @@ namespace OpenFences
 
         private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            // Placeholder for dynamic enable/disable in future
+            // Placeholder for dynamic enable/disable if needed later
+        }
+
+        private void DeleteFence_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show(
+                "Delete this fence?\n\nChoose Yes to also delete its backing folder and shortcuts from disk.\nChoose No to remove the fence but keep the folder.\nCancel to abort.",
+                "Delete Fence",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            if (result == MessageBoxResult.Cancel) return;
+
+            // We signal deletion; MainWindow handles tearing down + optional folder delete.
+            DeleteRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 }

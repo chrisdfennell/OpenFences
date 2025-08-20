@@ -5,65 +5,40 @@ namespace OpenFences
 {
     internal static class SystemShortcuts
     {
-        // Well-known CLSIDs
-        private const string CLSID_THIS_PC = "{20D04FE0-3AEA-1069-A2D8-08002B30309D}";
-        private const string CLSID_CONTROL_PANEL = "{21EC2020-3AEA-1069-A2DD-08002B30309D}";
-        private const string CLSID_NETWORK = "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}";
-        private const string CLSID_RECYCLE_BIN = "{645FF040-5081-101B-9F08-00AA002F954E}";
-
-        public static int AddToFolder(string folderPath, bool includeHome = true)
+        // Adds This PC, Control Panel, Network, Recycle Bin, and the user's home folder.
+        // Returns number of links created.
+        public static int AddToFolder(string folder)
         {
-            int created = 0;
+            Directory.CreateDirectory(folder);
+            int count = 0;
 
-            created += CreateClsidShortcut(folderPath, "This PC", CLSID_THIS_PC) ? 1 : 0;
-            created += CreateClsidShortcut(folderPath, "Control Panel", CLSID_CONTROL_PANEL) ? 1 : 0;
-            created += CreateClsidShortcut(folderPath, "Network", CLSID_NETWORK) ? 1 : 0;
-            created += CreateClsidShortcut(folderPath, "Recycle Bin", CLSID_RECYCLE_BIN) ? 1 : 0;
+            count += CreateIfMissing(folder, "This PC.lnk", @"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}");
+            count += CreateIfMissing(folder, "Control Panel.lnk", @"shell:ControlPanelFolder");
+            count += CreateIfMissing(folder, "Network.lnk", @"::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}");
+            count += CreateIfMissing(folder, "Recycle Bin.lnk", @"::{645FF040-5081-101B-9F08-00AA002F954E}");
 
-            if (includeHome)
-            {
-                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-                var homeName = new DirectoryInfo(home).Name;
-                created += CreatePathShortcut(folderPath, homeName, home) ? 1 : 0;
-            }
+            var user = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var userLinkName = $"{Path.GetFileName(user)}.lnk";
+            count += CreateIfMissing(folder, userLinkName, user);
 
-            return created;
+            return count;
         }
 
-        private static bool CreateClsidShortcut(string destFolder, string displayName, string clsid)
+        private static int CreateIfMissing(string destFolder, string linkName, string target)
         {
-            try
-            {
-                Directory.CreateDirectory(destFolder);
-                string link = Path.Combine(destFolder, Sanitize(displayName) + ".lnk");
-                if (File.Exists(link)) return false;
+            var linkPath = Path.Combine(destFolder, linkName);
+            if (File.Exists(linkPath)) return 0;
 
-                // Use explorer.exe with shell:::{CLSID}
-                string explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-                ShellLink.CreateShortcut(link, explorer, arguments: $"shell:::{clsid}");
-                return true;
-            }
-            catch { return false; }
-        }
+            // NOTE: parameter is args (not 'arguments')
+            ShellLink.CreateShortcut(
+                linkPath,
+                target,
+                args: null,
+                workingDir: null,
+                iconPath: null,
+                iconIndex: 0);
 
-        private static bool CreatePathShortcut(string destFolder, string displayName, string targetPath)
-        {
-            try
-            {
-                Directory.CreateDirectory(destFolder);
-                string link = Path.Combine(destFolder, Sanitize(displayName) + ".lnk");
-                if (File.Exists(link)) return false;
-
-                ShellLink.CreateShortcut(link, targetPath);
-                return true;
-            }
-            catch { return false; }
-        }
-
-        private static string Sanitize(string name)
-        {
-            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
-            return name.Trim();
+            return 1;
         }
     }
 }

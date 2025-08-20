@@ -10,7 +10,7 @@
         Topmost="False"
         Width="420" Height="260">
 
-    <!-- Borderless chrome (keeps resize handles, no caption) -->
+    <!-- Borderless chrome (resize grips, no caption buttons) -->
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="0"
                             CornerRadius="8"
@@ -19,15 +19,22 @@
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <!-- Root border gets the translucent background -->
-    <Border x:Name="RootBorder" CornerRadius="10" BorderBrush="#3A3A3A" BorderThickness="1">
+    <!-- Root surface: rounded dark card + drop shadow -->
+    <Border x:Name="RootBorder"
+            Background="#1E1E1E"
+            CornerRadius="10"
+            BorderBrush="#3A3A3A"
+            BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.40" Color="#000000"/>
         </Border.Effect>
 
         <DockPanel>
+
             <!-- Title bar -->
-            <Grid DockPanel.Dock="Top" Height="34" Background="#2B2B2B"
+            <Grid DockPanel.Dock="Top"
+                  Height="34"
+                  Background="#2B2B2B"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                   ContextMenuOpening="TitleBar_ContextMenuOpening">
                 <Grid.ColumnDefinitions>
@@ -36,16 +43,31 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock x:Name="TitleText"
-                           VerticalAlignment="Center" Margin="10,0,0,0"
-                           Foreground="#E0E0E0" FontWeight="SemiBold"/>
+                           VerticalAlignment="Center"
+                           Margin="10,0,0,0"
+                           Foreground="#E0E0E0"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"/>
 
-                <StackPanel Orientation="Horizontal" Grid.Column="1" Margin="0,0,6,0" VerticalAlignment="Center">
-                    <Button Content="✎" Width="28" Height="24" Margin="0,0,6,0" ToolTip="Rename Fence" Click="Rename_Click"/>
-                    <Button Content="–" Width="28" Height="24" Margin="0,0,6,0" Click="Collapse_Click" ToolTip="Collapse / Expand"/>
-                    <Button Content="×" Width="28" Height="24" Click="Close_Click" ToolTip="Close Fence"/>
+                <StackPanel Orientation="Horizontal"
+                            Grid.Column="1"
+                            Margin="0,0,6,0"
+                            VerticalAlignment="Center">
+                    <Button Content="✎"
+                            Width="28" Height="24" Margin="0,0,6,0"
+                            ToolTip="Rename Fence"
+                            Click="Rename_Click"/>
+                    <Button Content="–"
+                            Width="28" Height="24" Margin="0,0,6,0"
+                            Click="Collapse_Click"
+                            ToolTip="Collapse / Expand"/>
+                    <Button Content="×"
+                            Width="28" Height="24"
+                            Click="Close_Click"
+                            ToolTip="Close Fence"/>
                 </StackPanel>
 
-                <!-- Context menu -->
+                <!-- Right-click menu on the title bar -->
                 <Grid.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
@@ -53,16 +75,16 @@
                         <Separator/>
                         <MenuItem Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
                         <MenuItem Header="Transparency">
-                            <MenuItem Header="Opaque"            Tag="1.00" Click="Transparency_Click"/>
-                            <MenuItem Header="Slight (90%)"      Tag="0.90" Click="Transparency_Click"/>
-                            <MenuItem Header="Medium (75%)"      Tag="0.75" Click="Transparency_Click"/>
-                            <MenuItem Header="High (60%)"        Tag="0.60" Click="Transparency_Click"/>
-                            <MenuItem Header="Very High (40%)"   Tag="0.40" Click="Transparency_Click"/>
-                            <MenuItem Header="Glass (20%)"       Tag="0.20" Click="Transparency_Click"/>
-                            <MenuItem Header="Invisible (0%)"    Tag="0.00" Click="Transparency_Click"/>
+                            <MenuItem Header="Opaque"             Tag="1.00" Click="Transparency_Click"/>
+                            <MenuItem Header="Slight (90%)"       Tag="0.90" Click="Transparency_Click"/>
+                            <MenuItem Header="Medium (75%)"       Tag="0.75" Click="Transparency_Click"/>
+                            <MenuItem Header="High (60%)"         Tag="0.60" Click="Transparency_Click"/>
+                            <MenuItem Header="Very High (40%)"    Tag="0.40" Click="Transparency_Click"/>
+                            <MenuItem Header="Glass (20%)"        Tag="0.20" Click="Transparency_Click"/>
+                            <MenuItem Header="Invisible (0%)"     Tag="0.00" Click="Transparency_Click"/>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem Header="Delete Fence…" Click="DeleteFence_Click"/>
+                        <MenuItem Header="Delete Fence…" Foreground="#FFEF4444" Click="DeleteFence_Click"/>
                         <Separator/>
                         <MenuItem Header="Close Fence" Click="Close_Click"/>
                     </ContextMenu>
@@ -70,19 +92,50 @@
             </Grid>
 
             <!-- Items area -->
-            <ScrollViewer x:Name="Scroller" Margin="6" VerticalScrollBarVisibility="Auto" Background="Transparent">
+            <ScrollViewer x:Name="Scroller"
+                          Margin="6"
+                          VerticalScrollBarVisibility="Auto"
+                          Background="Transparent"
+                          PreviewMouseWheel="Scroller_PreviewMouseWheel"
+                          PanningMode="Both"
+                          CanContentScroll="False">
+
                 <ItemsControl x:Name="Items">
+                    <!-- wrap icons -->
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel/>
+                            <WrapPanel ItemWidth="156"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
+
+                    <!-- icon + ellipsized name; tooltip shows full name -->
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Margin="8" Width="84" MouseLeftButtonDown="Item_MouseLeftButtonDown">
-                                <Image Width="48" Height="48" Source="{Binding Icon}" Stretch="Uniform"/>
-                                <TextBlock Text="{Binding DisplayName}" Foreground="#EAEAEA"
-                                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="12"/>
+                            <StackPanel Width="140"
+                Margin="8"
+                MouseLeftButtonDown="Item_MouseLeftButtonDown"
+                ToolTipService.ShowDuration="60000"
+                ToolTip="{Binding DisplayName}">
+                                <Image Width="48" Height="48"
+             Source="{Binding Icon}"
+             Stretch="Uniform"
+             SnapsToDevicePixels="True"
+             UseLayoutRounding="True"/>
+                                <TextBlock Text="{Binding DisplayName}"
+                 Foreground="#EAEAEA"
+                 FontSize="12"
+                 Margin="0,6,0,0"
+                 TextAlignment="Center"
+                 TextWrapping="NoWrap"
+                 TextTrimming="CharacterEllipsis"/>
+                                <StackPanel.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open" Click="Item_Open_Click"/>
+                                        <MenuItem Header="Open containing folder" Click="Item_OpenFolder_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="Delete shortcut" Click="Item_Delete_Click"/>
+                                    </ContextMenu>
+                                </StackPanel.ContextMenu>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

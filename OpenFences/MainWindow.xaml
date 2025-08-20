@@ -3,150 +3,161 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="OpenFences"
-        Width="900" Height="560"
-        WindowStartupLocation="CenterScreen"
-        Background="#FF0E0E12"
+        Width="980" Height="620"
         WindowStyle="None"
-        ResizeMode="CanResize">
+        ResizeMode="CanResize"
+        Background="#151518"
+        AllowsTransparency="False"
+        SnapsToDevicePixels="True">
 
-    <!-- Borderless window with resize grips; we drag via code -->
+    <!-- Borderless chrome (keeps resize grips) -->
     <shell:WindowChrome.WindowChrome>
-        <shell:WindowChrome
-            CaptionHeight="0"
-            CornerRadius="0"
-            GlassFrameThickness="0"
-            ResizeBorderThickness="7"
-            UseAeroCaptionButtons="False"/>
+        <shell:WindowChrome CaptionHeight="0"
+                            CornerRadius="8"
+                            GlassFrameThickness="0"
+                            ResizeBorderThickness="6"
+                            UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <DockPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="34"/>
+            <!-- custom titlebar -->
+            <RowDefinition Height="*"/>
+            <!-- content -->
+        </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Grid DockPanel.Dock="Top"
-              Height="36"
-              Background="#14141A"
-              PreviewMouseLeftButtonDown="Header_PreviewMouseLeftButtonDown">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- ===== Title bar ===== -->
+        <Border Grid.Row="0" Background="#1E1F22" BorderBrush="#2A2B30" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- menu -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- drag pad -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- window buttons -->
+                </Grid.ColumnDefinitions>
 
-            <!-- Menu -->
-            <Menu Background="#14141A"
-                  Foreground="#EDEDED"
-                  BorderThickness="0"
-                  VerticalAlignment="Stretch">
-                <MenuItem Header="_File">
-                    <MenuItem Header="_New Fence" Click="NewFence_Click"/>
-                    <Separator/>
-                    <MenuItem Header="E_xit" Click="Exit_Click"/>
-                </MenuItem>
-
-                <MenuItem Header="_View">
-                    <MenuItem Header="_Toggle Desktop Icons" Click="ToggleDesktopIcons_Click"/>
-                    <MenuItem Header="_Show All Fences" Click="ShowAll_Click"/>
-                    <MenuItem Header="_Hide All Fences" Click="HideAll_Click"/>
-                </MenuItem>
-
-                <!-- Settings with real checkboxes -->
-                <MenuItem Header="_Settings">
-                    <!-- Start with Windows -->
-                    <MenuItem StaysOpenOnClick="True">
-                        <MenuItem.Header>
-                            <CheckBox x:Name="ChkRunAtStartup"
-                                      Content="Start with Windows"
-                                      Checked="ChkRunAtStartup_CheckedChanged"
-                                      Unchecked="ChkRunAtStartup_CheckedChanged"/>
-                        </MenuItem.Header>
+                <!-- Dark menu style should be merged in App.xaml -->
+                <Menu VerticalAlignment="Stretch" Height="34" Margin="8,0,0,0">
+                    <MenuItem Header="_File">
+                        <MenuItem Header="New Fence" Click="NewFence_Click"/>
+                        <Separator/>
+                        <MenuItem Header="Exit" Click="Exit_Click"/>
                     </MenuItem>
 
-                    <!-- Hide desktop icons on startup -->
-                    <MenuItem StaysOpenOnClick="True">
-                        <MenuItem.Header>
-                            <CheckBox x:Name="ChkHideIconsOnStart"
-                                      Content="Hide desktop icons on startup"
-                                      Checked="ChkHideIconsOnStart_CheckedChanged"
-                                      Unchecked="ChkHideIconsOnStart_CheckedChanged"/>
-                        </MenuItem.Header>
+                    <MenuItem Header="_View">
+                        <MenuItem Header="Toggle Desktop Icons" Click="ToggleDesktopIcons_Click"/>
+                        <MenuItem Header="Show All Fences" Click="ShowAll_Click"/>
+                        <MenuItem Header="Hide All Fences" Click="HideAll_Click"/>
                     </MenuItem>
 
-                    <!-- Double-click empty desktop toggles icons -->
-                    <MenuItem StaysOpenOnClick="True">
-                        <MenuItem.Header>
-                            <CheckBox x:Name="ChkDoubleClickDesktop"
-                                      Content="Double-click empty desktop toggles icons"
-                                      Checked="ChkDoubleClickDesktop_CheckedChanged"
-                                      Unchecked="ChkDoubleClickDesktop_CheckedChanged"/>
-                        </MenuItem.Header>
+                    <MenuItem Header="_Settings">
+                        <MenuItem x:Name="MiRunAtStartup"
+                                  Header="Start with Windows"
+                                  IsCheckable="True"
+                                  Click="MiRunAtStartup_Click"/>
+                        <MenuItem x:Name="MiHideIconsOnStart"
+                                  Header="Hide desktop icons on startup"
+                                  IsCheckable="True"
+                                  Click="MiHideIconsOnStart_Click"/>
+                        <MenuItem x:Name="MiDoubleClickDesktop"
+                                  Header="Double-click empty desktop toggles icons"
+                                  IsCheckable="True"
+                                  Click="MiDoubleClickDesktop_Click"/>
                     </MenuItem>
-                </MenuItem>
 
-                <MenuItem Header="_Help">
-                    <MenuItem Header="_About" Click="About_Click"/>
-                </MenuItem>
-            </Menu>
+                    <MenuItem Header="_Help">
+                        <MenuItem Header="About" Click="About_Click"/>
+                    </MenuItem>
+                </Menu>
 
-            <!-- Window buttons -->
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        Margin="0,0,6,0">
-                <Button Width="36" Height="24" Padding="0" Content="—" ToolTip="Minimize" Click="MinimizeButton_Click"/>
-                <Button Width="36" Height="24" Padding="0" Content="×" ToolTip="Close" Click="CloseButton_Click"/>
-            </StackPanel>
-        </Grid>
+                <!-- Transparent drag surface between menu and buttons -->
+                <Border Grid.Column="1"
+                        Background="Transparent"
+                        MouseLeftButtonDown="HeaderDrag_MouseLeftButtonDown"
+                        ToolTip="Drag to move"/>
 
-        <!-- Main content (unchanged) -->
-        <Grid>
-            <Grid.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#1A2A2A36" Offset="0"/>
-                    <GradientStop Color="#1A0E0E12" Offset="1"/>
-                </LinearGradientBrush>
-            </Grid.Background>
+                <!-- Window buttons (use your existing handler names) -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                    <StackPanel.Resources>
+                        <Style TargetType="Button">
+                            <Setter Property="Width"  Value="34"/>
+                            <Setter Property="Height" Value="24"/>
+                            <Setter Property="Margin" Value="0,0,4,0"/>
+                        </Style>
+                    </StackPanel.Resources>
+                    <Button Content="—" Click="MinimizeButton_Click"/>
+                    <Button Content="×"  Margin="0" Click="CloseButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
 
-            <Border MaxWidth="820" Padding="24" CornerRadius="18"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    BorderBrush="#333845" BorderThickness="1" Background="#B31A1A20">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.45" Color="#000000"/>
-                </Border.Effect>
+        <!-- ===== Content (centered vertically & horizontally) ===== -->
+        <Grid Grid.Row="1">
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Width="720"
+                    Padding="28"
+                    CornerRadius="16"
+                    Background="#1A1B1F"
+                    BorderBrush="#2A2B30" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="OpenFences" FontSize="32" FontWeight="SemiBold" Foreground="#F0F0F0"/>
+                    <TextBlock Text="Lightweight desktop fences for Windows"
+                               Margin="0,4,0,16"
+                               Foreground="#A8ACB3"/>
 
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                        <TextBlock Text="OpenFences" FontSize="28" FontWeight="SemiBold" Foreground="#FFFFFF"/>
-                        <TextBlock Text="Lightweight desktop fences for Windows" FontSize="14" Foreground="#B5B8C7"/>
+                    <!-- Button row (no Spacing; use child Margin) -->
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel.Resources>
+                            <Style TargetType="Button">
+                                <Setter Property="Height" Value="32"/>
+                                <Setter Property="Margin" Value="0,0,12,0"/>
+                            </Style>
+                        </StackPanel.Resources>
+                        <Button Width="140" Content="＋  New Fence" Click="NewFence_Click"/>
+                        <Button Width="160" Content="📁  Open Fences Folder" Click="OpenFencesFolder_Click"/>
+                        <Button Width="220" Content="⚡  Auto-Import Desktop Icons" Margin="0" Click="AutoImportDesktop_Click"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,18">
-                        <Button Content="➕  New Fence" Margin="0,0,10,0" Padding="14,8" Click="NewFence_Click"/>
-                        <Button Content="📂  Open Fences Folder" Margin="0,0,10,0" Padding="14,8" Click="OpenFencesFolder_Click"/>
-                        <Button Content="⚡  Auto-Import Desktop Icons" Padding="14,8" Click="AutoImportDesktop_Click"/>
-                    </StackPanel>
+                    <Border Margin="0,18,0,0" Padding="12"
+        CornerRadius="10"
+        Background="#17181C"
+        BorderBrush="#2A2B30" BorderThickness="1">
+                        <StackPanel>
+                            <!-- 1 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
+            <Run Text="• Use "/>
+            <Run FontWeight="Bold" Text="File → New Fence"/>
+            <Run Text=" to create your first fence."/>
+                            </TextBlock>
 
-                    <StackPanel Grid.Row="2" Margin="0,0,0,12">
-                        <TextBlock Text="Quick Start" FontSize="16" FontWeight="SemiBold" Foreground="#EDEDED" />
-                        <TextBlock Margin="0,6,0,0" Foreground="#D7DAE5" TextWrapping="Wrap">
-                            Use File → New Fence (or “➕ New Fence”) to create your first fence.
-                            Drag files/folders onto a fence to create shortcuts inside it.
-                            Minimize to hide to tray; toggle desktop icons from View.
-                        </TextBlock>
-                    </StackPanel>
+                            <!-- 2 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
+            Drag files/folders onto a fence to create shortcuts inside it.
+                            </TextBlock>
 
-                    <Border Grid.Row="3" Padding="12" CornerRadius="12" Background="#251F2A38" BorderBrush="#3A4453" BorderThickness="1">
-                        <TextBlock TextWrapping="Wrap" Foreground="#C9CEDB">
-                            Tip: Right-click a fence to open its folder or close it. Layout saves automatically on exit.
-                        </TextBlock>
+                            <!-- 3 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
+            <Run Text="• Click the "/><Run Text="✎"/><Run Text=" icon on a fence title to rename it."/>
+                            </TextBlock>
+
+                            <!-- 4 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
+            Minimize this window — the app hides to the tray. Double-click the tray icon to restore.
+                            </TextBlock>
+
+                            <!-- 5 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap">
+            <Run Text="• View → "/><Run FontWeight="Bold" Text="Toggle Desktop Icons"/><Run Text=" hides/shows the default desktop icons behind your fences."/>
+                            </TextBlock>
+                        </StackPanel>
                     </Border>
-                </Grid>
+
+                </StackPanel>
             </Border>
         </Grid>
-    </DockPanel>
+    </Grid>
 </Window>
