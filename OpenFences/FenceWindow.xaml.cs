@@ -32,11 +32,12 @@ namespace OpenFences
 
             // Wheel down => positive "notches" (scroll content down)
             double notches = -e.Delta / 120.0;
-            const double stepPerNotch = 96; // ~a row or two; tweak to taste
+            const double stepPerNotch = 96;
 
-            double target = sv.VerticalOffset - (notches * stepPerNotch);
+            // ✅ Correct direction:
+            double target = sv.VerticalOffset + (notches * stepPerNotch);
 
-            // Clamp with a tiny epsilon to defeat rounding "dead bands"
+            // Clamp to bounds (keep your existing epsilon logic)
             double max = Math.Max(0, sv.ExtentHeight - sv.ViewportHeight);
             const double eps = 0.75;
 
@@ -47,7 +48,6 @@ namespace OpenFences
             sv.ScrollToVerticalOffset(target);
             e.Handled = true;
         }
-
 
         public FenceWindow(FenceModel model)
         {

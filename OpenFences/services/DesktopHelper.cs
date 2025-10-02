@@ -14,6 +14,11 @@ namespace OpenFences
         private const int CMD_TOGGLE_DESKTOP = 0x7402;     // "Show desktop icons" verb
         private const int LVM_HITTEST = 0x1012;
 
+        // SMTO flags
+        private const uint SMTO_NORMAL = 0x0000;
+        private const uint SMTO_BLOCK = 0x0001;
+        private const uint SMTO_ABORTIFHUNG = 0x0002;
+
         // ShowWindow
         private const int SW_HIDE = 0;
         private const int SW_SHOW = 5;
@@ -41,7 +46,7 @@ namespace OpenFences
             // Ask Progman to create WorkerWs (for builds that use WorkerW).
             _progman = FindWindow("Progman", "Program Manager");
             if (_progman != IntPtr.Zero)
-                SendMessageTimeout(_progman, 0x052C, IntPtr.Zero, IntPtr.Zero, 0, 1000, out _);
+                SendMessageTimeout(_progman, 0x052C, IntPtr.Zero, IntPtr.Zero, SMTO_ABORTIFHUNG, 1000, out _);
 
             RefreshHandles();
         }
@@ -65,7 +70,7 @@ namespace OpenFences
             // 1) Asynchronously ask shell to toggle if needed (non-blocking)
             if (before != show && _defView != IntPtr.Zero)
             {
-                // Was SendMessage(...); PostMessage avoids Explorer stalls/lag
+                // PostMessage avoids Explorer stalls/lag vs SendMessage
                 PostMessage(_defView, WM_COMMAND, new IntPtr(CMD_TOGGLE_DESKTOP), IntPtr.Zero);
             }
 
@@ -108,49 +113,113 @@ namespace OpenFences
         }
 
         /// <summary>
-        /// Returns true when the cursor is over the "empty desktop" (not our windows, not a desktop icon item).
+        /// Conservative, cheap check used from the hook: verifies the window under the cursor is explorer’s desktop.
+        /// </summary>
+        public static bool IsLikelyDesktopUnderCursor()
+        {
+            EnsureHandles();
+            if (_defView == IntPtr.Zero) return false;
+            if (!GetCursorPos(out POINT ptScreen)) return false;
+
+            IntPtr hwndUnder = WindowFromPoint(ptScreen);
+            if (hwndUnder == IntPtr.Zero) return false;
+            if (BelongsToCurrentProcess(hwndUnder)) return false;
+
+            // Must be explorer (walk up if needed)
+            if (!BelongsToExplorerProcess(hwndUnder))
+            {
+                IntPtr cur = hwndUnder;
+                bool explorerAncestor = false;
+                while (cur != IntPtr.Zero)
+                {
+                    if (BelongsToExplorerProcess(cur)) { explorerAncestor = true; break; }
+                    cur = GetParent(cur);
+                }
+                if (!explorerAncestor) return false;
+            }
+
+            // Hosted under desktop view classes?
+            return IsClass(hwndUnder, "WorkerW") ||
+                   IsClass(hwndUnder, "Progman") ||
+                   AncestorHasClass(hwndUnder, "SHELLDLL_DefView");
+        }
+
+        /// <summary>
+        /// Robust whitespace check (run on the UI thread): uses SendMessageTimeout to avoid Explorer stalls.
+        /// Returns true if the cursor is over desktop whitespace (not on an icon).
+        /// </summary>
+        public static bool CursorIsOverDesktopWhitespaceSafe()
+        {
+            EnsureHandles();
+            if (_listView == IntPtr.Zero || !IsWindow(_listView)) return false;
+            if (!GetCursorPos(out POINT ptScreen)) return false;
+
+            // Convert to listview client coords
+            var ptClient = ptScreen;
+            ScreenToClient(_listView, ref ptClient);
+
+            var hti = new LVHITTESTINFO
+            {
+                pt = ptClient,
+                flags = 0,
+                iItem = -1,
+                iSubItem = 0
+            };
+
+            const uint TIMEOUT_MS = 50;
+
+            // Timeout-protected hit-test into the desktop list view
+            IntPtr result;
+            IntPtr ok = SendMessageTimeout(_listView, (uint)LVM_HITTEST, IntPtr.Zero,
+                                           ref hti, SMTO_ABORTIFHUNG, TIMEOUT_MS, out result);
+
+            // If timeout or failure, be conservative (don’t toggle)
+            if (ok == IntPtr.Zero) return false;
+
+            // Not over any item => whitespace
+            return hti.iItem == -1;
+        }
+
+        /// <summary>
+        /// (Older, synchronous) Returns true when the cursor is over empty desktop using LVM_HITTEST directly.
+        /// Use CursorIsOverDesktopWhitespaceSafe() instead when calling from UI code.
         /// </summary>
         public static bool CursorIsOverEmptyDesktop()
         {
             EnsureHandles();
 
-            if (_defView == IntPtr.Zero) return false;
+            if (_defView == IntPtr.Zero || _listView == IntPtr.Zero) return false;
             if (!GetCursorPos(out POINT ptScreen)) return false;
 
-            // If pointer is on one of OUR windows, it's not the desktop.
             IntPtr hwndUnder = WindowFromPoint(ptScreen);
             if (hwndUnder == IntPtr.Zero) return false;
+
+            // Don’t trigger when clicking any of OUR windows
             if (BelongsToCurrentProcess(hwndUnder)) return false;
 
-            // Accept clicks that land on WorkerW/Progman directly…
-            if (IsClass(hwndUnder, "WorkerW") || IsClass(hwndUnder, "Progman")) return true;
+            // Must belong to Explorer (the shell)
+            if (!BelongsToExplorerProcess(hwndUnder))
+            {
+                IntPtr cur = hwndUnder;
+                bool explorerAncestor = false;
+                while (cur != IntPtr.Zero)
+                {
+                    if (BelongsToExplorerProcess(cur)) { explorerAncestor = true; break; }
+                    cur = GetParent(cur);
+                }
+                if (!explorerAncestor) return false;
+            }
 
-            // …or on anything hosted under SHELLDLL_DefView (the desktop view).
-            if (AncestorHasClass(hwndUnder, "SHELLDLL_DefView")) return true;
+            // Accept: direct WorkerW/Progman click, or anything hosted under SHELLDLL_DefView
+            bool onDesktopView =
+                IsClass(hwndUnder, "WorkerW") ||
+                IsClass(hwndUnder, "Progman") ||
+                AncestorHasClass(hwndUnder, "SHELLDLL_DefView");
 
-            return false;
-        }
+            if (!onDesktopView) return false;
 
-        /// <summary>
-        /// Push a window to the "desktop layer": above the wallpaper & icons (WorkerW/Progman), below normal apps.
-        /// </summary>
-        public static void SendToDesktopLayer(Window window)
-        {
-            var hwnd = new WindowInteropHelper(window).Handle;
-            if (hwnd == IntPtr.Zero) return;
-            SendToDesktopLayer(hwnd);
-        }
-
-        public static void SendToDesktopLayer(IntPtr hwnd)
-        {
-            EnsureHandles();
-
-            // Place directly above the WorkerW (or Progman if no WorkerW).
-            IntPtr insertAfter = (_workerW != IntPtr.Zero) ? _workerW : _progman;
-            if (insertAfter == IntPtr.Zero) return;
-
-            SetWindowPos(hwnd, insertAfter, 0, 0, 0, 0,
-                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOSENDCHANGING | SWP_SHOWWINDOW);
+            // Finally, require WHITESPACE (not on any icon)
+            return IsDesktopWhiteSpaceAtScreenPoint(ptScreen);
         }
 
         // ---------- internals ----------
@@ -218,6 +287,21 @@ namespace OpenFences
             return pid == (uint)Process.GetCurrentProcess().Id;
         }
 
+        private static bool BelongsToExplorerProcess(IntPtr hwnd)
+        {
+            GetWindowThreadProcessId(hwnd, out uint pid);
+            try
+            {
+                using var p = Process.GetProcessById((int)pid);
+                // ProcessName returns without ".exe"
+                return p.ProcessName.Equals("explorer", StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool IsClass(IntPtr hwnd, string className)
         {
             var sb = new StringBuilder(256);
@@ -251,9 +335,57 @@ namespace OpenFences
             return result;
         }
 
+        /// <summary>
+        /// Direct (blocking) LVM_HITTEST. Prefer CursorIsOverDesktopWhitespaceSafe() instead.
+        /// </summary>
+        private static bool IsDesktopWhiteSpaceAtScreenPoint(POINT ptScreen)
+        {
+            EnsureHandles();
+            if (_listView == IntPtr.Zero || !IsWindow(_listView))
+                return false;
+
+            // Convert to listview client coords
+            var ptClient = ptScreen;
+            ScreenToClient(_listView, ref ptClient);
+
+            var hti = new LVHITTESTINFO
+            {
+                pt = ptClient,
+                flags = 0,
+                iItem = -1,
+                iSubItem = 0
+            };
+
+            // LVM_HITTEST fills iItem with -1 if not over an item
+            int _ = (int)SendMessage(_listView, LVM_HITTEST, IntPtr.Zero, ref hti);
+            return hti.iItem == -1;
+        }
+
+        /// <summary>
+        /// Push a window to the "desktop layer": above the wallpaper & icons (WorkerW/Progman), below normal apps.
+        /// </summary>
+        public static void SendToDesktopLayer(Window window)
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            SendToDesktopLayer(hwnd);
+        }
+
+        public static void SendToDesktopLayer(IntPtr hwnd)
+        {
+            EnsureHandles();
+
+            // Place directly above the WorkerW (or Progman if no WorkerW).
+            IntPtr insertAfter = (_workerW != IntPtr.Zero) ? _workerW : _progman;
+            if (insertAfter == IntPtr.Zero) return;
+
+            SetWindowPos(hwnd, insertAfter, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOSENDCHANGING | SWP_SHOWWINDOW);
+        }
+
         // ---------- P/Invoke ----------
 
-        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+        internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -279,8 +411,17 @@ namespace OpenFences
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool SendMessageTimeout(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam, int fuFlags, int uTimeout, out IntPtr lpdwResult);
+        // Timeout (IntPtr lParam overload)
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessageTimeout(
+            IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
+            uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
+
+        // Timeout (ref LVHITTESTINFO overload)
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessageTimeout(
+            IntPtr hWnd, uint Msg, IntPtr wParam, ref LVHITTESTINFO lParam,
+            uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);

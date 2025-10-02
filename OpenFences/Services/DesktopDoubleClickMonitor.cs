@@ -91,46 +91,35 @@ namespace OpenFences
 
                     if (isDouble)
                     {
-                        var disp = System.Windows.Application.Current?.Dispatcher;
-                        if (disp != null)
+                        if (!DesktopHelper.IsLikelyDesktopUnderCursor())
+                            return CallNextHookEx(_hook, nCode, wParam, lParam);
+
+                        if (_guardBusy)
+                            return CallNextHookEx(_hook, nCode, wParam, lParam);
+
+                        _guardBusy = true;
+
+                        var delay = new DispatcherTimer { Interval = DelayBeforeToggle };
+                        delay.Tick += (s, e) =>
                         {
-                            disp.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                            delay.Stop();
+
+                            try
                             {
-                                try
+                                // ✅ Confirm on UI thread using a timeouted hit-test.
+                                if (DesktopHelper.CursorIsOverDesktopWhitespaceSafe())
                                 {
-                                    // Only act on empty desktop to avoid noise
-                                    if (!DesktopHelper.CursorIsOverEmptyDesktop())
-                                        return;
-
-                                    if (_guardBusy) return;
-                                    _guardBusy = true;
-
-                                    // Defer a hair so we don't collide with Explorer's double-click handling
-                                    var delay = new DispatcherTimer { Interval = DelayBeforeToggle };
-                                    delay.Tick += (s, e) =>
-                                    {
-                                        delay.Stop();
-                                        try
-                                        {
-                                            DesktopHelper.ToggleDesktopIconsRobust();
-                                        }
-                                        catch { /* ignore */ }
-
-                                        // Release guard after short interval
-                                        _guardTimer?.Stop();
-                                        _guardTimer = new DispatcherTimer { Interval = GuardInterval };
-                                        _guardTimer.Tick += (s2, e2) =>
-                                        {
-                                            _guardTimer!.Stop();
-                                            _guardBusy = false;
-                                        };
-                                        _guardTimer.Start();
-                                    };
-                                    delay.Start();
+                                    DesktopHelper.ToggleDesktopIconsRobust();
                                 }
-                                catch { /* ignore */ }
-                            }));
-                        }
+                            }
+                            catch { /* ignore */ }
+
+                            _guardTimer?.Stop();
+                            _guardTimer = new DispatcherTimer { Interval = GuardInterval };
+                            _guardTimer.Tick += (s2, e2) => { _guardTimer.Stop(); _guardBusy = false; };
+                            _guardTimer.Start();
+                        };
+                        delay.Start();
                     }
                 }
             }

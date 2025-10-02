@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OpenFences")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+641090484b1fe915ceeb30fc5c434db0ff4d5ddc")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a973c19126acf73604ef9e9ed027a61d4d4cb31e")]
 [assembly: System.Reflection.AssemblyProductAttribute("OpenFences")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OpenFences")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
