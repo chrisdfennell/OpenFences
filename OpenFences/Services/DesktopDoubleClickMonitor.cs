@@ -99,27 +99,23 @@ namespace OpenFences
 
                         _guardBusy = true;
 
-                        var delay = new DispatcherTimer { Interval = DelayBeforeToggle };
-                        delay.Tick += (s, e) =>
+                        // Call the robust toggle method directly.
+                        // It already handles its own timing and verification.
+                        try
                         {
-                            delay.Stop();
+                            DesktopHelper.ToggleDesktopIconsRobust();
+                        }
+                        catch { /* ignore */ }
 
-                            try
-                            {
-                                // ✅ Confirm on UI thread using a timeouted hit-test.
-                                if (DesktopHelper.CursorIsOverDesktopWhitespaceSafe())
-                                {
-                                    DesktopHelper.ToggleDesktopIconsRobust();
-                                }
-                            }
-                            catch { /* ignore */ }
-
-                            _guardTimer?.Stop();
-                            _guardTimer = new DispatcherTimer { Interval = GuardInterval };
-                            _guardTimer.Tick += (s2, e2) => { _guardTimer.Stop(); _guardBusy = false; };
-                            _guardTimer.Start();
+                        // Release guard after short interval
+                        _guardTimer?.Stop();
+                        _guardTimer = new DispatcherTimer { Interval = GuardInterval };
+                        _guardTimer.Tick += (s, e) =>
+                        {
+                            _guardTimer!.Stop();
+                            _guardBusy = false;
                         };
-                        delay.Start();
+                        _guardTimer.Start();
                     }
                 }
             }
