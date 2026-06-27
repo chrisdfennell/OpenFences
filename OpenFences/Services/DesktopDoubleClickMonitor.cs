@@ -89,33 +89,40 @@ namespace OpenFences
                     _lastDownTick = now;
                     _lastDownPt = ms.pt;
 
-                    if (isDouble)
+                    if (isDouble && !_guardBusy)
                     {
-                        if (!DesktopHelper.IsLikelyDesktopUnderCursor())
-                            return CallNextHookEx(_hook, nCode, wParam, lParam);
-
-                        if (_guardBusy)
-                            return CallNextHookEx(_hook, nCode, wParam, lParam);
-
                         _guardBusy = true;
 
-                        // Call the robust toggle method directly.
-                        // It already handles its own timing and verification.
-                        try
+                        // Do NOT do the expensive desktop hit-testing / shell toggle on the
+                        // hook thread — if this callback is slow, Windows silently removes the
+                        // hook (and lags the whole cursor). Defer everything to the UI thread.
+                        var disp = System.Windows.Application.Current?.Dispatcher;
+                        if (disp is null)
                         {
-                            DesktopHelper.ToggleDesktopIconsRobust();
-                        }
-                        catch { /* ignore */ }
-
-                        // Release guard after short interval
-                        _guardTimer?.Stop();
-                        _guardTimer = new DispatcherTimer { Interval = GuardInterval };
-                        _guardTimer.Tick += (s, e) =>
-                        {
-                            _guardTimer!.Stop();
                             _guardBusy = false;
-                        };
-                        _guardTimer.Start();
+                        }
+                        else
+                        {
+                            disp.BeginInvoke(new Action(() =>
+                            {
+                                try
+                                {
+                                    if (DesktopHelper.IsLikelyDesktopUnderCursor())
+                                        DesktopHelper.ToggleDesktopIconsRobust();
+                                }
+                                catch { /* ignore */ }
+
+                                // Release guard after a short interval
+                                _guardTimer?.Stop();
+                                _guardTimer = new DispatcherTimer { Interval = GuardInterval };
+                                _guardTimer.Tick += (s, e) =>
+                                {
+                                    _guardTimer!.Stop();
+                                    _guardBusy = false;
+                                };
+                                _guardTimer.Start();
+                            }));
+                        }
                     }
                 }
             }

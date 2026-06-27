@@ -1,6 +1,13 @@
 # Build results
 out/
 artifacts/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio upgrade logs
+UpgradeLog*.htm
+UpgradeLog*.XML
+Backup*/
 
 
 # VS cache/options

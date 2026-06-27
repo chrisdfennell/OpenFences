@@ -43,10 +43,15 @@ namespace OpenFences.Services
         private LowLevelMouseProc? _proc;
 
         // Drag state (screen pixels)
-        private bool _dragging;
-        private bool _suppressShellMenu;
+        private bool _rightDownOnDesktop;   // we've taken over the current right-press
+        private bool _dragging;             // movement passed the drag threshold
         private POINT _ptStartPx;
         private POINT _ptLastPx;
+
+        private const int DragThresholdPx = 6;
+
+        // Tag for right-clicks we synthesize ourselves, so the hook lets them through.
+        private const long InjectedMarker = 0x0F0E;
 
         // Overlay
         private RubberbandOverlay? _overlay;
@@ -99,21 +104,62 @@ namespace OpenFences.Services
                 var msg = (MouseMessage)wParam;
                 var data = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
 
+                // Let our own synthesized right-clicks flow straight to Explorer.
+                if ((long)data.dwExtraInfo == InjectedMarker)
+                    return CallNextHookEx(_hook, nCode, wParam, lParam);
+
                 switch (msg)
                 {
                     case MouseMessage.WM_RBUTTONDOWN:
-                        OnRightDown(in data);
+                        // Cheap classification only — IsLikelyDesktopUnderCursor avoids the
+                        // blocking LVM_HITTEST that must never run on a hook thread.
+                        if (DesktopHelper.IsLikelyDesktopUnderCursor())
+                        {
+                            // Take over this entire right-press. We must swallow BOTH the down
+                            // and the up; swallowing only the up leaves the button "stuck down".
+                            _rightDownOnDesktop = true;
+                            _dragging = false;
+                            _ptStartPx = data.pt;
+                            _ptLastPx = data.pt;
+                            return (IntPtr)1;
+                        }
+                        _rightDownOnDesktop = false;
                         break;
 
                     case MouseMessage.WM_MOUSEMOVE:
-                        OnMouseMove(in data);
+                        if (_rightDownOnDesktop)
+                        {
+                            _ptLastPx = data.pt;
+                            if (!_dragging &&
+                                (Math.Abs(data.pt.X - _ptStartPx.X) >= DragThresholdPx ||
+                                 Math.Abs(data.pt.Y - _ptStartPx.Y) >= DragThresholdPx))
+                            {
+                                _dragging = true;
+                                ShowOverlay();
+                            }
+                            if (_dragging) UpdateOverlay();
+                        }
                         break;
 
                     case MouseMessage.WM_RBUTTONUP:
-                        if (OnRightUp(in data))
+                        if (_rightDownOnDesktop)
                         {
-                            // Suppress shell menu only when we actually dragged
-                            return (IntPtr)1;
+                            _rightDownOnDesktop = false;
+
+                            if (_dragging)
+                            {
+                                _dragging = false;
+                                var rectDip = ScreenToDipRect(RectFromPointsPx(_ptStartPx, data.pt));
+                                bool valid = rectDip.Width >= 16 && rectDip.Height >= 16;
+                                FinishSelectionAndAsk(rectDip, valid);
+                            }
+                            else
+                            {
+                                // Just a right-click, no drag: replay a clean right-click so
+                                // Explorer shows its normal desktop menu.
+                                SynthesizeRightClick();
+                            }
+                            return (IntPtr)1; // swallow the real up
                         }
                         break;
                 }
@@ -121,61 +167,33 @@ namespace OpenFences.Services
             return CallNextHookEx(_hook, nCode, wParam, lParam);
         }
 
-        private void OnRightDown(in MSLLHOOKSTRUCT data)
+        private void ShowOverlay()
         {
-            if (!DesktopHelper.CursorIsOverEmptyDesktop())
+            var startPx = _ptStartPx;
+            System.Windows.Application.Current!.Dispatcher.BeginInvoke(() =>
             {
-                _dragging = false;
-                _suppressShellMenu = false;
-                return;
-            }
-
-            _dragging = true;
-            _suppressShellMenu = false;
-            _ptStartPx = data.pt;
-            _ptLastPx = data.pt;
-
-            System.Windows.Application.Current!.Dispatcher.Invoke(() =>
-            {
-                // Create overlay once per drag
                 if (_overlay is not null) { try { _overlay.Close(); } catch { } _overlay = null; }
                 _overlay = new RubberbandOverlay(_dpiScaleX, _dpiScaleY);
                 _overlay.Show();
-                _overlay.UpdateRect(ScreenToDipRect(new RectPx(_ptStartPx.X, _ptStartPx.Y, 0, 0)));
+                _overlay.UpdateRect(ScreenToDipRect(new RectPx(startPx.X, startPx.Y, 0, 0)));
             });
         }
 
-        private void OnMouseMove(in MSLLHOOKSTRUCT data)
+        private void UpdateOverlay()
         {
-            if (!_dragging || _overlay is null) return;
-
-            _ptLastPx = data.pt;
-
-            var rectPx = RectFromPointsPx(_ptStartPx, _ptLastPx);
-            var rectDip = ScreenToDipRect(rectPx);
-
-            System.Windows.Application.Current!.Dispatcher.Invoke(() =>
+            // BeginInvoke (non-blocking) so the hook thread never stalls on the UI thread.
+            var rectDip = ScreenToDipRect(RectFromPointsPx(_ptStartPx, _ptLastPx));
+            System.Windows.Application.Current!.Dispatcher.BeginInvoke(() =>
             {
                 _overlay?.UpdateRect(rectDip);
             });
         }
 
-        /// <summary>Returns true if we consumed the up (suppress shell menu).</summary>
-        private bool OnRightUp(in MSLLHOOKSTRUCT data)
+        private static void SynthesizeRightClick()
         {
-            if (!_dragging) return false;
-
-            _dragging = false;
-
-            var rectPx = RectFromPointsPx(_ptStartPx, data.pt);
-            var rectDip = ScreenToDipRect(rectPx);
-
-            bool valid = rectDip.Width >= 16 && rectDip.Height >= 16;
-
-            FinishSelectionAndAsk(rectDip, valid);
-            _suppressShellMenu = valid;
-
-            return _suppressShellMenu;
+            // Cursor is already at the release point; tag these so our hook passes them through.
+            mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, (UIntPtr)InjectedMarker);
+            mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, (UIntPtr)InjectedMarker);
         }
 
         // ---------- Selection complete / menu ----------
@@ -195,11 +213,33 @@ namespace OpenFences.Services
 
                     if (!showMenu) return;
 
+                    // A tiny, activated owner window so the menu reliably receives the click —
+                    // Explorer (not us) was the foreground app during the drag, and a bare
+                    // ContextMenu popup with no active owner won't capture the mouse.
+                    var owner = new Window
+                    {
+                        WindowStyle = WindowStyle.None,
+                        ResizeMode = ResizeMode.NoResize,
+                        AllowsTransparency = true,
+                        Background = System.Windows.Media.Brushes.Transparent,
+                        ShowInTaskbar = false,
+                        Width = 1,
+                        Height = 1,
+                        Left = rectDip.Right,
+                        Top = rectDip.Bottom,
+                        Topmost = true
+                    };
+                    owner.Show();
+                    owner.Activate();
+
                     var cm = new System.Windows.Controls.ContextMenu
                     {
                         Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint,
-                        StaysOpen = false
+                        StaysOpen = false,
+                        PlacementTarget = owner
                     };
+                    if (System.Windows.Application.Current?.TryFindResource("DarkContextMenuStyle") is Style dark)
+                        cm.Style = dark;
 
                     var miCreate = new System.Windows.Controls.MenuItem { Header = "Create fence here" };
                     miCreate.Click += (_, __) => _onConfirm(rectDip);
@@ -210,6 +250,7 @@ namespace OpenFences.Services
                     cm.Items.Add(new System.Windows.Controls.Separator());
                     cm.Items.Add(miCancel);
 
+                    cm.Closed += (_, __) => { try { owner.Close(); } catch { } };
                     cm.IsOpen = true;
                 }),
                 System.Windows.Threading.DispatcherPriority.Background);
@@ -227,12 +268,12 @@ namespace OpenFences.Services
 
         private Rect ScreenToDipRect(RectPx rPx)
         {
-            // Virtual desktop origin can be negative
-            double vLeftPx = SystemParameters.VirtualScreenLeft;
-            double vTopPx = SystemParameters.VirtualScreenTop;
-
-            double xDip = (rPx.X - vLeftPx) / _dpiScaleX;
-            double yDip = (rPx.Y - vTopPx) / _dpiScaleY;
+            // Return ABSOLUTE WPF screen coordinates. WPF Window.Left/Top live in the same
+            // virtual-screen space as physical pixels (negative on monitors left of primary),
+            // so we must NOT subtract the virtual-screen origin here — doing that shifts new
+            // fences onto the wrong monitor. The overlay subtracts its own origin separately.
+            double xDip = rPx.X / _dpiScaleX;
+            double yDip = rPx.Y / _dpiScaleY;
             double wDip = rPx.Width / _dpiScaleX;
             double hDip = rPx.Height / _dpiScaleY;
 
@@ -275,8 +316,10 @@ namespace OpenFences.Services
             public void UpdateRect(Rect r)
             {
                 if (r.Width < 0 || r.Height < 0) return;
-                Canvas.SetLeft(_rect, r.X);
-                Canvas.SetTop(_rect, r.Y);
+                // r is in absolute virtual-screen coords; convert to this overlay's local
+                // canvas space by subtracting the overlay's own origin.
+                Canvas.SetLeft(_rect, r.X - Left);
+                Canvas.SetTop(_rect, r.Y - Top);
                 _rect.Width = r.Width;
                 _rect.Height = r.Height;
             }
@@ -317,6 +360,12 @@ namespace OpenFences.Services
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
 
         // Small int rect helper in pixels
         private readonly struct RectPx

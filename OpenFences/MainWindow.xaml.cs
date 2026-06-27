@@ -93,55 +93,6 @@ namespace OpenFences
             }
         }
 
-        // Helpers for creating new fences
-        private string GetUniqueFenceName(string baseName = "Fence")
-        {
-            int suffix = 1;
-            string name;
-            do
-            {
-                name = $"{baseName} {suffix++}";
-            } while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
-
-            return name;
-        }
-
-        private string EnsureFenceFolder(string name)
-        {
-            string path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                "Fences", name);
-
-            Directory.CreateDirectory(path);
-            return path;
-        }
-
-        private void CreateFenceFromSelection(System.Windows.Rect r)
-        {
-            var name = GetUniqueFenceName();           // new helper below
-            var folder = EnsureFenceFolder(name);        // new helper below
-
-            var model = new FenceModel
-            {
-                Name = name,
-                FolderPath = folder,
-                Left = r.X,
-                Top = r.Y,
-                Width = Math.Max(200, r.Width),
-                Height = Math.Max(120, r.Height),
-                Collapsed = false
-            };
-
-            _config.Fences.Add(model);
-            SaveConfig();
-
-            var win = new FenceWindow(model);
-            HookFenceWindow(win, model); // <-- centralizes rename/delete wiring
-            _openWindows.Add(win);
-            win.Show();
-            win.EnsureBottomZOrder();
-        }
-
         // Settings → Start with Windows
         private void MiRunAtStartup_Click(object sender, RoutedEventArgs e)
         {
@@ -388,35 +339,7 @@ namespace OpenFences
             foreach (var w in _openWindows) w.ReloadItems();
         }
 
-        // ========== Right-drag rectangle → Context menu → Create fence ==========
-        private void OnFenceDragRequested(Rect screenRect, System.Windows.Point mouseUpScreen)
-        {
-            // Context menu at cursor
-            var cm = new ContextMenu();
-            if (TryFindResource("DarkContextMenuStyle") is Style dark) cm.Style = dark;
-
-            int w = (int)Math.Round(screenRect.Width);
-            int h = (int)Math.Round(screenRect.Height);
-
-            var miCreate = new MenuItem { Header = $"Create fence here ({w} × {h})" };
-            miCreate.Click += (_, __) => CreateFenceFromRect(screenRect);
-
-            var miCancel = new MenuItem { Header = "Cancel" };
-
-            cm.Items.Add(miCreate);
-            cm.Items.Add(new Separator());
-            cm.Items.Add(miCancel);
-
-            // Place the menu at absolute screen coordinates
-            var dpi = VisualTreeHelper.GetDpi(this);
-            cm.Placement = System.Windows.Controls.Primitives.PlacementMode.AbsolutePoint;
-            cm.PlacementTarget = this; // required, but placement is absolute
-            cm.HorizontalOffset = mouseUpScreen.X / dpi.DpiScaleX;
-            cm.VerticalOffset = mouseUpScreen.Y / dpi.DpiScaleY;
-
-            cm.IsOpen = true;
-        }
-
+        // ========== Right-drag rectangle → Create fence ==========
         private void CreateFenceFromRect(Rect screenRect)
         {
             // Unique name

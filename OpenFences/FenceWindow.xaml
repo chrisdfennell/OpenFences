@@ -19,6 +19,65 @@
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
+    <Window.Resources>
+        <!-- Flat, hover-aware title-bar button (replaces default gray 3D chrome) -->
+        <Style x:Key="FenceTitleButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#C7CBD1"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#3A3D44"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#4A4E57"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A close button that tints red on hover -->
+        <Style x:Key="FenceCloseButton" TargetType="Button" BasedOn="{StaticResource FenceTitleButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FF6B6B"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Item tile: rounded card that highlights on hover and when selected -->
+        <Style x:Key="FenceItemBorder" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Background" Value="#3354708F"/>
+                    <Setter Property="BorderBrush" Value="#5A8FD8"/>
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#22FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <!-- Root surface: rounded dark card + drop shadow -->
     <Border x:Name="RootBorder"
             Background="#1E1E1E"
@@ -54,14 +113,17 @@
                             Margin="0,0,6,0"
                             VerticalAlignment="Center">
                     <Button Content="✎"
-                            Width="28" Height="24" Margin="0,0,6,0"
+                            Style="{StaticResource FenceTitleButton}"
+                            Width="28" Height="24" Margin="0,0,4,0"
                             ToolTip="Rename Fence"
                             Click="Rename_Click"/>
                     <Button Content="–"
-                            Width="28" Height="24" Margin="0,0,6,0"
+                            Style="{StaticResource FenceTitleButton}"
+                            Width="28" Height="24" Margin="0,0,4,0"
                             Click="Collapse_Click"
                             ToolTip="Collapse / Expand"/>
-                    <Button Content="×"
+                    <Button Content="✕"
+                            Style="{StaticResource FenceCloseButton}"
                             Width="28" Height="24"
                             Click="Close_Click"
                             ToolTip="Close Fence"/>
@@ -97,6 +159,7 @@
               VerticalScrollBarVisibility="Auto"
               Background="Transparent"
               PreviewMouseWheel="Scroller_PreviewMouseWheel"
+              PreviewMouseLeftButtonDown="Scroller_PreviewMouseLeftButtonDown"
               CanContentScroll="False"
               PanningMode="None">
 
@@ -104,33 +167,37 @@
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <!-- Fixed size tiles => stable extent & scrolling -->
-                            <WrapPanel ItemWidth="156" ItemHeight="112" />
+                            <WrapPanel ItemWidth="92" ItemHeight="92" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
 
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!-- Total width must match ItemWidth minus margins: 156 - (8+8) = 140 -->
-                            <StackPanel Width="140"
-                    Margin="8"
-                    ToolTipService.ShowDuration="60000"
-                    ToolTip="{Binding DisplayName}"
-                    MouseLeftButtonDown="Item_MouseLeftButtonDown">
-                                <Image Width="48" Height="48"
-                 Source="{Binding Icon}"
-                 Stretch="Uniform"
-                 SnapsToDevicePixels="True"
-                 UseLayoutRounding="True"/>
-                                <!-- Force one-line label so row height is constant -->
-                                <TextBlock Text="{Binding DisplayName}"
+                            <!-- Highlight card; total width matches ItemWidth minus margins (92 - 4 - 4) -->
+                            <Border Style="{StaticResource FenceItemBorder}"
+                                    Width="84"
+                                    Margin="4,4,4,4"
+                                    Padding="4,6,4,4"
+                                    ToolTipService.ShowDuration="60000"
+                                    ToolTip="{Binding DisplayName}"
+                                    MouseLeftButtonDown="Item_MouseLeftButtonDown">
+                                <StackPanel>
+                                    <Image Width="40" Height="40"
+                     Source="{Binding Icon}"
+                     Stretch="Uniform"
+                     SnapsToDevicePixels="True"
+                     UseLayoutRounding="True"/>
+                                    <!-- Two-line label, like Fences -->
+                                    <TextBlock Text="{Binding DisplayName}"
                      Foreground="#EAEAEA"
-                     FontSize="12"
-                     Margin="0,6,0,0"
+                     FontSize="11"
+                     Margin="0,5,0,0"
                      TextAlignment="Center"
-                     TextWrapping="NoWrap"
+                     TextWrapping="Wrap"
                      TextTrimming="CharacterEllipsis"
-                     Height="16"/>
-                            </StackPanel>
+                     MaxHeight="28"/>
+                                </StackPanel>
+                            </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

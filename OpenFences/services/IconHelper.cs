@@ -134,7 +134,7 @@ namespace OpenFences.Services
             IntPtr hIcon = IntPtr.Zero;
             try
             {
-                uint pchEaten = 0, pdwAttributes = 0;
+                uint pdwAttributes = 0;
                 var hr = SHParseDisplayName("shell:::" + clsid, IntPtr.Zero, out pidl, 0, ref pdwAttributes);
                 if (hr != 0 || pidl == IntPtr.Zero) return null;
 
@@ -158,6 +158,10 @@ namespace OpenFences.Services
         private static ImageSource? ExtractIconFromFile(string iconPath, int index, bool large)
         {
             if (string.IsNullOrWhiteSpace(iconPath)) return null;
+
+            // Shortcuts often store icon paths with env vars (e.g. %windir%\...);
+            // ExtractIconEx doesn't expand them, so do it ourselves.
+            iconPath = Environment.ExpandEnvironmentVariables(iconPath);
             IntPtr largePtr = IntPtr.Zero, smallPtr = IntPtr.Zero;
             try
             {

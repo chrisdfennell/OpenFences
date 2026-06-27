@@ -3,12 +3,13 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 // Avoid WinForms clash
 using MessageBox = System.Windows.MessageBox;
@@ -18,8 +19,15 @@ namespace OpenFences
 {
     public partial class FenceWindow : Window
     {
+        private const double CollapsedHeight = 44;
+        private const double MinExpandedHeight = 120;
+
         private readonly FenceModel _model;
         private readonly FileSystemWatcher _watcher;
+
+        // Set true while we drive Height/Width programmatically (collapse animation,
+        // initial layout) so SizeChanged doesn't clobber the model's remembered size.
+        private bool _suppressGeometrySave;
 
         public ObservableCollection<FenceItem> ItemsSource { get; } = new();
 
@@ -28,16 +36,16 @@ namespace OpenFences
 
         private void Scroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
+            // --- Temporarily commented out for testing ---
+            
             if (sender is not ScrollViewer sv) return;
 
-            // Wheel down => positive "notches" (scroll content down)
+            // Wheel down => positive "notches"
             double notches = -e.Delta / 120.0;
             const double stepPerNotch = 96;
 
-            // ✅ Correct direction:
             double target = sv.VerticalOffset + (notches * stepPerNotch);
 
-            // Clamp to bounds (keep your existing epsilon logic)
             double max = Math.Max(0, sv.ExtentHeight - sv.ViewportHeight);
             const double eps = 0.75;
 
@@ -46,7 +54,12 @@ namespace OpenFences
             else target = Math.Max(0, Math.Min(target, max));
 
             sv.ScrollToVerticalOffset(target);
+            sv.UpdateLayout();
+
             e.Handled = true;
+            
+            // --- Make sure e.Handled is NOT true ---
+            // e.Handled = false; // ADD THIS LINE temporarily
         }
 
         public FenceWindow(FenceModel model)
@@ -83,13 +96,20 @@ namespace OpenFences
 
             Items.ItemsSource = ItemsSource;
 
-            if (_model.Collapsed) SetCollapsed(true);
+            if (_model.Collapsed) SetCollapsed(true, animate: false);
+
+            // Keep fences out of the Alt-Tab switcher (must run once the HWND exists).
+            SourceInitialized += (_, __) =>
+                DesktopHelper.HideFromAltTab(new WindowInteropHelper(this).Handle);
 
             Loaded += (_, __) => EnsureBottomZOrder();
             Activated += (_, __) => EnsureBottomZOrder();
 
             LocationChanged += SaveGeometry;
             SizeChanged += (_, __) => SaveGeometry(null, null);
+
+            // Stop watching the backing folder once this fence is gone.
+            Closed += (_, __) => { try { _watcher.Dispose(); } catch { /* ignore */ } };
         }
 
         // ---------- UI/Background ----------
@@ -108,23 +128,71 @@ namespace OpenFences
 
         private void SaveGeometry(object? sender, EventArgs? e)
         {
+            // While we're animating the collapse, or while collapsed, the window
+            // Height is the 44px stub — never persist that as the fence's real size.
+            if (_suppressGeometrySave) return;
+
             _model.Left = Left;
             _model.Top = Top;
-            _model.Width = Width;
-            _model.Height = Height;
+
+            if (!_model.Collapsed)
+            {
+                _model.Width = Width;
+                _model.Height = Height;
+            }
+            else
+            {
+                // Width can still change while collapsed; height stays remembered.
+                _model.Width = Width;
+            }
         }
 
         public void ReloadItems()
         {
             ItemsSource.Clear();
-            var files = Directory.EnumerateFiles(_model.FolderPath)
-                                 .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase));
+
+            List<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(_model.FolderPath)
+                                 .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
+                                 .ToList();
+            }
+            catch
+            {
+                return; // folder may have been deleted/renamed out from under us
+            }
+
+            // Add tiles immediately (no icon yet) so the UI never blocks on shell calls.
             foreach (var path in files)
             {
-                var disp = Path.GetFileNameWithoutExtension(path);
-                var icon = OpenFences.Services.IconHelper.GetImageSourceForPath(path);
-                ItemsSource.Add(new FenceItem { Path = path, DisplayName = disp, Icon = icon });
+                ItemsSource.Add(new FenceItem
+                {
+                    Path = path,
+                    DisplayName = Path.GetFileNameWithoutExtension(path)
+                });
             }
+
+            // Resolve icons off the UI thread so big fences don't freeze. This MUST run on an
+            // STA thread: IconHelper uses apartment-threaded shell COM (IShellLink), which is
+            // unreliable on MTA thread-pool threads and silently drops icons. IconHelper freezes
+            // the ImageSources, so they're safe to hand back to the UI thread.
+            var snapshot = ItemsSource.ToList();
+            var loader = new System.Threading.Thread(() =>
+            {
+                foreach (var item in snapshot)
+                {
+                    var icon = OpenFences.Services.IconHelper.GetImageSourceForPath(item.Path);
+                    if (icon == null) continue;
+                    Dispatcher.BeginInvoke(() => item.Icon = icon);
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "FenceIconLoader"
+            };
+            loader.SetApartmentState(System.Threading.ApartmentState.STA);
+            loader.Start();
         }
         // ---------- Context menu ----------
         private FenceItem? MenuSenderToItem(object sender)
@@ -195,19 +263,62 @@ namespace OpenFences
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2)
-                SetCollapsed(!_model.Collapsed);
+                SetCollapsed(!_model.Collapsed, animate: true);
             else if (e.LeftButton == MouseButtonState.Pressed)
                 DragMove();
         }
 
-        private void SetCollapsed(bool collapsed)
+        private void SetCollapsed(bool collapsed, bool animate)
         {
             _model.Collapsed = collapsed;
-            Scroller.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-            Height = collapsed ? 44 : Math.Max(_model.Height, 120);
+
+            // Target height: collapsed -> stub; expanded -> remembered height (model.Height
+            // is preserved because SaveGeometry skips writes while collapsed/animating).
+            double target = collapsed ? CollapsedHeight : Math.Max(_model.Height, MinExpandedHeight);
+
+            if (!animate)
+            {
+                Scroller.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+                _suppressGeometrySave = true;
+                Height = target;
+                _suppressGeometrySave = false;
+                return;
+            }
+
+            if (collapsed)
+            {
+                // Animate down, then hide the content so it doesn't overflow the stub.
+                AnimateHeight(target, onCompleted: () => Scroller.Visibility = Visibility.Collapsed);
+            }
+            else
+            {
+                // Show content first, then animate open.
+                Scroller.Visibility = Visibility.Visible;
+                AnimateHeight(target, onCompleted: null);
+            }
         }
 
-        private void Collapse_Click(object sender, RoutedEventArgs e) => SetCollapsed(!_model.Collapsed);
+        private void AnimateHeight(double to, Action? onCompleted)
+        {
+            double from = ActualHeight > 0 ? ActualHeight : Height;
+
+            _suppressGeometrySave = true;
+            var anim = new DoubleAnimation(from, to, new Duration(TimeSpan.FromMilliseconds(160)))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                FillBehavior = FillBehavior.Stop
+            };
+            anim.Completed += (_, __) =>
+            {
+                BeginAnimation(HeightProperty, null);
+                Height = to;                 // commit final value as a local value
+                _suppressGeometrySave = false;
+                onCompleted?.Invoke();
+            };
+            BeginAnimation(HeightProperty, anim);
+        }
+
+        private void Collapse_Click(object sender, RoutedEventArgs e) => SetCollapsed(!_model.Collapsed, animate: true);
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
@@ -215,7 +326,13 @@ namespace OpenFences
 
         private void Item_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2 && sender is FrameworkElement fe && fe.DataContext is FenceItem item)
+            if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
+
+            // Single click selects (highlights) the tile.
+            SelectOnly(item);
+
+            // Double click opens it.
+            if (e.ClickCount == 2)
             {
                 try
                 {
@@ -223,6 +340,30 @@ namespace OpenFences
                 }
                 catch { /* ignore */ }
             }
+        }
+
+        private void SelectOnly(FenceItem? item)
+        {
+            foreach (var i in ItemsSource)
+                i.IsSelected = ReferenceEquals(i, item);
+        }
+
+        // Clicking empty space inside the fence clears the selection.
+        private void Scroller_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource is DependencyObject d && FindItem(d) is null)
+                SelectOnly(null);
+        }
+
+        private static FenceItem? FindItem(DependencyObject? start)
+        {
+            while (start != null)
+            {
+                if (start is FrameworkElement fe && fe.DataContext is FenceItem item)
+                    return item;
+                start = VisualTreeHelper.GetParent(start);
+            }
+            return null;
         }
 
         // WPF DragEventArgs explicitly (avoid WinForms ambiguity)
@@ -288,14 +429,18 @@ namespace OpenFences
 
                     if (!string.Equals(oldFolder, newFolder, StringComparison.OrdinalIgnoreCase))
                     {
+                        // Don't silently swap onto an existing folder — that would orphan
+                        // this fence's current shortcuts and surface someone else's.
                         if (Directory.Exists(newFolder))
                         {
-                            // target exists -> just repoint
+                            MessageBox.Show(
+                                $"A fence folder named “{newName}” already exists:\n\n{newFolder}\n\n" +
+                                "Please choose a different name.",
+                                "Name In Use", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
                         }
-                        else
-                        {
-                            Directory.Move(oldFolder, newFolder);
-                        }
+
+                        Directory.Move(oldFolder, newFolder);
 
                         _watcher.EnableRaisingEvents = false;
                         _watcher.Path = newFolder;

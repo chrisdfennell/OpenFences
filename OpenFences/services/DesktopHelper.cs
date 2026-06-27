@@ -371,6 +371,20 @@ namespace OpenFences
             SendToDesktopLayer(hwnd);
         }
 
+        /// <summary>
+        /// Marks a window as a tool window so it never shows up in the Alt-Tab switcher
+        /// (real fences live on the desktop, not in the app list).
+        /// </summary>
+        public static void HideFromAltTab(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            IntPtr ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+            long style = ex.ToInt64();
+            style |= WS_EX_TOOLWINDOW;
+            style &= ~WS_EX_APPWINDOW;
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(style));
+        }
+
         public static void SendToDesktopLayer(IntPtr hwnd)
         {
             EnsureHandles();
@@ -443,6 +457,17 @@ namespace OpenFences
 
         [DllImport("user32.dll")]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        // Extended-style access (Alt-Tab visibility)
+        private const int GWL_EXSTYLE = -20;
+        private const long WS_EX_TOOLWINDOW = 0x00000080;
+        private const long WS_EX_APPWINDOW = 0x00040000;
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+        private static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetParent(IntPtr hWnd);
