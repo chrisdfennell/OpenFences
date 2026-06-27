@@ -43,6 +43,7 @@
                 <Menu VerticalAlignment="Stretch" Height="34" Margin="8,0,0,0">
                     <MenuItem Header="_File">
                         <MenuItem Header="New Fence" Click="NewFence_Click"/>
+                        <MenuItem Header="New Folder Portal…" Click="NewFolderPortal_Click"/>
                         <Separator/>
                         <MenuItem Header="Exit" Click="Exit_Click"/>
                     </MenuItem>
@@ -66,6 +67,15 @@
                                   Header="Double-click empty desktop toggles icons"
                                   IsCheckable="True"
                                   Click="MiDoubleClickDesktop_Click"/>
+                        <MenuItem x:Name="MiPeekFences"
+                                  Header="Double-click empty desktop hides/shows fences"
+                                  IsCheckable="True"
+                                  Click="MiPeekFences_Click"/>
+                        <Separator/>
+                        <MenuItem x:Name="MiAutoOrganize"
+                                  Header="Auto-organize new desktop items into fences"
+                                  IsCheckable="True"
+                                  Click="MiAutoOrganize_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="_Help">

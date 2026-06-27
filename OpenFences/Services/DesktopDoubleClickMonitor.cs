@@ -16,6 +16,7 @@ namespace OpenFences
 
         private static IntPtr _hook = IntPtr.Zero;
         private static LowLevelMouseProc? _proc;
+        private static Action? _onDoubleClick;
 
         // Double-click detection (use system thresholds)
         private static long _lastDownTick;
@@ -37,8 +38,9 @@ namespace OpenFences
 
         public static bool IsRunning => _hook != IntPtr.Zero;
 
-        public static void Start()
+        public static void Start(Action onDoubleClick)
         {
+            _onDoubleClick = onDoubleClick;
             if (_hook != IntPtr.Zero) return;
 
             _proc = HookProc;
@@ -108,7 +110,7 @@ namespace OpenFences
                                 try
                                 {
                                     if (DesktopHelper.IsLikelyDesktopUnderCursor())
-                                        DesktopHelper.ToggleDesktopIconsRobust();
+                                        _onDoubleClick?.Invoke();
                                 }
                                 catch { /* ignore */ }
 

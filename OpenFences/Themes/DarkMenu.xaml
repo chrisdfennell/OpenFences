@@ -263,6 +263,14 @@
                             </Track.Thumb>
                         </Track>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- A vertical Track must be direction-reversed so the thumb moves
+                             DOWN as the scroll offset increases. Without this the thumb
+                             travels the wrong way while the content scrolls correctly. -->
+                        <Trigger Property="Orientation" Value="Vertical">
+                            <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

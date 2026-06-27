@@ -105,6 +105,40 @@ namespace OpenFences
         public static void ToggleDesktopIcons() => ToggleDesktopIconsRobust();
         public static void ShowDesktopIcons(bool visible) => SetDesktopIconsVisible(visible);
 
+        /// <summary>
+        /// Synchronously restore desktop icons on app exit. Unlike SetDesktopIconsVisible,
+        /// this does NOT rely on a DispatcherTimer (which never fires once we call
+        /// Application.Shutdown). It is registry-gated so it only acts when icons are
+        /// genuinely hidden, making it safe to call from multiple exit paths.
+        /// </summary>
+        public static void RestoreDesktopIconsOnExit()
+        {
+            try
+            {
+                if (!DesktopIconsHiddenPerRegistry()) return; // already shown — nothing to do
+
+                EnsureHandles();
+                if (_defView == IntPtr.Zero) RefreshHandles();
+                if (_defView == IntPtr.Zero) return;
+
+                // Synchronous toggle so Explorer processes it before the process dies.
+                SendMessageTimeout(_defView, WM_COMMAND, new IntPtr(CMD_TOGGLE_DESKTOP),
+                                   IntPtr.Zero, SMTO_ABORTIFHUNG, 1000, out _);
+            }
+            catch { /* ignore */ }
+        }
+
+        private static bool DesktopIconsHiddenPerRegistry()
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced");
+                return key?.GetValue("HideIcons") is int i && i == 1;
+            }
+            catch { return false; }
+        }
+
         /// <summary>True if the desktop icon list view is visible.</summary>
         public static bool AreIconsVisible()
         {

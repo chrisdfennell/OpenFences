@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -61,8 +62,14 @@ namespace OpenFences
             if (_config.Options.HideIconsOnStartup)
                 DesktopHelper.SetDesktopIconsVisible(false);
 
-            if (_config.Options.DoubleClickDesktopToToggleIcons)
-                DesktopDoubleClickMonitor.Start();
+            // Double-click-empty-desktop behavior (toggle icons and/or peek fences)
+            ApplyDoubleClickSetting();
+
+            // Continuous auto-organize of new desktop items
+            ApplyAutoOrganizeSetting();
+
+            // Reflect persisted settings in the menu checkmarks
+            InitSettingsChecks();
 
             // Wire checkbox click handlers (so XAML can keep old names if needed)
             WireSettingsHandlers();
@@ -115,11 +122,35 @@ namespace OpenFences
         {
             bool enabled = MiDoubleClickDesktop.IsChecked;
             _config.Options.DoubleClickDesktopToToggleIcons = enabled;
-
-            if (enabled) DesktopDoubleClickMonitor.Start();
-            else DesktopDoubleClickMonitor.Stop();
-
+            ApplyDoubleClickSetting();
             SaveConfig();
+        }
+
+        // Settings → Double-click empty desktop hides/shows fences (peek)
+        private void MiPeekFences_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.DoubleClickPeekFences = MiPeekFences.IsChecked;
+            if (!_config.Options.DoubleClickPeekFences && _peeked) TogglePeek(); // un-peek if turning off
+            ApplyDoubleClickSetting();
+            SaveConfig();
+        }
+
+        // Settings → Auto-organize new desktop items into fences
+        private void MiAutoOrganize_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.AutoOrganize = MiAutoOrganize.IsChecked;
+            ApplyAutoOrganizeSetting();
+            SaveConfig();
+        }
+
+        // Reflect persisted settings in the menu checkmarks at startup.
+        private void InitSettingsChecks()
+        {
+            MiRunAtStartup.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
+            MiHideIconsOnStart.IsChecked = _config.Options.HideIconsOnStartup;
+            MiDoubleClickDesktop.IsChecked = _config.Options.DoubleClickDesktopToToggleIcons;
+            MiPeekFences.IsChecked = _config.Options.DoubleClickPeekFences;
+            MiAutoOrganize.IsChecked = _config.Options.AutoOrganize;
         }
 
 
@@ -149,6 +180,7 @@ namespace OpenFences
 
             var restore = new WinForms.ToolStripMenuItem("Restore OpenFences", null, (_, __) => RestoreFromTray());
             var newFence = new WinForms.ToolStripMenuItem("New Fence", null, (_, __) => NewFence_Click(null!, null!));
+            var newPortal = new WinForms.ToolStripMenuItem("New Folder Portal…", null, (_, __) => NewFolderPortal_Click(null!, null!));
             var showAll = new WinForms.ToolStripMenuItem("Show All Fences", null, (_, __) => ShowAll_Click(null!, null!));
             var hideAll = new WinForms.ToolStripMenuItem("Hide All Fences", null, (_, __) => HideAll_Click(null!, null!));
             var toggle = new WinForms.ToolStripMenuItem("Toggle Desktop Icons", null, (_, __) => ToggleDesktopIcons_Click(null!, null!));
@@ -157,6 +189,7 @@ namespace OpenFences
             _trayMenu.Items.Add(restore);
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(newFence);
+            _trayMenu.Items.Add(newPortal);
             _trayMenu.Items.Add(showAll);
             _trayMenu.Items.Add(hideAll);
             _trayMenu.Items.Add(toggle);
@@ -245,14 +278,17 @@ namespace OpenFences
         {
             if (sender is not System.Windows.Controls.CheckBox chk) return;
             _config.Options.DoubleClickDesktopToToggleIcons = chk.IsChecked == true;
-
-            if (_config.Options.DoubleClickDesktopToToggleIcons) DesktopDoubleClickMonitor.Start();
-            else DesktopDoubleClickMonitor.Stop();
-
+            ApplyDoubleClickSetting();
             SaveConfig();
         }
 
         // ========== Config I/O ==========
+        private static readonly JsonSerializerOptions JsonOpts = new()
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
         private void LoadConfig()
         {
             try
@@ -268,7 +304,7 @@ namespace OpenFences
                     return;
                 }
 
-                var cfg = JsonSerializer.Deserialize<AppConfig>(json);
+                var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOpts);
                 if (cfg != null) _config = cfg;
             }
             catch { /* ignore parse errors for now */ }
@@ -278,7 +314,7 @@ namespace OpenFences
         {
             try
             {
-                var json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(_config, JsonOpts);
                 File.WriteAllText(_configPath, json);
             }
             catch { /* ignore */ }
@@ -300,11 +336,29 @@ namespace OpenFences
         private void HookFenceWindow(FenceWindow win, FenceModel model)
         {
             win.FenceRenamed += (_, __) => SaveConfig();
+            win.Changed += (_, __) => SaveConfig();
             win.Closed += (_, __) => _openWindows.Remove(win);
 
             // Delete fence → remove from config (+ optional folder delete)
             win.DeleteRequested += (_, __) =>
             {
+                if (model.IsPortal)
+                {
+                    // A portal points at the user's own folder — NEVER delete it; just unlink.
+                    var ok = MessageBox.Show(
+                        $"Remove the portal “{model.Name}”?\n\nThis only removes the fence. Your folder is not deleted:\n{model.FolderPath}",
+                        "Remove Portal",
+                        MessageBoxButton.OKCancel,
+                        MessageBoxImage.Question);
+
+                    if (ok != MessageBoxResult.OK) return;
+
+                    _fences.Remove(model);
+                    SaveConfig();
+                    win.Close();
+                    return;
+                }
+
                 var choice = MessageBox.Show(
                     $"Delete fence “{model.Name}”?\n\nBacked folder:\n{model.FolderPath}\n\n" +
                     "Click Yes to also delete the folder (and its shortcuts), No to keep the folder, or Cancel.",
@@ -378,6 +432,22 @@ namespace OpenFences
         }
 
         // ========== Menu / Buttons ==========
+        // New fences/portals open on whichever monitor the cursor is on, so they're
+        // never lost off-screen on a multi-monitor setup.
+        private (double left, double top) SpawnNearCursor()
+        {
+            try
+            {
+                var p = WinForms.Cursor.Position; // screen pixels
+                var src = PresentationSource.FromVisual(this);
+                double sx = src?.CompositionTarget?.TransformFromDevice.M11 ?? 1.0;
+                double sy = src?.CompositionTarget?.TransformFromDevice.M22 ?? 1.0;
+                // Convert device pixels → WPF DIPs and nudge so the title bar sits under the cursor.
+                return (p.X * sx - 40, p.Y * sy - 16);
+            }
+            catch { return (120, 120); }
+        }
+
         private void NewFence_Click(object? sender, RoutedEventArgs? e)
         {
             string baseName = "Fence";
@@ -389,14 +459,56 @@ namespace OpenFences
                                               "Fences", name);
             Directory.CreateDirectory(fenceFolder);
 
+            var (left, top) = SpawnNearCursor();
             var model = new FenceModel
             {
                 Name = name,
                 FolderPath = fenceFolder,
-                Left = 80,
-                Top = 80,
+                Left = left,
+                Top = top,
                 Width = 420,
                 Height = 260,
+                Collapsed = false
+            };
+
+            _fences.Add(model);
+            SaveConfig();
+
+            var win = new FenceWindow(model);
+            HookFenceWindow(win, model);
+            _openWindows.Add(win);
+            win.Show();
+        }
+
+        private void NewFolderPortal_Click(object? sender, RoutedEventArgs? e)
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Choose a folder to mirror as a Portal"
+            };
+            if (dlg.ShowDialog() != true) return;
+
+            string folder = dlg.FolderName;
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+
+            // Display name from the folder; de-dupe against existing fences.
+            string baseName = new DirectoryInfo(folder).Name;
+            if (string.IsNullOrWhiteSpace(baseName)) baseName = "Portal";
+            string name = baseName;
+            int n = 1;
+            while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                name = $"{baseName} ({++n})";
+
+            var (left, top) = SpawnNearCursor();
+            var model = new FenceModel
+            {
+                Name = name,
+                FolderPath = folder,
+                IsPortal = true,
+                Left = left,
+                Top = top,
+                Width = 440,
+                Height = 320,
                 Collapsed = false
             };
 
@@ -485,7 +597,7 @@ namespace OpenFences
                         if (ext == ".lnk")
                         {
                             var target = ShellLink.GetShortcutTarget(path);
-                            if (IsExecutableTarget(target))
+                            if (DesktopRules.IsExecutableTarget(target))
                                 apps += CopyShortcut(path, appsFence.FolderPath) ? 1 : 0;
                             else
                                 docs += CopyShortcut(path, docsFence.FolderPath) ? 1 : 0;
@@ -494,7 +606,7 @@ namespace OpenFences
                         {
                             if (CreateLinkIfMissing(appsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) apps++;
                         }
-                        else if (isDir || IsDocumentExtension(ext))
+                        else if (isDir || DesktopRules.IsDocumentExtension(ext))
                         {
                             if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileName(path), path)) docs++;
                         }
@@ -556,24 +668,67 @@ namespace OpenFences
             return model;
         }
 
-        private static bool IsExecutableTarget(string? targetPath)
+        // ========== Rules engine: continuous auto-organize ==========
+        private void ApplyAutoOrganizeSetting()
         {
-            if (string.IsNullOrWhiteSpace(targetPath)) return false;
-            string ext = Path.GetExtension(targetPath).ToLowerInvariant();
-            return ext is ".exe" or ".bat" or ".cmd" or ".ps1" or ".msi" or ".appref-ms";
+            if (_config.Options.AutoOrganize)
+                DesktopOrganizer.Start(OnDesktopItemAdded);
+            else
+                DesktopOrganizer.Stop();
         }
 
-        private static bool IsDocumentExtension(string ext)
+        // Called on the UI (STA) thread for each newly added desktop item.
+        private void OnDesktopItemAdded(string path)
         {
-            return new[]
+            try
             {
-                ".txt",".md",".rtf",".pdf",
-                ".doc",".docx",".odt",
-                ".xls",".xlsx",".csv",
-                ".ppt",".pptx",
-                ".png",".jpg",".jpeg",".gif",".bmp",".webp",
-                ".json",".xml",".zip",".7z",".rar"
-            }.Contains(ext);
+                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                var fencesRoot = Path.Combine(desktop, "Fences");
+
+                // Never re-process our own fence shortcuts.
+                if (path.StartsWith(fencesRoot, StringComparison.OrdinalIgnoreCase)) return;
+
+                var targetName = DesktopRules.ResolveTargetFence(path, _config.Rules);
+                if (string.IsNullOrWhiteSpace(targetName)) return;
+
+                var fence = EnsureFence(targetName!, left: 80, top: 80);
+
+                string ext = Path.GetExtension(path).ToLowerInvariant();
+                if (ext == ".lnk")
+                    CopyShortcut(path, fence.FolderPath);              // keep existing shortcut
+                else
+                    CreateLinkIfMissing(fence.FolderPath,
+                        Directory.Exists(path) ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path),
+                        path);
+            }
+            catch { /* ignore one bad item */ }
+        }
+
+        // ========== Double-click empty desktop: peek fences and/or toggle icons ==========
+        private bool _peeked;
+
+        private void ApplyDoubleClickSetting()
+        {
+            if (_config.Options.DoubleClickDesktopToToggleIcons || _config.Options.DoubleClickPeekFences)
+                DesktopDoubleClickMonitor.Start(OnDesktopDoubleClick);
+            else
+                DesktopDoubleClickMonitor.Stop();
+        }
+
+        private void OnDesktopDoubleClick()
+        {
+            if (_config.Options.DoubleClickPeekFences) TogglePeek();
+            if (_config.Options.DoubleClickDesktopToToggleIcons) DesktopHelper.ToggleDesktopIconsRobust();
+        }
+
+        private void TogglePeek()
+        {
+            _peeked = !_peeked;
+            foreach (var w in _openWindows)
+            {
+                if (_peeked) w.Hide();
+                else { w.Show(); w.EnsureBottomZOrder(); }
+            }
         }
 
         private static bool CopyShortcut(string sourceLnk, string destFolder)
@@ -611,13 +766,15 @@ namespace OpenFences
         {
             base.OnClosed(e);
 
-            // QoL: always restore icons on exit so users aren’t “stuck hidden”
-            try { DesktopHelper.SetDesktopIconsVisible(true); } catch { }
+            // QoL: always restore icons on exit so users aren’t “stuck hidden”.
+            // Synchronous (no DispatcherTimer) because we Shutdown() moments later.
+            try { DesktopHelper.RestoreDesktopIconsOnExit(); } catch { }
 
             SaveConfig();
 
             DesktopDoubleClickMonitor.Stop();
             DesktopRightDragFenceSelector.Stop();
+            DesktopOrganizer.Stop();
 
             if (_tray is not null)
             {

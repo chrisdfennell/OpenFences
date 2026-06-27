@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,7 +20,7 @@ using MediaColor = System.Windows.Media.Color;
 
 namespace OpenFences
 {
-    public partial class FenceWindow : Window
+    public partial class FenceWindow : Window, INotifyPropertyChanged
     {
         private const double CollapsedHeight = 44;
         private const double MinExpandedHeight = 120;
@@ -33,41 +36,39 @@ namespace OpenFences
 
         public event EventHandler? FenceRenamed;
         public event EventHandler? DeleteRequested;
+        // Raised whenever a persisted setting changes (sort, icon size, transparency).
+        public event EventHandler? Changed;
 
-        private void Scroller_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        // ----- Layout metrics bound by the XAML (per-fence icon size) -----
+        public int IconPx => (_model?.IconSize ?? FenceIconSize.Medium) switch
         {
-            // --- Temporarily commented out for testing ---
-            
-            if (sender is not ScrollViewer sv) return;
+            FenceIconSize.Small => 32,
+            FenceIconSize.Large => 64,
+            _ => 48
+        };
+        public double TileWidth => IconPx + 44;
+        public double TileHeight => IconPx + 50;
+        public double TileContentWidth => TileWidth - 8;
 
-            // Wheel down => positive "notches"
-            double notches = -e.Delta / 120.0;
-            const double stepPerNotch = 96;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? name = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-            double target = sv.VerticalOffset + (notches * stepPerNotch);
-
-            double max = Math.Max(0, sv.ExtentHeight - sv.ViewportHeight);
-            const double eps = 0.75;
-
-            if (target < eps) target = 0;
-            else if (max - target < eps) target = max;
-            else target = Math.Max(0, Math.Min(target, max));
-
-            sv.ScrollToVerticalOffset(target);
-            sv.UpdateLayout();
-
-            e.Handled = true;
-            
-            // --- Make sure e.Handled is NOT true ---
-            // e.Handled = false; // ADD THIS LINE temporarily
+        private void RaiseLayoutMetricsChanged()
+        {
+            OnPropertyChanged(nameof(IconPx));
+            OnPropertyChanged(nameof(TileWidth));
+            OnPropertyChanged(nameof(TileHeight));
+            OnPropertyChanged(nameof(TileContentWidth));
         }
+
 
         public FenceWindow(FenceModel model)
         {
             InitializeComponent();
             _model = model;
 
-            TitleText.Text = model.Name;
+            TitleText.Text = model.IsPortal ? "🗁 " + model.Name : model.Name;
             Left = model.Left; Top = model.Top;
             Width = model.Width; Height = model.Height;
 
@@ -151,25 +152,33 @@ namespace OpenFences
         {
             ItemsSource.Clear();
 
-            List<string> files;
+            List<string> entries = new();
             try
             {
-                files = Directory.EnumerateFiles(_model.FolderPath)
-                                 .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
-                                 .ToList();
+                // A portal mirrors a real folder: show its subfolders and files.
+                // A normal fence only holds its own .lnk shortcuts (files).
+                if (_model.IsPortal)
+                    entries.AddRange(Directory.EnumerateDirectories(_model.FolderPath));
+
+                entries.AddRange(Directory.EnumerateFiles(_model.FolderPath)
+                                          .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
             }
             catch
             {
                 return; // folder may have been deleted/renamed out from under us
             }
 
+            entries = SortEntries(entries);
+
             // Add tiles immediately (no icon yet) so the UI never blocks on shell calls.
-            foreach (var path in files)
+            foreach (var path in entries)
             {
                 ItemsSource.Add(new FenceItem
                 {
                     Path = path,
-                    DisplayName = Path.GetFileNameWithoutExtension(path)
+                    DisplayName = Directory.Exists(path)
+                        ? Path.GetFileName(path)
+                        : Path.GetFileNameWithoutExtension(path)
                 });
             }
 
@@ -194,6 +203,61 @@ namespace OpenFences
             loader.SetApartmentState(System.Threading.ApartmentState.STA);
             loader.Start();
         }
+
+        private List<string> SortEntries(List<string> entries)
+        {
+            // Portals list folders before files; normal fences have no folders.
+            bool dirsFirst = _model.IsPortal;
+            var seeded = dirsFirst
+                ? entries.OrderBy(p => Directory.Exists(p) ? 0 : 1)
+                : entries.OrderBy(_ => 0);
+
+            var oic = StringComparer.OrdinalIgnoreCase;
+
+            IOrderedEnumerable<string> ordered = _model.Sort switch
+            {
+                FenceSort.Manual => seeded,
+                FenceSort.Type => seeded.ThenBy(p => Path.GetExtension(p), oic)
+                                        .ThenBy(p => Path.GetFileName(p), oic),
+                FenceSort.DateModified => seeded.ThenByDescending(SafeWriteTime),
+                FenceSort.Size => seeded.ThenByDescending(SafeSize),
+                _ => seeded.ThenBy(p => Path.GetFileName(p), oic) // Name
+            };
+
+            return ordered.ToList();
+        }
+
+        private static DateTime SafeWriteTime(string p)
+        {
+            try { return File.GetLastWriteTimeUtc(p); } catch { return DateTime.MinValue; }
+        }
+
+        private static long SafeSize(string p)
+        {
+            try { return Directory.Exists(p) ? 0 : new FileInfo(p).Length; } catch { return 0; }
+        }
+
+        // ---------- Sort / icon-size menu actions ----------
+        private void Sort_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && Enum.TryParse<FenceSort>(Convert.ToString(mi.Tag), out var mode))
+            {
+                _model.Sort = mode;
+                ReloadItems();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private void IconSize_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && Enum.TryParse<FenceIconSize>(Convert.ToString(mi.Tag), out var size))
+            {
+                _model.IconSize = size;
+                RaiseLayoutMetricsChanged();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
         // ---------- Context menu ----------
         private FenceItem? MenuSenderToItem(object sender)
         {
@@ -230,21 +294,29 @@ namespace OpenFences
         {
             if (MenuSenderToItem(sender) is not FenceItem item) return;
 
+            bool isDir = Directory.Exists(item.Path);
+
+            // In a portal we delete the REAL file/folder; in a normal fence just the .lnk.
+            string message = _model.IsPortal
+                ? $"Delete this item from the folder?\n\n{item.DisplayName}\n\nThis removes the real file or folder."
+                : $"Delete this shortcut?\n\n{item.DisplayName}.lnk";
+
             var confirm = MessageBox.Show(
-                $"Delete this shortcut?\n\n{item.DisplayName}.lnk",
-                "Delete Shortcut",
+                message,
+                _model.IsPortal ? "Delete Item" : "Delete Shortcut",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                MessageBoxImage.Warning);
 
             if (confirm != MessageBoxResult.Yes) return;
 
             try
             {
-                File.Delete(item.Path); // delete only the .lnk in the fence folder
+                if (isDir) Directory.Delete(item.Path, recursive: true);
+                else File.Delete(item.Path);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Could not delete shortcut:\n" + ex.Message,
+                MessageBox.Show("Could not delete:\n" + ex.Message,
                                 "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -384,8 +456,18 @@ namespace OpenFences
             {
                 try
                 {
-                    string linkName = Path.Combine(_model.FolderPath, $"{Path.GetFileNameWithoutExtension(p)}.lnk");
-                    ShellLink.CreateShortcut(linkName, p);
+                    if (_model.IsPortal)
+                    {
+                        // A portal is a live folder view: copy the real item into it.
+                        if (Directory.Exists(p)) continue; // skip dropped folders for safety
+                        var dest = Path.Combine(_model.FolderPath, Path.GetFileName(p));
+                        if (!File.Exists(dest)) File.Copy(p, dest);
+                    }
+                    else
+                    {
+                        string linkName = Path.Combine(_model.FolderPath, $"{Path.GetFileNameWithoutExtension(p)}.lnk");
+                        ShellLink.CreateShortcut(linkName, p);
+                    }
                 }
                 catch { /* ignore */ }
             }
@@ -394,6 +476,18 @@ namespace OpenFences
         }
 
         // ---------- Context menu actions ----------
+
+        // The ✎ button opens the full management menu (rename, sort, icon size,
+        // transparency, delete) so everything is reachable without right-clicking.
+        private void Edit_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || FenceMenu is null) return;
+            CheckByTag(SortMenu, _model.Sort.ToString());
+            CheckByTag(IconSizeMenu, _model.IconSize.ToString());
+            FenceMenu.PlacementTarget = fe;
+            FenceMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            FenceMenu.IsOpen = true;
+        }
 
         private void Rename_Click(object sender, RoutedEventArgs e)
         {
@@ -413,6 +507,16 @@ namespace OpenFences
                 {
                     MessageBox.Show("That name contains invalid characters for a folder. Please choose a different name.",
                                     "Invalid Name", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // A portal mirrors the user's real folder — renaming only changes the
+                // display label; never move/rename the underlying folder.
+                if (_model.IsPortal)
+                {
+                    _model.Name = newName;
+                    TitleText.Text = "🗁 " + _model.Name;
+                    FenceRenamed?.Invoke(this, EventArgs.Empty);
                     return;
                 }
 
@@ -497,26 +601,28 @@ namespace OpenFences
             {
                 _model.BackgroundOpacity = Math.Clamp(alpha, 0.0, 1.0);
                 ApplyBackground();
+                Changed?.Invoke(this, EventArgs.Empty);  // persist transparency
             }
         }
 
         private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            // Placeholder for dynamic enable/disable if needed later
+            // Tick the active sort / icon-size options.
+            CheckByTag(SortMenu, _model.Sort.ToString());
+            CheckByTag(IconSizeMenu, _model.IconSize.ToString());
+        }
+
+        private static void CheckByTag(MenuItem? parent, string activeTag)
+        {
+            if (parent is null) return;
+            foreach (var obj in parent.Items)
+                if (obj is MenuItem mi)
+                    mi.IsChecked = string.Equals(Convert.ToString(mi.Tag), activeTag, StringComparison.Ordinal);
         }
 
         private void DeleteFence_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "Delete this fence?\n\nChoose Yes to also delete its backing folder and shortcuts from disk.\nChoose No to remove the fence but keep the folder.\nCancel to abort.",
-                "Delete Fence",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Warning,
-                MessageBoxResult.No);
-
-            if (result == MessageBoxResult.Cancel) return;
-
-            // We signal deletion; MainWindow handles tearing down + optional folder delete.
+            // MainWindow owns the single confirm + folder handling (portal-aware).
             DeleteRequested?.Invoke(this, EventArgs.Empty);
         }
     }

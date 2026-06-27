@@ -26,6 +26,15 @@ namespace OpenFences
                 SafeLog("AppDomain.UnhandledException", e.ExceptionObject as Exception);
             };
 
+            // Safety net: restore desktop icons on ANY CLR shutdown path (clean exit,
+            // unhandled crash, Environment.Exit) — not just MainWindow.OnClosed. It's
+            // registry-gated and idempotent, so double-calling is harmless. (A hard
+            // TerminateProcess/kill can't run managed code; nothing can cover that.)
+            AppDomain.CurrentDomain.ProcessExit += (_, __) =>
+            {
+                try { DesktopHelper.RestoreDesktopIconsOnExit(); } catch { /* ignore */ }
+            };
+
             TaskScheduler.UnobservedTaskException += (s, e) =>
             {
                 SafeLog("TaskScheduler.UnobservedTaskException", e.Exception);
