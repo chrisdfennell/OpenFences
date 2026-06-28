@@ -83,6 +83,46 @@ namespace OpenFences
 
             // Right-click-drag rectangle to create fence (fast XOR + menu)
             DesktopRightDragFenceSelector.Start(CreateFenceFromRect);
+
+            // Delete/Enter operate on the whole selection across all fences
+            FenceWindow.RequestDeleteSelected = DeleteAllSelected;
+            FenceWindow.RequestOpenSelected = OpenAllSelected;
+
+            // Left-drag on the empty desktop = lasso that selects items across fences
+            DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
+        }
+
+        // ========== Cross-fence selection (lasso + bulk actions) ==========
+        private void OnLassoUpdate(Rect lassoPx, bool additive)
+        {
+            foreach (var w in _openWindows)
+                if (w.IsVisible) w.SelectItemsInScreenRectPx(lassoPx, additive);
+        }
+
+        private void OnLassoEnd()
+        {
+            // Selection stays highlighted. Act on it via Delete/Enter (with a fence focused)
+            // or an item's right-click → Delete, which both route through the global handlers.
+        }
+
+        private void DeleteAllSelected()
+        {
+            int total = _openWindows.Sum(w => w.SelectedCount);
+            if (total == 0) return;
+
+            bool anyPortal = _openWindows.Any(w => w.IsPortal && w.SelectedCount > 0);
+            string msg = total == 1 ? "Delete the selected item?" : $"Delete {total} selected items?";
+            if (anyPortal) msg += "\n\nSome are in folder portals — this removes the real files/folders.";
+
+            if (MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+
+            foreach (var w in _openWindows.ToList()) w.DeleteSelectedItemsNoConfirm();
+        }
+
+        private void OpenAllSelected()
+        {
+            foreach (var w in _openWindows.ToList()) w.OpenSelectedItems();
         }
 
         private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
@@ -774,6 +814,7 @@ namespace OpenFences
 
             DesktopDoubleClickMonitor.Stop();
             DesktopRightDragFenceSelector.Stop();
+            DesktopLeftDragLasso.Stop();
             DesktopOrganizer.Stop();
 
             if (_tray is not null)

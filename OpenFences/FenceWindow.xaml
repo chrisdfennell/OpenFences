@@ -8,6 +8,8 @@
         AllowsTransparency="True"
         ShowInTaskbar="False"
         Topmost="False"
+        Focusable="True"
+        KeyDown="Window_KeyDown"
         Width="420" Height="260">
 
     <!-- Borderless chrome (resize grips, no caption buttons) -->
@@ -166,12 +168,16 @@
                 </Grid.ContextMenu>
             </Grid>
 
-            <!-- Items area -->
+            <!-- Items area (with marquee selection overlay) -->
+            <Grid>
             <ScrollViewer x:Name="Scroller"
               Margin="6"
+              Focusable="True"
               VerticalScrollBarVisibility="Auto"
               Background="Transparent"
               PreviewMouseLeftButtonDown="Scroller_PreviewMouseLeftButtonDown"
+              PreviewMouseMove="Scroller_PreviewMouseMove"
+              PreviewMouseLeftButtonUp="Scroller_PreviewMouseLeftButtonUp"
               CanContentScroll="False"
               PanningMode="None">
 
@@ -193,7 +199,16 @@
                                     Padding="4,6,4,4"
                                     ToolTipService.ShowDuration="60000"
                                     ToolTip="{Binding DisplayName}"
-                                    MouseLeftButtonDown="Item_MouseLeftButtonDown">
+                                    MouseLeftButtonDown="Item_MouseLeftButtonDown"
+                                    MouseRightButtonDown="Item_MouseRightButtonDown">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open" Click="Item_Open_Click"/>
+                                        <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="Delete" Click="Item_Delete_Click"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
                                 <StackPanel>
                                     <Image Width="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
                      Height="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -216,6 +231,16 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+                <!-- Marquee selection rectangle (never blocks input) -->
+                <Canvas x:Name="MarqueeLayer" Margin="6" IsHitTestVisible="False">
+                    <Rectangle x:Name="MarqueeRect"
+                               Visibility="Collapsed"
+                               Stroke="#7FA8E0" StrokeThickness="1"
+                               Fill="#335A8FD8"
+                               SnapsToDevicePixels="True"/>
+                </Canvas>
+            </Grid>
         </DockPanel>
     </Border>
 </Window>

@@ -17,6 +17,9 @@ using System.Windows.Media.Animation;
 // Avoid WinForms clash
 using MessageBox = System.Windows.MessageBox;
 using MediaColor = System.Windows.Media.Color;
+using Point = System.Windows.Point;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 
 namespace OpenFences
 {
@@ -292,37 +295,9 @@ namespace OpenFences
 
         private void Item_Delete_Click(object sender, RoutedEventArgs e)
         {
-            if (MenuSenderToItem(sender) is not FenceItem item) return;
-
-            bool isDir = Directory.Exists(item.Path);
-
-            // In a portal we delete the REAL file/folder; in a normal fence just the .lnk.
-            string message = _model.IsPortal
-                ? $"Delete this item from the folder?\n\n{item.DisplayName}\n\nThis removes the real file or folder."
-                : $"Delete this shortcut?\n\n{item.DisplayName}.lnk";
-
-            var confirm = MessageBox.Show(
-                message,
-                _model.IsPortal ? "Delete Item" : "Delete Shortcut",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
-
-            if (confirm != MessageBoxResult.Yes) return;
-
-            try
-            {
-                if (isDir) Directory.Delete(item.Path, recursive: true);
-                else File.Delete(item.Path);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Could not delete:\n" + ex.Message,
-                                "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            // Remove from UI list
-            ItemsSource.Remove(item);
+            // Right-click already selected the item; delete the whole selection together.
+            if (MenuSenderToItem(sender) is FenceItem item && !item.IsSelected) SelectOnly(item);
+            (RequestDeleteSelected ?? DeleteOwnSelectedWithConfirm)();
         }
 
         public void SetWatcherEnabled(bool enabled)
@@ -399,19 +374,22 @@ namespace OpenFences
         private void Item_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
+            Scroller.Focus();
 
-            // Single click selects (highlights) the tile.
-            SelectOnly(item);
+            if (e.ClickCount == 2) { OpenItem(item); return; }
 
-            // Double click opens it.
-            if (e.ClickCount == 2)
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true });
-                }
-                catch { /* ignore */ }
-            }
+            // Ctrl+click toggles; plain click selects just this one.
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                item.IsSelected = !item.IsSelected;
+            else
+                SelectOnly(item);
+        }
+
+        // Right-clicking an unselected item selects just it (so the menu acts on it).
+        private void Item_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is FenceItem item && !item.IsSelected)
+                SelectOnly(item);
         }
 
         private void SelectOnly(FenceItem? item)
@@ -420,11 +398,167 @@ namespace OpenFences
                 i.IsSelected = ReferenceEquals(i, item);
         }
 
-        // Clicking empty space inside the fence clears the selection.
+        private static void OpenItem(FenceItem item)
+        {
+            try { Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true }); }
+            catch { /* ignore */ }
+        }
+
+        // MainWindow wires these so Delete/Enter act on the WHOLE selection across all
+        // fences (e.g. after a desktop lasso). Fallback to this fence if not wired.
+        public static Action? RequestDeleteSelected;
+        public static Action? RequestOpenSelected;
+
+        public bool IsPortal => _model.IsPortal;
+        public int SelectedCount => ItemsSource.Count(i => i.IsSelected);
+        public void ClearSelection() => SelectOnly(null);
+
+        public void OpenSelectedItems()
+        {
+            foreach (var item in ItemsSource.Where(i => i.IsSelected).ToList()) OpenItem(item);
+        }
+
+        // Deletes this fence's selected items without prompting (caller confirms).
+        public void DeleteSelectedItemsNoConfirm()
+        {
+            var selected = ItemsSource.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0) return;
+
+            SetWatcherEnabled(false);
+            try
+            {
+                foreach (var item in selected)
+                {
+                    try
+                    {
+                        if (Directory.Exists(item.Path)) Directory.Delete(item.Path, true);
+                        else File.Delete(item.Path);
+                        ItemsSource.Remove(item);
+                    }
+                    catch { /* skip one */ }
+                }
+            }
+            finally { SetWatcherEnabled(true); }
+        }
+
+        // Selects items whose on-screen bounds fall inside a physical-pixel rect
+        // (used by the cross-fence desktop lasso).
+        public void SelectItemsInScreenRectPx(Rect lassoPx, bool additive)
+        {
+            for (int i = 0; i < ItemsSource.Count; i++)
+            {
+                if (Items.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement c) continue;
+                Rect itemPx;
+                try
+                {
+                    var tl = c.PointToScreen(new Point(0, 0));
+                    var br = c.PointToScreen(new Point(c.ActualWidth, c.ActualHeight));
+                    itemPx = new Rect(tl, br);
+                }
+                catch { continue; }
+
+                if (lassoPx.IntersectsWith(itemPx)) ItemsSource[i].IsSelected = true;
+                else if (!additive) ItemsSource[i].IsSelected = false;
+            }
+        }
+
+        // Fallback delete (single fence) used only if MainWindow hasn't wired the global one.
+        private void DeleteOwnSelectedWithConfirm()
+        {
+            int n = SelectedCount;
+            if (n == 0) return;
+            string what = n == 1 ? "the selected item" : $"{n} selected items";
+            string msg = _model.IsPortal
+                ? $"Delete {what} from the folder?\n\nThis removes the real file(s)/folder(s)."
+                : $"Delete {what}?";
+            if (MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            DeleteSelectedItemsNoConfirm();
+        }
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete) { (RequestDeleteSelected ?? DeleteOwnSelectedWithConfirm)(); e.Handled = true; }
+            else if (e.Key == Key.Enter) { (RequestOpenSelected ?? OpenSelectedItems)(); e.Handled = true; }
+            else if (e.Key == Key.A && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                foreach (var i in ItemsSource) i.IsSelected = true;
+                e.Handled = true;
+            }
+        }
+
+        // ---------- Marquee (rubber-band) selection ----------
+        private bool _marqueeActive;
+        private bool _marqueeAdditive;
+        private bool _marqueeMoved;
+        private Point _marqueeStart;
+
         private void Scroller_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is DependencyObject d && FindItem(d) is null)
-                SelectOnly(null);
+            // Clicks that land on an item are handled by the item itself.
+            if (FindItem(e.OriginalSource as DependencyObject) != null) return;
+
+            Scroller.Focus();
+            _marqueeAdditive = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
+            if (!_marqueeAdditive) SelectOnly(null);
+
+            _marqueeActive = true;
+            _marqueeMoved = false;
+            _marqueeStart = e.GetPosition(MarqueeLayer);
+            UpdateMarquee(_marqueeStart);
+            MarqueeRect.Visibility = Visibility.Visible;
+            Scroller.CaptureMouse();
+        }
+
+        private void Scroller_PreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_marqueeActive) return;
+            if (e.LeftButton != MouseButtonState.Pressed) { EndMarquee(); return; }
+
+            var cur = e.GetPosition(MarqueeLayer);
+            if (!_marqueeMoved &&
+                (Math.Abs(cur.X - _marqueeStart.X) > 3 || Math.Abs(cur.Y - _marqueeStart.Y) > 3))
+                _marqueeMoved = true;
+
+            UpdateMarquee(cur);
+            SelectWithinMarquee();
+        }
+
+        private void Scroller_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => EndMarquee();
+
+        private void EndMarquee()
+        {
+            if (!_marqueeActive) return;
+            _marqueeActive = false;
+            if (Scroller.IsMouseCaptured) Scroller.ReleaseMouseCapture();
+            MarqueeRect.Visibility = Visibility.Collapsed;
+        }
+
+        private void UpdateMarquee(Point cur)
+        {
+            double x = Math.Min(cur.X, _marqueeStart.X);
+            double y = Math.Min(cur.Y, _marqueeStart.Y);
+            Canvas.SetLeft(MarqueeRect, x);
+            Canvas.SetTop(MarqueeRect, y);
+            MarqueeRect.Width = Math.Abs(cur.X - _marqueeStart.X);
+            MarqueeRect.Height = Math.Abs(cur.Y - _marqueeStart.Y);
+        }
+
+        private void SelectWithinMarquee()
+        {
+            var box = new Rect(Canvas.GetLeft(MarqueeRect), Canvas.GetTop(MarqueeRect),
+                               MarqueeRect.Width, MarqueeRect.Height);
+
+            for (int i = 0; i < ItemsSource.Count; i++)
+            {
+                if (Items.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement c) continue;
+                Rect b;
+                try { b = c.TransformToVisual(MarqueeLayer).TransformBounds(new Rect(0, 0, c.ActualWidth, c.ActualHeight)); }
+                catch { continue; }
+
+                if (box.IntersectsWith(b)) ItemsSource[i].IsSelected = true;
+                else if (!_marqueeAdditive) ItemsSource[i].IsSelected = false;
+            }
         }
 
         private static FenceItem? FindItem(DependencyObject? start)
