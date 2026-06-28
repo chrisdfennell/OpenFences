@@ -1,5 +1,6 @@
 # Build results
 out/
+publish/
 artifacts/
 [Bb]in/
 [Oo]bj/

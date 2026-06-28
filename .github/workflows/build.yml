@@ -1,0 +1,90 @@
+name: build
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create GitHub Releases on tag pushes
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ x64, arm64 ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Compute version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = '1.0.0.0'
+          if ('${{ github.ref }}' -like 'refs/tags/v*') { $v = '${{ github.ref_name }}'.TrimStart('v') }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version = $v"
+
+      - name: Restore
+        run: dotnet restore OpenFences/OpenFences.csproj
+
+      # Self-contained publish: the installer needs no .NET runtime on the user's PC.
+      - name: Publish app (self-contained ${{ matrix.arch }})
+        run: >
+          dotnet publish OpenFences/OpenFences.csproj
+          -c Release
+          -r win-${{ matrix.arch }}
+          --self-contained true
+          -p:PublishSingleFile=false
+          -o ${{ github.workspace }}\publish\${{ matrix.arch }}
+
+      # WiX SDK builds the MSI; no Visual Studio / extension required.
+      - name: Build MSI (WiX)
+        run: >
+          dotnet build OpenFences.Installer/OpenFences.Installer.wixproj
+          -c Release
+          -p:Platform=${{ matrix.arch }}
+          -p:PublishDir=${{ github.workspace }}\publish\${{ matrix.arch }}
+          -p:ProductVersion=${{ steps.ver.outputs.version }}
+
+      - name: Stage artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $msi = Get-ChildItem -Recurse -Filter *.msi -Path OpenFences.Installer | Select-Object -First 1
+          if (-not $msi) { throw 'No MSI produced.' }
+          Copy-Item $msi.FullName "out\OpenFences-${{ matrix.arch }}.msi" -Force
+          Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\OpenFences-${{ matrix.arch }}-portable.zip" -Force
+          Get-ChildItem out
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenFences-${{ matrix.arch }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

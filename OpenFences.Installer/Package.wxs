@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+
+  <!-- UpgradeCode is FIXED for the life of the product (do not change it). -->
+  <Package Name="OpenFences"
+           Manufacturer="Fennell"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="B8E7B0C2-2F4A-4C9E-9D3F-7A1E6C5D4B30"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <SummaryInformation Description="OpenFences — lightweight desktop fences for Windows" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="$(var.PublishDir)\Assets\open-fence.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/chrisdfennell/OpenFences" />
+
+    <!-- Install location: Program Files\OpenFences -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="OpenFences" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="OpenFences" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Harvest the entire published app folder (self-contained build). -->
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+
+    <!-- Start Menu shortcut -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="*">
+        <Shortcut Id="StartShortcut"
+                  Name="OpenFences"
+                  Description="Lightweight desktop fences for Windows"
+                  Target="[INSTALLFOLDER]OpenFences.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Fennell\OpenFences"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+  </Package>
+</Wix>

@@ -1,0 +1,17 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <OutputName>OpenFences-$(Platform)</OutputName>
+
+    <!-- Where the published app lives. CI overrides this with -p:PublishDir=...
+         The default points at a local self-contained x64 publish for VS/CLI builds. -->
+    <PublishDir Condition="'$(PublishDir)' == ''">$(MSBuildThisFileDirectory)..\OpenFences\bin\Release\net8.0-windows\win-x64\publish</PublishDir>
+
+    <!-- Product version; CI overrides on tagged releases. -->
+    <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0.0</ProductVersion>
+
+    <DefineConstants>PublishDir=$(PublishDir);ProductVersion=$(ProductVersion)</DefineConstants>
+  </PropertyGroup>
+
+</Project>
