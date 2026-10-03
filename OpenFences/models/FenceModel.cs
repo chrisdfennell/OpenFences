@@ -36,6 +36,11 @@ namespace OpenFences
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;
 
+        // Accent color ("#RRGGBB") that tints the title bar and body; null = default graphite.
+        public string? AccentColor { get; set; }
+
+        public double TitleFontSize { get; set; } = 12;
+
         // Where the user last placed this fence for each monitor arrangement
         // (key: ScreenLayout.CurrentKey()), so docking/undocking puts it back.
         public System.Collections.Generic.Dictionary<string, FenceRect> Layouts { get; set; } = new();

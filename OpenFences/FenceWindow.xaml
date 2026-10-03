@@ -96,7 +96,8 @@
         <DockPanel>
 
             <!-- Title bar -->
-            <Grid DockPanel.Dock="Top"
+            <Grid x:Name="TitleBar"
+                  DockPanel.Dock="Top"
                   Height="34"
                   Background="#2B2B2B"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
@@ -154,14 +155,48 @@
                         </MenuItem>
                         <Separator/>
                         <MenuItem Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
-                        <MenuItem Header="Transparency">
-                            <MenuItem Header="Opaque"             Tag="1.00" Click="Transparency_Click"/>
-                            <MenuItem Header="Slight (90%)"       Tag="0.90" Click="Transparency_Click"/>
-                            <MenuItem Header="Medium (75%)"       Tag="0.75" Click="Transparency_Click"/>
-                            <MenuItem Header="High (60%)"         Tag="0.60" Click="Transparency_Click"/>
-                            <MenuItem Header="Very High (40%)"    Tag="0.40" Click="Transparency_Click"/>
-                            <MenuItem Header="Glass (20%)"        Tag="0.20" Click="Transparency_Click"/>
-                            <MenuItem Header="Invisible (0%)"     Tag="0.00" Click="Transparency_Click"/>
+                        <MenuItem x:Name="ColorMenu" Header="Color">
+                            <MenuItem Header="Default" Tag="" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#2B2B2B" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Blue" Tag="#3B82F6" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#3B82F6" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Teal" Tag="#14B8A6" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#14B8A6" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Green" Tag="#22C55E" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#22C55E" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Amber" Tag="#F59E0B" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#F59E0B" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Red" Tag="#EF4444" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#EF4444" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Pink" Tag="#EC4899" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#EC4899" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Purple" Tag="#8B5CF6" IsCheckable="True" Click="Color_Click">
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#8B5CF6" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                            </MenuItem>
+                            <Separator/>
+                            <MenuItem Header="Custom…" Click="CustomColor_Click"/>
+                        </MenuItem>
+                        <MenuItem x:Name="TitleSizeMenu" Header="Title size">
+                            <MenuItem Header="Small"       Tag="11" IsCheckable="True" Click="TitleSize_Click"/>
+                            <MenuItem Header="Normal"      Tag="12" IsCheckable="True" Click="TitleSize_Click"/>
+                            <MenuItem Header="Large"       Tag="14" IsCheckable="True" Click="TitleSize_Click"/>
+                            <MenuItem Header="Extra large" Tag="16" IsCheckable="True" Click="TitleSize_Click"/>
+                        </MenuItem>
+                        <MenuItem x:Name="TransparencyMenu" Header="Transparency">
+                            <MenuItem Header="Opaque"             Tag="1.00" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="Slight (90%)"       Tag="0.90" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="Medium (75%)"       Tag="0.75" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="High (60%)"         Tag="0.60" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="Very High (40%)"    Tag="0.40" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="Glass (20%)"        Tag="0.20" IsCheckable="True" Click="Transparency_Click"/>
+                            <MenuItem Header="Invisible (0%)"     Tag="0.00" IsCheckable="True" Click="Transparency_Click"/>
                         </MenuItem>
                         <Separator/>
                         <MenuItem Header="Delete Fence…" Foreground="#FFEF4444" Click="DeleteFence_Click"/>

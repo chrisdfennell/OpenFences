@@ -169,13 +169,37 @@ namespace OpenFences
 
         // ---------- UI/Background ----------
 
+        private static readonly MediaColor DefaultBody = MediaColor.FromRgb(0x20, 0x20, 0x20);  // #202020
+        private static readonly MediaColor DefaultTitle = MediaColor.FromRgb(0x2B, 0x2B, 0x2B); // #2B2B2B
+
         private void ApplyBackground()
         {
-            // Real fences now render their own tiles (like portals), so they get the same
-            // solid card background rather than the old click-through hollow frame.
-            var baseColor = MediaColor.FromRgb(0x20, 0x20, 0x20); // #202020
+            // An accent tints the dark base (strongly on the title bar, lightly on the body), so
+            // light text stays readable whatever color is picked.
+            MediaColor body = DefaultBody, title = DefaultTitle;
+            if (TryParseColor(_model.AccentColor, out var accent))
+            {
+                body = Mix(accent, DefaultBody, 0.16);
+                title = Mix(accent, DefaultTitle, 0.55);
+            }
+
             byte a = (byte)Math.Round(255 * Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0));
-            RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, baseColor.R, baseColor.G, baseColor.B));
+            RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, body.R, body.G, body.B));
+            TitleBar.Background = new SolidColorBrush(title);
+            TitleText.FontSize = _model.TitleFontSize > 0 ? _model.TitleFontSize : 12;
+        }
+
+        private static MediaColor Mix(MediaColor c, MediaColor baseColor, double amount) => MediaColor.FromRgb(
+            (byte)Math.Round(baseColor.R + (c.R - baseColor.R) * amount),
+            (byte)Math.Round(baseColor.G + (c.G - baseColor.G) * amount),
+            (byte)Math.Round(baseColor.B + (c.B - baseColor.B) * amount));
+
+        private static bool TryParseColor(string? hex, out MediaColor color)
+        {
+            color = default;
+            if (string.IsNullOrWhiteSpace(hex)) return false;
+            try { color = (MediaColor)System.Windows.Media.ColorConverter.ConvertFromString(hex); return true; }
+            catch { return false; }
         }
 
         // ---------- Real fence: owned desktop items (by path) ----------
@@ -1083,8 +1107,7 @@ namespace OpenFences
         private void Edit_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not FrameworkElement fe || FenceMenu is null) return;
-            CheckByTag(SortMenu, _model.Sort.ToString());
-            CheckByTag(IconSizeMenu, _model.IconSize.ToString());
+            RefreshMenuChecks();
             FenceMenu.PlacementTarget = fe;
             FenceMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
             FenceMenu.IsOpen = true;
@@ -1167,7 +1190,8 @@ namespace OpenFences
 
         private void Transparency_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is MenuItem mi && double.TryParse(Convert.ToString(mi.Tag), out double alpha))
+            if (sender is MenuItem mi && double.TryParse(Convert.ToString(mi.Tag), System.Globalization.NumberStyles.Float,
+                                                         System.Globalization.CultureInfo.InvariantCulture, out double alpha))
             {
                 _model.BackgroundOpacity = Math.Clamp(alpha, 0.0, 1.0);
                 ApplyBackground();
@@ -1175,11 +1199,50 @@ namespace OpenFences
             }
         }
 
-        private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        private void TitleBar_ContextMenuOpening(object sender, ContextMenuEventArgs e) => RefreshMenuChecks();
+
+        // Tick the active option in each submenu.
+        private void RefreshMenuChecks()
         {
-            // Tick the active sort / icon-size options.
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
             CheckByTag(SortMenu, _model.Sort.ToString());
             CheckByTag(IconSizeMenu, _model.IconSize.ToString());
+            CheckByTag(ColorMenu, _model.AccentColor ?? "");
+            CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));
+            CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
+        }
+
+        private void Color_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem mi) return;
+            var tag = Convert.ToString(mi.Tag);
+            _model.AccentColor = string.IsNullOrEmpty(tag) ? null : tag;
+            ApplyBackground();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void CustomColor_Click(object sender, RoutedEventArgs e)
+        {
+            using var dlg = new System.Windows.Forms.ColorDialog { FullOpen = true, AnyColor = true };
+            if (TryParseColor(_model.AccentColor, out var current))
+                dlg.Color = System.Drawing.Color.FromArgb(current.R, current.G, current.B);
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+
+            _model.AccentColor = $"#{dlg.Color.R:X2}{dlg.Color.G:X2}{dlg.Color.B:X2}";
+            ApplyBackground();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void TitleSize_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi &&
+                double.TryParse(Convert.ToString(mi.Tag), System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out var size))
+            {
+                _model.TitleFontSize = size;
+                ApplyBackground();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         private static void CheckByTag(MenuItem? parent, string activeTag)
