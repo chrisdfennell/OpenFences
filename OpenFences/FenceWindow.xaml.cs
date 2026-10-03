@@ -31,7 +31,11 @@ namespace OpenFences
         private readonly FenceModel _model;
         // Portals watch their mirrored folder. Real-icon fences own desktop icons by
         // name and have no backing folder, so the watcher is null for them.
-        private readonly FileSystemWatcher? _watcher;
+        private FileSystemWatcher? _watcher;
+
+        // Portals: the folder currently shown. Starts at the portal's folder and changes as the
+        // user opens subfolders (not persisted; a portal always reopens at its own folder).
+        private string _currentFolder = "";
 
         // A "real" fence == every non-portal fence. It renders the desktop items it owns
         // (_model.ItemPaths) as tiles, like a portal scoped to specific desktop items.
@@ -107,33 +111,7 @@ namespace OpenFences
             if (_model.IsPortal)
             {
                 // ----- Portal: windowed view of a real folder -----
-                // The folder may be gone or on a drive that isn't connected. Never recreate it
-                // (that would leave an empty stand-in) — just show the portal as unavailable.
-                try
-                {
-                    if (!Directory.Exists(_model.FolderPath))
-                        throw new DirectoryNotFoundException(_model.FolderPath);
-
-                    ReloadItems();
-
-                    // Watch for folder changes
-                    _watcher = new FileSystemWatcher(_model.FolderPath)
-                    {
-                        IncludeSubdirectories = false,
-                        EnableRaisingEvents = true
-                    };
-                    _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
-                    _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
-                    _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
-                }
-                catch
-                {
-                    _watcher?.Dispose();
-                    _watcher = null;
-                    TitleText.Text = "🗁 " + model.Name + " (unavailable)";
-                    TitleText.ToolTip = $"This folder can't be reached:\n{_model.FolderPath}\n\n" +
-                                        "Reconnect the drive (or restore the folder) and restart OpenFences.";
-                }
+                NavigatePortal(_model.FolderPath);
             }
             else
             {
@@ -380,6 +358,128 @@ namespace OpenFences
             _saveTimer.Start();
         }
 
+        // ---------- Portal navigation ----------
+
+        /// <summary>Show <paramref name="folder"/> (the portal's folder or one inside it) and
+        /// watch it for changes. The folder may be gone or on a drive that isn't connected: never
+        /// recreate it (that would leave an empty stand-in), just show the portal as unavailable.</summary>
+        private void NavigatePortal(string folder)
+        {
+            try { _watcher?.Dispose(); } catch { /* ignore */ }
+            _watcher = null;
+            _currentFolder = folder;
+            TitleText.Text = "🗁 " + _model.Name;
+            TitleText.ToolTip = _model.FolderPath;
+
+            try
+            {
+                if (!Directory.Exists(folder))
+                    throw new DirectoryNotFoundException(folder);
+
+                ReloadItems();
+
+                _watcher = new FileSystemWatcher(folder)
+                {
+                    IncludeSubdirectories = false,
+                    EnableRaisingEvents = true
+                };
+                _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
+                _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
+                _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
+            }
+            catch
+            {
+                _watcher?.Dispose();
+                _watcher = null;
+                ItemsSource.Clear();
+                TitleText.Text = "🗁 " + _model.Name + " (unavailable)";
+                TitleText.ToolTip = $"This folder can't be reached:\n{folder}\n\n" +
+                                    "Reconnect the drive (or restore the folder) and restart OpenFences.";
+            }
+
+            UpdateBreadcrumbs();
+        }
+
+        private bool IsInSubfolder =>
+            _model.IsPortal && !string.Equals(Path.GetFullPath(_currentFolder).TrimEnd('\\'),
+                                              Path.GetFullPath(_model.FolderPath).TrimEnd('\\'),
+                                              StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Back/breadcrumb bar under the title, shown only below the portal's own folder.</summary>
+        private void UpdateBreadcrumbs()
+        {
+            Crumbs.Children.Clear();
+            if (!IsInSubfolder)
+            {
+                BreadcrumbBar.Visibility = Visibility.Collapsed;
+                return;
+            }
+            BreadcrumbBar.Visibility = Visibility.Visible;
+
+            var root = Path.GetFullPath(_model.FolderPath).TrimEnd('\\');
+            var rel = Path.GetRelativePath(root, _currentFolder);
+            var parts = rel.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+
+            AddCrumb(_model.Name, root, isLast: false);
+            string path = root;
+            for (int i = 0; i < parts.Length; i++)
+            {
+                path = Path.Combine(path, parts[i]);
+                Crumbs.Children.Add(new TextBlock { Text = "›", Foreground = System.Windows.Media.Brushes.Gray, Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center });
+                AddCrumb(parts[i], path, isLast: i == parts.Length - 1);
+            }
+        }
+
+        private void AddCrumb(string label, string folder, bool isLast)
+        {
+            // The title-button template ignores Padding, so the label carries its own margin.
+            var b = new System.Windows.Controls.Button
+            {
+                Content = new TextBlock { Text = label, Margin = new Thickness(6, 0, 6, 0) },
+                Style = (Style)FindResource("FenceTitleButton"),
+                FontSize = 12,
+                Height = 22,
+                FontWeight = isLast ? FontWeights.SemiBold : FontWeights.Normal,
+                ToolTip = folder
+            };
+            if (!isLast) b.Click += (_, __) => NavigatePortal(folder);
+            Crumbs.Children.Add(b);
+        }
+
+        private void PortalUp()
+        {
+            if (!IsInSubfolder) return;
+            var parent = Path.GetDirectoryName(_currentFolder);
+            if (!string.IsNullOrEmpty(parent)) NavigatePortal(parent);
+        }
+
+        private void Back_Click(object sender, RoutedEventArgs e) => PortalUp();
+
+        /// <summary>Point this portal at a different folder (menu or folder drop).</summary>
+        private void RetargetPortal(string folder)
+        {
+            if (!_model.IsPortal || !Directory.Exists(folder)) return;
+
+            // A portal still named after its old folder follows the new one.
+            var oldName = new DirectoryInfo(_model.FolderPath).Name;
+            if (string.Equals(_model.Name, oldName, StringComparison.OrdinalIgnoreCase))
+                _model.Name = new DirectoryInfo(folder).Name;
+
+            _model.FolderPath = folder;
+            NavigatePortal(folder);
+            FenceRenamed?.Invoke(this, EventArgs.Empty); // persists
+        }
+
+        private void ChangePortalFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Choose the folder this portal shows",
+                InitialDirectory = Directory.Exists(_model.FolderPath) ? _model.FolderPath : ""
+            };
+            if (dlg.ShowDialog() == true) RetargetPortal(dlg.FolderName);
+        }
+
         public void ReloadItems()
         {
             ItemsSource.Clear();
@@ -390,9 +490,9 @@ namespace OpenFences
                 // A portal mirrors a real folder: show its subfolders and files.
                 // A normal fence only holds its own .lnk shortcuts (files).
                 if (_model.IsPortal)
-                    entries.AddRange(Directory.EnumerateDirectories(_model.FolderPath));
+                    entries.AddRange(Directory.EnumerateDirectories(_currentFolder));
 
-                entries.AddRange(Directory.EnumerateFiles(_model.FolderPath)
+                entries.AddRange(Directory.EnumerateFiles(_currentFolder)
                                           .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
             }
             catch
@@ -765,7 +865,17 @@ namespace OpenFences
                 i.IsSelected = ReferenceEquals(i, item);
         }
 
-        private static void OpenItem(FenceItem item) => LaunchPath(item.Path);
+        // In a portal, folders open inside the portal (Ctrl+double-click opens Explorer instead).
+        private void OpenItem(FenceItem item)
+        {
+            if (_model.IsPortal && Directory.Exists(item.Path) &&
+                (Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            {
+                NavigatePortal(item.Path);
+                return;
+            }
+            LaunchPath(item.Path);
+        }
 
         // MainWindow wires these so Delete/Enter act on the WHOLE selection across all
         // fences (e.g. after a desktop lasso). Fallback to this fence if not wired.
@@ -1003,13 +1113,21 @@ namespace OpenFences
 
             if (!IsRealIcon)
             {
-                // A portal is a live folder view: copy the real item into it.
+                // A single folder dropped on a portal: offer to show that folder here.
+                if (paths.Length == 1 && Directory.Exists(paths[0]))
+                {
+                    PromptPortalFolderDrop(paths[0]);
+                    return;
+                }
+
+                // Files: copy them into the folder being shown. Dropped folders are skipped
+                // for safety (no recursive copies by accident).
                 foreach (var p in paths)
                 {
                     try
                     {
-                        if (Directory.Exists(p)) continue; // skip dropped folders for safety
-                        var dest = Path.Combine(_model.FolderPath, Path.GetFileName(p));
+                        if (Directory.Exists(p)) continue;
+                        var dest = Path.Combine(_currentFolder, Path.GetFileName(p));
                         if (!File.Exists(dest)) File.Copy(p, dest);
                     }
                     catch { /* ignore */ }
@@ -1045,6 +1163,20 @@ namespace OpenFences
         }
 
         private ContextMenu? _dropMenu;
+
+        private void PromptPortalFolderDrop(string folder)
+        {
+            var menu = _dropMenu = new ContextMenu
+            {
+                Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
+            };
+            var show = new MenuItem { Header = $"Show “{new DirectoryInfo(folder).Name}” in this portal" };
+            show.Click += (_, __) => RetargetPortal(folder);
+            menu.Items.Add(show);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(new MenuItem { Header = "Cancel" });
+            menu.IsOpen = true;
+        }
 
         /// <summary>Ask (via a menu at the drop point) how to bring off-desktop items onto the
         /// desktop, then assign the resulting real desktop items to this fence.</summary>
@@ -1144,9 +1276,9 @@ namespace OpenFences
 
         private void OpenFolder_Click(object sender, RoutedEventArgs e)
         {
-            // Portals open their mirrored folder; real-icon fences open the Desktop.
+            // Portals open the folder they're showing; real-icon fences open the Desktop.
             string folder = _model.IsPortal
-                ? _model.FolderPath
+                ? _currentFolder
                 : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             try
             {
@@ -1210,6 +1342,7 @@ namespace OpenFences
             CheckByTag(ColorMenu, _model.AccentColor ?? "");
             CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
+            MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void Color_Click(object sender, RoutedEventArgs e)

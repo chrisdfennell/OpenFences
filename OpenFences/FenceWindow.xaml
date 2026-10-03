@@ -140,6 +140,7 @@
                     <ContextMenu x:Name="FenceMenu">
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
                         <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
+                        <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
                         <Separator/>
                         <MenuItem x:Name="SortMenu" Header="Sort by">
                             <MenuItem Header="Name"          Tag="Name"         IsCheckable="True" Click="Sort_Click"/>
@@ -205,6 +206,22 @@
                     </ContextMenu>
                 </Grid.ContextMenu>
             </Grid>
+
+            <!-- Portal breadcrumbs: shown only after opening a subfolder -->
+            <DockPanel x:Name="BreadcrumbBar"
+                       DockPanel.Dock="Top"
+                       Height="28"
+                       Margin="6,4,6,0"
+                       Visibility="Collapsed">
+                <Button DockPanel.Dock="Left"
+                        Style="{StaticResource FenceTitleButton}"
+                        Width="28" Height="22"
+                        Content="‹"
+                        FontSize="16"
+                        ToolTip="Back (Backspace)"
+                        Click="Back_Click"/>
+                <StackPanel x:Name="Crumbs" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0"/>
+            </DockPanel>
 
             <!-- Items area (with marquee selection overlay). Portal fences only —
                  real-icon fences collapse this to a click-through hole. -->
