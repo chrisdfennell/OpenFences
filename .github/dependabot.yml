@@ -1,0 +1,8 @@
+# Opens a PR when a GitHub Action used by the workflows has a new version, so runtime
+# deprecations (like the Node 20 → 24 move) get fixed before they become warnings.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
