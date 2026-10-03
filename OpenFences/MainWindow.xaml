@@ -110,6 +110,7 @@
                     </MenuItem>
 
                     <MenuItem Header="_Help">
+                        <MenuItem Header="Welcome tour…" Click="Welcome_Click"/>
                         <MenuItem Header="About" Click="About_Click"/>
                     </MenuItem>
                 </Menu>
@@ -168,31 +169,23 @@
         Background="#17181C"
         BorderBrush="#2A2B30" BorderThickness="1">
                         <StackPanel>
-                            <!-- 1 -->
                             <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
-            <Run Text="• Use "/>
-            <Run FontWeight="Bold" Text="File → New Fence"/>
-            <Run Text=" to create your first fence."/>
+                                <Run Text="• "/><Run FontWeight="Bold" Text="Right-drag"/><Run Text=" on empty desktop to draw a new fence, then drag items into it."/>
                             </TextBlock>
-
-                            <!-- 2 -->
                             <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
-            Drag files/folders onto a fence to create shortcuts inside it.
+                                <Run Text="• "/><Run FontWeight="Bold" Text="⚡ Auto-Import"/><Run Text=" sorts your desktop into Apps, Documents and System fences."/>
                             </TextBlock>
-
-                            <!-- 3 -->
                             <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
-            <Run Text="• Click the "/><Run Text="✎"/><Run Text=" icon on a fence title to rename it."/>
+                                <Run Text="• "/><Run FontWeight="Bold" Text="Double-click a fence title"/><Run Text=" to roll it up; right-click it for color, sorting and more."/>
                             </TextBlock>
-
-                            <!-- 4 -->
                             <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
-            Minimize this window — the app hides to the tray. Double-click the tray icon to restore.
+                                <Run Text="• "/><Run FontWeight="Bold" Text="Ctrl+Alt+F"/><Run Text=" searches every fence; Ctrl+Alt+H hides or shows them all."/>
                             </TextBlock>
-
-                            <!-- 5 -->
+                            <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap" Margin="0,0,0,6">
+                                <Run Text="• "/><Run FontWeight="Bold" Text="File → Layouts"/><Run Text=" saves and restores your whole fence layout."/>
+                            </TextBlock>
                             <TextBlock Foreground="#C7CBD1" TextWrapping="Wrap">
-            <Run Text="• View → "/><Run FontWeight="Bold" Text="Toggle Desktop Icons"/><Run Text=" hides/shows the default desktop icons behind your fences."/>
+                                <Run Text="• "/><Run FontWeight="Bold" Text="Minimize this window"/><Run Text=" to keep OpenFences running in the tray."/>
                             </TextBlock>
                         </StackPanel>
                     </Border>

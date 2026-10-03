@@ -43,6 +43,7 @@ namespace OpenFences
 
             // Load or create config
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath)!);
+            bool firstRun = !File.Exists(_configPath) && !File.Exists(BackupConfigPath);
             LoadConfig();
 
             // Migrate legacy name-based ownership (IconNames) → path-based (ItemPaths).
@@ -115,7 +116,22 @@ namespace OpenFences
 
             // System-wide shortcuts (Ctrl+Alt+H hide/show fences, …)
             ApplyHotkeySetting();
+
+            // Brand-new install: explain the basics once fences are on screen.
+            if (firstRun)
+                Dispatcher.BeginInvoke(ShowWelcome, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
         }
+
+        // ========== Welcome tour ==========
+        private void ShowWelcome()
+        {
+            var dlg = new WelcomeDialog();
+            if (IsVisible) { dlg.Owner = this; dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
+            dlg.ShowDialog();
+            if (dlg.OrganizeRequested) AutoImportDesktop_Click(null, null);
+        }
+
+        private void Welcome_Click(object? sender, RoutedEventArgs? e) => ShowWelcome();
 
         // ========== Global hotkeys ==========
         private GlobalHotkeys? _hotkeys;
