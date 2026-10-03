@@ -1,0 +1,92 @@
+<Window x:Class="OpenFences.SearchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Search fences"
+        Width="560"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        Topmost="True"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <Style x:Key="ResultItem" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="#EDEDED"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="6" Padding="8,5">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#232A39"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#2D3B57"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="16" Padding="12" CornerRadius="12"
+            Background="#1B1D23" BorderBrush="#3B3F4C" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5" Color="#000000"/>
+        </Border.Effect>
+        <StackPanel>
+            <Grid>
+                <TextBox x:Name="QueryBox"
+                         FontSize="18"
+                         Padding="10,8"
+                         Foreground="#FFFFFF"
+                         Background="#22252E"
+                         BorderBrush="#3A4453"
+                         BorderThickness="1"
+                         CaretBrush="#FFFFFF"
+                         TextChanged="QueryBox_TextChanged"/>
+                <TextBlock x:Name="Placeholder"
+                           Text="Search fences…"
+                           FontSize="18"
+                           Margin="13,9,0,0"
+                           Foreground="#6E7584"
+                           IsHitTestVisible="False"/>
+            </Grid>
+
+            <ListBox x:Name="Results"
+                     Margin="0,8,0,0"
+                     MaxHeight="360"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ItemContainerStyle="{StaticResource ResultItem}"
+                     MouseLeftButtonUp="Results_MouseLeftButtonUp">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <DockPanel>
+                            <Image Width="24" Height="24" Source="{Binding Item.Icon}" Margin="0,0,10,0"/>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding FenceName}"
+                                       Foreground="#8A93A6" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            <TextBlock Text="{Binding Item.DisplayName}" FontSize="14"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <TextBlock x:Name="Hint"
+                       Margin="4,8,0,0"
+                       FontSize="11"
+                       Foreground="#6E7584"
+                       Text="↑↓ choose · Enter open · Esc close"/>
+        </StackPanel>
+    </Border>
+</Window>

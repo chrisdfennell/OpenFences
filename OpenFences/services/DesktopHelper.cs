@@ -451,6 +451,17 @@ namespace OpenFences
                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOSENDCHANGING | SWP_SHOWWINDOW);
         }
 
+        /// <summary>
+        /// Lift a fence above normal app windows (while searching) or drop it back. Callers put
+        /// it back in the desktop layer with SendToDesktopLayer afterwards.
+        /// </summary>
+        public static void SetTopmost(IntPtr hwnd, bool topmost)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            SetWindowPos(hwnd, topmost ? new IntPtr(-1) /*HWND_TOPMOST*/ : new IntPtr(-2) /*HWND_NOTOPMOST*/,
+                0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+        }
+
         // ---------- P/Invoke ----------
 
         internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);

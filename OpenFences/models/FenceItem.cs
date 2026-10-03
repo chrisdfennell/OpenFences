@@ -23,6 +23,14 @@ namespace OpenFences
             set => Set(ref _isSelected, value);
         }
 
+        // Faded out while a search is running and this item doesn't match.
+        private bool _isDimmed;
+        public bool IsDimmed
+        {
+            get => _isDimmed;
+            set => Set(ref _isDimmed, value);
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

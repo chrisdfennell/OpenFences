@@ -69,6 +69,9 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Style.Triggers>
+                <DataTrigger Binding="{Binding IsDimmed}" Value="True">
+                    <Setter Property="Opacity" Value="0.25"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                     <Setter Property="Background" Value="#3354708F"/>
                     <Setter Property="BorderBrush" Value="#5A8FD8"/>

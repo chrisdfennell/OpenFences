@@ -120,6 +120,7 @@ namespace OpenFences
         // ========== Global hotkeys ==========
         private GlobalHotkeys? _hotkeys;
         private const uint VK_H = 0x48;
+        private const uint VK_F = 0x46;
 
         private void ApplyHotkeySetting()
         {
@@ -133,12 +134,29 @@ namespace OpenFences
                 const uint ctrlAlt = GlobalHotkeys.MOD_CONTROL | GlobalHotkeys.MOD_ALT;
                 if (!_hotkeys.Register(ctrlAlt, VK_H, TogglePeek))
                     (System.Windows.Application.Current as App)?.SafeLog("Hotkey Ctrl+Alt+H", new InvalidOperationException("Already in use by another app."));
+                if (!_hotkeys.Register(ctrlAlt, VK_F, OpenSearch))
+                    (System.Windows.Application.Current as App)?.SafeLog("Hotkey Ctrl+Alt+F", new InvalidOperationException("Already in use by another app."));
             }
             catch (Exception ex)
             {
                 (System.Windows.Application.Current as App)?.SafeLog("Hotkeys", ex);
             }
         }
+
+        // ========== Search across fences ==========
+        private SearchWindow? _search;
+
+        private void OpenSearch()
+        {
+            if (_search != null) { _search.Activate(); return; }
+            if (_openWindows.Count == 0) return;
+
+            _search = new SearchWindow(_openWindows);
+            _search.Closed += (_, __) => _search = null;
+            _search.Show();
+        }
+
+        private void Search_Click(object? sender, RoutedEventArgs? e) => OpenSearch();
 
         // Settings → Global keyboard shortcuts
         private void MiGlobalHotkeys_Click(object sender, RoutedEventArgs e)
@@ -429,6 +447,7 @@ namespace OpenFences
             var restore = new WinForms.ToolStripMenuItem("Restore OpenFences", null, (_, __) => RestoreFromTray());
             var newFence = new WinForms.ToolStripMenuItem("New Fence", null, (_, __) => NewFence_Click(null!, null!));
             var newPortal = new WinForms.ToolStripMenuItem("New Folder Portal…", null, (_, __) => NewFolderPortal_Click(null!, null!));
+            var search = new WinForms.ToolStripMenuItem("Search Fences…", null, (_, __) => OpenSearch());
             var showAll = new WinForms.ToolStripMenuItem("Show All Fences", null, (_, __) => ShowAll_Click(null!, null!));
             var hideAll = new WinForms.ToolStripMenuItem("Hide All Fences", null, (_, __) => HideAll_Click(null!, null!));
             var toggle = new WinForms.ToolStripMenuItem("Toggle Desktop Icons", null, (_, __) => ToggleDesktopIcons_Click(null!, null!));
@@ -439,6 +458,7 @@ namespace OpenFences
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(newFence);
             _trayMenu.Items.Add(newPortal);
+            _trayMenu.Items.Add(search);
             _trayMenu.Items.Add(showAll);
             _trayMenu.Items.Add(hideAll);
             _trayMenu.Items.Add(toggle);

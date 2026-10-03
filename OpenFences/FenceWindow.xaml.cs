@@ -472,6 +472,31 @@ namespace OpenFences
             }
         }
 
+        // ---------- Search ----------
+        /// <summary>Fade out items that don't match <paramref name="query"/> (null clears), and
+        /// hold a rolled-up fence open while it has matches. Returns the number of matches.</summary>
+        public int ApplySearch(string? query)
+        {
+            int matches = 0;
+            foreach (var item in ItemsSource)
+            {
+                bool match = string.IsNullOrEmpty(query) ||
+                             item.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase);
+                item.IsDimmed = !string.IsNullOrEmpty(query) && !match;
+                if (match && !string.IsNullOrEmpty(query)) matches++;
+            }
+            HoldOpen(matches > 0);
+            return matches;
+        }
+
+        /// <summary>While searching, fences come up above app windows so matches are visible.</summary>
+        public void SetRaised(bool raised)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            DesktopHelper.SetTopmost(hwnd, raised);
+            if (!raised) EnsureBottomZOrder();
+        }
+
         // ---------- Context menu ----------
         private FenceItem? MenuSenderToItem(object sender)
         {
@@ -501,7 +526,7 @@ namespace OpenFences
 
         // Launch a desktop item: a real file/folder via ShellExecute, or a special item via its
         // shell:::{CLSID} moniker (opened through Explorer).
-        private static void LaunchPath(string path)
+        internal static void LaunchPath(string path)
         {
             try
             {
