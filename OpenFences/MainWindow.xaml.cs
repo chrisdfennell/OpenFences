@@ -742,11 +742,14 @@ namespace OpenFences
                 // The catch-all is where released items go, so it can only be deleted once empty.
                 if (IsCatchAll(win) && model.ItemPaths.Count > 0)
                 {
-                    MessageBox.Show(
-                        $"The “{CatchAllFenceName}” fence holds every desktop item that isn't in another fence, " +
-                        "so it can't be deleted while it has items.\n\nMove its items into other fences first, " +
-                        "or just close it with ✕ — it stays closed until you reopen it from View → Closed fences.",
-                        "Delete Fence", MessageBoxButton.OK, MessageBoxImage.Information);
+                    // Its items have nowhere else to go, so "delete" hides it for good instead.
+                    var hide = MessageBox.Show(
+                        $"The “{CatchAllFenceName}” fence holds the {model.ItemPaths.Count} desktop item(s) that aren't in any " +
+                        "other fence, so it can't be removed, but it can be hidden.\n\n" +
+                        "Hide it? It stays hidden after restarts. Its items stay on your desktop: Ctrl+Alt+F still finds them, " +
+                        "and View → Closed fences brings the fence back.",
+                        "Delete Fence", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.OK);
+                    if (hide == MessageBoxResult.OK) win.CloseFence();
                     return;
                 }
 

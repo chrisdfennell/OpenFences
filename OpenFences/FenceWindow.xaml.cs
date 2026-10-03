@@ -1457,7 +1457,9 @@ namespace OpenFences
         }
 
         // ✕ closes the fence but keeps it (and its items); it stays closed until reopened.
-        private void Close_Click(object sender, RoutedEventArgs e)
+        private void Close_Click(object sender, RoutedEventArgs e) => CloseFence();
+
+        public void CloseFence()
         {
             _model.Closed = true;
             Hide();
