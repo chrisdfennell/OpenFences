@@ -379,7 +379,8 @@ namespace OpenFences
                 // Load WPF resource (pack URI) ico for the tray
                 var uri = new Uri("pack://application:,,,/Assets/open-fence.ico", UriKind.Absolute);
                 var s = System.Windows.Application.GetResourceStream(uri)?.Stream;
-                if (s != null) return new Drawing.Icon(s);
+                // Ask for the small-icon size so the tray gets the crisp 16px (or DPI-scaled) frame
+                if (s != null) return new Drawing.Icon(s, WinForms.SystemInformation.SmallIconSize);
             }
             catch { /* fallback below */ }
             return Drawing.SystemIcons.Application;
