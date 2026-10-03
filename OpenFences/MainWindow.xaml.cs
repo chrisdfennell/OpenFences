@@ -106,6 +106,34 @@ namespace OpenFences
 
             // GitHub release checks (startup + daily, if enabled in Settings)
             StartUpdateChecks();
+
+            // Docking/undocking, resolution or scaling changes: put fences back on screen
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+        }
+
+        // ========== Monitor arrangement changes ==========
+        private System.Windows.Threading.DispatcherTimer? _displayTimer;
+
+        // Windows raises several of these while monitors settle, so wait for a quiet moment.
+        private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (_displayTimer == null)
+                {
+                    _displayTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+                    _displayTimer.Tick += (_, __) =>
+                    {
+                        _displayTimer.Stop();
+                        bool moved = false;
+                        foreach (var w in _openWindows.ToList())
+                            if (w.FitToCurrentScreens()) moved = true;
+                        if (moved) SaveConfig();
+                    };
+                }
+                _displayTimer.Stop();
+                _displayTimer.Start();
+            });
         }
 
         // ========== Cross-fence selection (lasso + bulk actions) ==========
@@ -1032,6 +1060,8 @@ namespace OpenFences
             SaveConfig();
 
             _updateTimer?.Stop();
+            _displayTimer?.Stop();
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             StopDesktopWatcher();
             DesktopDoubleClickMonitor.Stop();
             DesktopRightDragFenceSelector.Stop();

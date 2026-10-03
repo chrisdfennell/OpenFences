@@ -83,6 +83,7 @@ namespace OpenFences
             TitleText.Text = model.IsPortal ? "🗁 " + model.Name : model.Name;
             Left = model.Left; Top = model.Top;
             Width = model.Width; Height = model.Height;
+            FitToCurrentScreens();
 
             ApplyBackground();
 
@@ -132,9 +133,14 @@ namespace OpenFences
 
             if (_model.Collapsed) SetCollapsed(true, animate: false);
 
-            // Keep fences out of the Alt-Tab switcher (must run once the HWND exists).
+            // Keep fences out of the Alt-Tab switcher (must run once the HWND exists), and
+            // watch the move/resize loop for snapping and per-monitor-layout memory.
             SourceInitialized += (_, __) =>
-                DesktopHelper.HideFromAltTab(new WindowInteropHelper(this).Handle);
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                DesktopHelper.HideFromAltTab(hwnd);
+                HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            };
 
             Loaded += (_, __) => EnsureBottomZOrder();
             Activated += (_, __) => EnsureBottomZOrder();
@@ -244,6 +250,53 @@ namespace OpenFences
             }
 
             ScheduleSave();
+        }
+
+        // ---------- Monitor arrangements ----------
+        private const int WM_EXITSIZEMOVE = 0x0232;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            // Only a user move/resize is remembered for this monitor arrangement. Windows also
+            // moves fences itself when a monitor disappears; that must not overwrite the spot
+            // the user chose for the arrangement it came from.
+            if (msg == WM_EXITSIZEMOVE) RememberPlacementForScreens();
+            return IntPtr.Zero;
+        }
+
+        private void RememberPlacementForScreens()
+        {
+            _model.Layouts[OpenFences.Services.ScreenLayout.CurrentKey()] = new FenceRect
+            {
+                Left = _model.Left,
+                Top = _model.Top,
+                Width = _model.Width,
+                Height = _model.Height
+            };
+            ScheduleSave();
+        }
+
+        /// <summary>Monitors changed (or startup): go back to where the user put this fence for
+        /// this arrangement, and make sure it's on a visible screen either way.
+        /// Returns true if the fence moved.</summary>
+        public bool FitToCurrentScreens()
+        {
+            var r = _model.Layouts.TryGetValue(OpenFences.Services.ScreenLayout.CurrentKey(), out var saved)
+                ? new Rect(saved.Left, saved.Top, saved.Width, saved.Height)
+                : new Rect(_model.Left, _model.Top, _model.Width, _model.Height);
+            r = OpenFences.Services.ScreenLayout.FitOnScreen(r);
+
+            if (r.Left == _model.Left && r.Top == _model.Top &&
+                r.Width == _model.Width && r.Height == _model.Height) return false;
+
+            _model.Left = r.Left; _model.Top = r.Top;
+            _model.Width = r.Width; _model.Height = r.Height;
+
+            _suppressGeometrySave = true;
+            Left = r.Left; Top = r.Top; Width = r.Width;
+            if (!_model.Collapsed) Height = r.Height;
+            _suppressGeometrySave = false;
+            return true;
         }
 
         // Moving/resizing fires many events; persist once the fence has settled, so the layout

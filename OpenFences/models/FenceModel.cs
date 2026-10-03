@@ -35,5 +35,17 @@ namespace OpenFences
 
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;
+
+        // Where the user last placed this fence for each monitor arrangement
+        // (key: ScreenLayout.CurrentKey()), so docking/undocking puts it back.
+        public System.Collections.Generic.Dictionary<string, FenceRect> Layouts { get; set; } = new();
+    }
+
+    public class FenceRect
+    {
+        public double Left { get; set; }
+        public double Top { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
     }
 }
