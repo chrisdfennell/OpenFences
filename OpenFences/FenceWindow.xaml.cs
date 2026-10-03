@@ -834,7 +834,6 @@ namespace OpenFences
             ScheduleSave();
         }
 
-        private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
         // ---------- Items ----------
 

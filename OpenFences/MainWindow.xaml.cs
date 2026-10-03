@@ -49,6 +49,9 @@ namespace OpenFences
             // Migrate legacy name-based ownership (IconNames) → path-based (ItemPaths).
             MigrateLegacyOwnership();
 
+            // Older versions could leave duplicate fences (e.g. several "Desktop" fences).
+            RepairDuplicateFences();
+
             // Fences read app-wide options (snapping, hover roll-up) live.
             FenceWindow.Options = _config.Options;
 
@@ -465,6 +468,7 @@ namespace OpenFences
             var newPortal = new WinForms.ToolStripMenuItem("New Folder Portal…", null, (_, __) => NewFolderPortal_Click(null!, null!));
             var search = new WinForms.ToolStripMenuItem("Search Fences…", null, (_, __) => OpenSearch());
             var showAll = new WinForms.ToolStripMenuItem("Show All Fences", null, (_, __) => ShowAll_Click(null!, null!));
+            var deleteAll = new WinForms.ToolStripMenuItem("Delete All Fences…", null, (_, __) => DeleteAllFences_Click(null, null));
             var hideAll = new WinForms.ToolStripMenuItem("Hide All Fences", null, (_, __) => HideAll_Click(null!, null!));
             var toggle = new WinForms.ToolStripMenuItem("Toggle Desktop Icons", null, (_, __) => ToggleDesktopIcons_Click(null!, null!));
             var updates = new WinForms.ToolStripMenuItem("Check for Updates…", null, (_, __) => CheckForUpdatesNow_Click(null, null));
@@ -478,6 +482,7 @@ namespace OpenFences
             _trayMenu.Items.Add(showAll);
             _trayMenu.Items.Add(hideAll);
             _trayMenu.Items.Add(toggle);
+            _trayMenu.Items.Add(deleteAll);
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(updates);
             _trayMenu.Items.Add(exit);
@@ -825,6 +830,45 @@ namespace OpenFences
             if (changed) SaveConfig();
         }
 
+        // Earlier versions let the ✕ button close a fence's window while keeping the fence, and
+        // then created a fresh fence of the same name when one was needed, so configs could pile
+        // up several "Desktop"/"Apps" fences that all reopen at startup. Merge same-named real
+        // fences into the first one, and keep each desktop item in only one fence (a specific
+        // fence wins over the catch-all).
+        private void RepairDuplicateFences()
+        {
+            bool changed = false;
+
+            foreach (var group in _fences.Where(f => !f.IsPortal)
+                                         .GroupBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+                                         .Where(g => g.Count() > 1)
+                                         .ToList())
+            {
+                var keep = group.First();
+                foreach (var dup in group.Skip(1))
+                {
+                    foreach (var p in dup.ItemPaths)
+                        if (!keep.ItemPaths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                            keep.ItemPaths.Add(p);
+                    _fences.Remove(dup);
+                }
+                changed = true;
+            }
+
+            var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var order = _fences.Where(f => !f.IsPortal)
+                               .OrderBy(f => string.Equals(f.Name, CatchAllFenceName, StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                               .ToList();
+            foreach (var f in order)
+            {
+                int before = f.ItemPaths.Count;
+                f.ItemPaths = f.ItemPaths.Where(p => claimed.Add(p)).ToList();
+                if (f.ItemPaths.Count != before) changed = true;
+            }
+
+            if (changed) SaveConfig();
+        }
+
         private IEnumerable<FenceWindow> RealFences => _openWindows.Where(w => !w.IsPortal);
 
         private bool AnyFenceOwns(string path) => RealFences.Any(w => w.OwnsPath(path));
@@ -862,6 +906,19 @@ namespace OpenFences
         {
             var existing = FindRealFence(name);
             if (existing != null) return existing;
+
+            // A fence with this name exists but its window isn't open (e.g. it failed to
+            // spawn): reopen it rather than creating a duplicate.
+            var model0 = _fences.FirstOrDefault(f => !f.IsPortal &&
+                string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (model0 != null)
+            {
+                var reopened = new FenceWindow(model0);
+                HookFenceWindow(reopened, model0);
+                _openWindows.Add(reopened);
+                reopened.Show();
+                return reopened;
+            }
 
             var model = new FenceModel
             {
@@ -1117,6 +1174,30 @@ namespace OpenFences
                 MessageBox.Show("Auto-import failed:\n" + ex.Message,
                                 "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        // ========== Delete all fences ==========
+        // Desktop items stay hidden while OpenFences runs, so they still need somewhere to show:
+        // "delete all" leaves a single Desktop fence holding everything.
+        private void DeleteAllFences_Click(object? sender, RoutedEventArgs? e)
+        {
+            var ok = MessageBox.Show(
+                "Delete all fences and portals?\n\n" +
+                $"Nothing on your desktop is deleted: every item goes back into a single “{CatchAllFenceName}” fence. " +
+                "Portals are removed but their folders are left alone.\n\n" +
+                "The current layout is saved first, so you can bring it back from File → Layouts.",
+                "Delete All Fences", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+            if (ok != MessageBoxResult.OK) return;
+
+            AutoSnapshot("Before deleting all fences");
+
+            foreach (var w in _openWindows.ToList()) w.Close();
+            _openWindows.Clear();
+            _config.Fences = new List<FenceModel>();
+            _peeked = false;
+
+            BuildCatchAll(); // creates the one Desktop fence with every desktop item
+            SaveConfig();
         }
 
         // ========== Layout snapshots ==========

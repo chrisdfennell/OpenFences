@@ -49,6 +49,8 @@
                             <MenuItem Header="Save current layout…"/>
                         </MenuItem>
                         <Separator/>
+                        <MenuItem Header="Delete All Fences…" Foreground="#FFEF4444" Click="DeleteAllFences_Click"/>
+                        <Separator/>
                         <MenuItem Header="Exit" Click="Exit_Click"/>
                     </MenuItem>
 

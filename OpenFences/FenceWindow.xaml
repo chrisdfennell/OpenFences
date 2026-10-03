@@ -132,8 +132,8 @@
                     <Button Content="✕"
                             Style="{StaticResource FenceCloseButton}"
                             Width="28" Height="24"
-                            Click="Close_Click"
-                            ToolTip="Close Fence"/>
+                            Click="DeleteFence_Click"
+                            ToolTip="Delete fence…"/>
                 </StackPanel>
 
                 <!-- Right-click menu on the title bar -->
@@ -202,8 +202,6 @@
                         </MenuItem>
                         <Separator/>
                         <MenuItem Header="Delete Fence…" Foreground="#FFEF4444" Click="DeleteFence_Click"/>
-                        <Separator/>
-                        <MenuItem Header="Close Fence" Click="Close_Click"/>
                     </ContextMenu>
                 </Grid.ContextMenu>
             </Grid>
