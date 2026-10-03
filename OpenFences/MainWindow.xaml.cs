@@ -112,6 +112,40 @@ namespace OpenFences
 
             // Docking/undocking, resolution or scaling changes: put fences back on screen
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+
+            // System-wide shortcuts (Ctrl+Alt+H hide/show fences, …)
+            ApplyHotkeySetting();
+        }
+
+        // ========== Global hotkeys ==========
+        private GlobalHotkeys? _hotkeys;
+        private const uint VK_H = 0x48;
+
+        private void ApplyHotkeySetting()
+        {
+            _hotkeys?.Dispose();
+            _hotkeys = null;
+            if (!_config.Options.GlobalHotkeys) return;
+
+            try
+            {
+                _hotkeys = new GlobalHotkeys(new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle());
+                const uint ctrlAlt = GlobalHotkeys.MOD_CONTROL | GlobalHotkeys.MOD_ALT;
+                if (!_hotkeys.Register(ctrlAlt, VK_H, TogglePeek))
+                    (System.Windows.Application.Current as App)?.SafeLog("Hotkey Ctrl+Alt+H", new InvalidOperationException("Already in use by another app."));
+            }
+            catch (Exception ex)
+            {
+                (System.Windows.Application.Current as App)?.SafeLog("Hotkeys", ex);
+            }
+        }
+
+        // Settings → Global keyboard shortcuts
+        private void MiGlobalHotkeys_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.GlobalHotkeys = MiGlobalHotkeys.IsChecked;
+            ApplyHotkeySetting();
+            SaveConfig();
         }
 
         // ========== Monitor arrangement changes ==========
@@ -256,6 +290,7 @@ namespace OpenFences
             MiCheckForUpdates.IsChecked = _config.Options.CheckForUpdates;
             MiSnapToEdges.IsChecked = _config.Options.SnapToEdges;
             MiSnapToGrid.IsChecked = _config.Options.SnapToGrid;
+            MiGlobalHotkeys.IsChecked = _config.Options.GlobalHotkeys;
         }
 
         // Settings → Snap to edges / grid (fences read these live while moving)
@@ -950,19 +985,11 @@ namespace OpenFences
             DesktopHelper.ToggleDesktopIcons();
         }
 
-        private void ShowAll_Click(object? sender, RoutedEventArgs? e)
-        {
-            foreach (var w in _openWindows)
-            {
-                w.Show();
-                w.EnsureBottomZOrder();
-            }
-        }
+        private void ShowAll_Click(object? sender, RoutedEventArgs? e) => SetFencesHidden(false);
 
-        private void HideAll_Click(object? sender, RoutedEventArgs? e)
-        {
-            foreach (var w in _openWindows) w.Hide();
-        }
+        private void HideAll_Click(object? sender, RoutedEventArgs? e) => SetFencesHidden(true);
+
+        private void ToggleFences_Click(object? sender, RoutedEventArgs? e) => TogglePeek();
 
         private void OpenFencesFolder_Click(object? sender, RoutedEventArgs? e)
         {
@@ -1051,12 +1078,16 @@ namespace OpenFences
             if (_config.Options.DoubleClickDesktopToToggleIcons) DesktopHelper.ToggleDesktopIconsRobust();
         }
 
-        private void TogglePeek()
+        // Shared by the double-click peek, Ctrl+Alt+H and the Show/Hide All menu items, so
+        // they always agree on whether fences are currently hidden.
+        private void TogglePeek() => SetFencesHidden(!_peeked);
+
+        private void SetFencesHidden(bool hidden)
         {
-            _peeked = !_peeked;
+            _peeked = hidden;
             foreach (var w in _openWindows)
             {
-                if (_peeked) w.Hide();
+                if (hidden) w.Hide();
                 else { w.Show(); w.EnsureBottomZOrder(); }
             }
         }
@@ -1074,6 +1105,7 @@ namespace OpenFences
 
             _updateTimer?.Stop();
             _displayTimer?.Stop();
+            _hotkeys?.Dispose();
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             StopDesktopWatcher();
             DesktopDoubleClickMonitor.Stop();

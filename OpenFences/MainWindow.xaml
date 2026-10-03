@@ -50,6 +50,7 @@
 
                     <MenuItem Header="_View">
                         <MenuItem Header="Toggle Desktop Icons" Click="ToggleDesktopIcons_Click"/>
+                        <MenuItem Header="Hide / Show All Fences" InputGestureText="Ctrl+Alt+H" Click="ToggleFences_Click"/>
                         <MenuItem Header="Show All Fences" Click="ShowAll_Click"/>
                         <MenuItem Header="Hide All Fences" Click="HideAll_Click"/>
                     </MenuItem>
@@ -80,6 +81,11 @@
                                   Header="Snap fences to a grid"
                                   IsCheckable="True"
                                   Click="MiSnap_Click"/>
+                        <Separator/>
+                        <MenuItem x:Name="MiGlobalHotkeys"
+                                  Header="Global shortcuts (Ctrl+Alt+H hide/show, Ctrl+Alt+F search)"
+                                  IsCheckable="True"
+                                  Click="MiGlobalHotkeys_Click"/>
                         <Separator/>
                         <MenuItem x:Name="MiAutoOrganize"
                                   Header="Auto-organize new desktop items into fences"

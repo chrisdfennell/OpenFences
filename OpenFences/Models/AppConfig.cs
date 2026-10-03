@@ -24,6 +24,9 @@ namespace OpenFences
         public bool SnapToEdges { get; set; } = true;
         // …and optionally to a 20px grid.
         public bool SnapToGrid { get; set; } = false;
+
+        // System-wide shortcuts: Ctrl+Alt+H hides/shows fences, Ctrl+Alt+F searches them.
+        public bool GlobalHotkeys { get; set; } = true;
     }
 
     // How a desktop item is matched to a target fence by the rules engine.
