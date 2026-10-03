@@ -1456,6 +1456,26 @@ namespace OpenFences
                     mi.IsChecked = string.Equals(Convert.ToString(mi.Tag), activeTag, StringComparison.Ordinal);
         }
 
+        // ✕ closes the fence but keeps it (and its items); it stays closed until reopened.
+        private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            _model.Closed = true;
+            Hide();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>True when the user closed this fence with ✕ (it's kept, just not shown).</summary>
+        public bool IsClosedByUser => _model.Closed;
+
+        /// <summary>Show a fence the user had closed.</summary>
+        public void Reopen()
+        {
+            _model.Closed = false;
+            Show();
+            EnsureBottomZOrder();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
         private void DeleteFence_Click(object sender, RoutedEventArgs e)
         {
             // MainWindow owns the single confirm + folder handling (portal-aware).

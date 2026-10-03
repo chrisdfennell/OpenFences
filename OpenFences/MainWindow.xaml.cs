@@ -704,7 +704,7 @@ namespace OpenFences
                     var win = new FenceWindow(modelRef);
                     HookFenceWindow(win, modelRef);
                     _openWindows.Add(win);
-                    win.Show();
+                    if (!m.Closed) win.Show(); // closed fences stay closed but keep their items
                 }
                 catch (Exception ex)
                 {
@@ -744,7 +744,8 @@ namespace OpenFences
                 {
                     MessageBox.Show(
                         $"The “{CatchAllFenceName}” fence holds every desktop item that isn't in another fence, " +
-                        "so it can't be deleted while it has items.\n\nMove its items into other fences first.",
+                        "so it can't be deleted while it has items.\n\nMove its items into other fences first, " +
+                        "or just close it with ✕ — it stays closed until you reopen it from View → Closed fences.",
                         "Delete Fence", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
@@ -844,8 +845,9 @@ namespace OpenFences
                                          .Where(g => g.Count() > 1)
                                          .ToList())
             {
-                var keep = group.First();
-                foreach (var dup in group.Skip(1))
+                // Keep the copy with the most items (and its position); fold the rest into it.
+                var keep = group.OrderByDescending(f => f.ItemPaths.Count).First();
+                foreach (var dup in group.Where(f => !ReferenceEquals(f, keep)))
                 {
                     foreach (var p in dup.ItemPaths)
                         if (!keep.ItemPaths.Contains(p, StringComparer.OrdinalIgnoreCase))
@@ -1105,7 +1107,36 @@ namespace OpenFences
             DesktopHelper.ToggleDesktopIcons();
         }
 
-        private void ShowAll_Click(object? sender, RoutedEventArgs? e) => SetFencesHidden(false);
+        // Show All also reopens fences closed with ✕.
+        private void ShowAll_Click(object? sender, RoutedEventArgs? e)
+        {
+            foreach (var w in _openWindows.Where(w => w.IsClosedByUser).ToList()) w.Reopen();
+            SetFencesHidden(false);
+        }
+
+        // View → Closed fences: lists fences closed with ✕ so they can be reopened.
+        private void MiClosedFences_SubmenuOpened(object sender, RoutedEventArgs e)
+        {
+            if (!ReferenceEquals(e.OriginalSource, MiClosedFences)) return;
+            MiClosedFences.Items.Clear();
+
+            var closed = _openWindows.Where(w => w.IsClosedByUser).ToList();
+            if (closed.Count == 0)
+            {
+                MiClosedFences.Items.Add(new MenuItem { Header = "(none)", IsEnabled = false });
+                return;
+            }
+            foreach (var w in closed)
+            {
+                var mi = new MenuItem { Header = w.FenceName };
+                mi.Click += (_, __) => { w.Reopen(); SaveConfig(); };
+                MiClosedFences.Items.Add(mi);
+            }
+            MiClosedFences.Items.Add(new Separator());
+            var all = new MenuItem { Header = "Reopen all" };
+            all.Click += (_, __) => ShowAll_Click(null, null);
+            MiClosedFences.Items.Add(all);
+        }
 
         private void HideAll_Click(object? sender, RoutedEventArgs? e) => SetFencesHidden(true);
 
@@ -1162,7 +1193,9 @@ namespace OpenFences
                 foreach (var kv in groups)
                 {
                     var (l, t) = pos.TryGetValue(kv.Key, out var p) ? p : (80, 80);
-                    AssignItemsToFence(EnsureRealFence(kv.Key, l, t), kv.Value);
+                    var target = EnsureRealFence(kv.Key, l, t);
+                    if (target.IsClosedByUser) target.Reopen(); // the user asked to see these
+                    AssignItemsToFence(target, kv.Value);
                 }
 
                 SaveConfig();
@@ -1377,7 +1410,7 @@ namespace OpenFences
             foreach (var w in _openWindows)
             {
                 if (hidden) w.Hide();
-                else { w.Show(); w.EnsureBottomZOrder(); }
+                else if (!w.IsClosedByUser) { w.Show(); w.EnsureBottomZOrder(); }
             }
         }
 

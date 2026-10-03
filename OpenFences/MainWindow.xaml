@@ -59,6 +59,9 @@
                         <MenuItem Header="Search Fences…" InputGestureText="Ctrl+Alt+F" Click="Search_Click"/>
                         <MenuItem Header="Hide / Show All Fences" InputGestureText="Ctrl+Alt+H" Click="ToggleFences_Click"/>
                         <MenuItem Header="Show All Fences" Click="ShowAll_Click"/>
+                        <MenuItem x:Name="MiClosedFences" Header="Closed fences" SubmenuOpened="MiClosedFences_SubmenuOpened">
+                            <MenuItem Header="(none)" IsEnabled="False"/>
+                        </MenuItem>
                         <MenuItem Header="Hide All Fences" Click="HideAll_Click"/>
                     </MenuItem>
 

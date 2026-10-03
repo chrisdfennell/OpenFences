@@ -141,6 +141,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 
 - Create a fence: **File → New Fence**, or right-drag a rectangle on empty desktop.  
 - Add items: drop files from Explorer onto a fence, or use **⚡ Auto-Import**.  
+- Close vs. delete: **✕** closes a fence and it stays closed (its items stay in it); reopen it from **View → Closed fences**. To remove a fence for good, use **✎ → Delete Fence…**, or **File → Delete All Fences…** to start over.  
 - Find something: **Ctrl+Alt+F**, type, Enter.  
 - Hide/show all fences: **Ctrl+Alt+H** (or double-click empty desktop, if enabled in Settings).  
 - Style a fence: right-click its title bar → **Color** / **Title size** / **Transparency**.  

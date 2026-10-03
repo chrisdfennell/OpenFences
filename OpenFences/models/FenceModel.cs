@@ -26,6 +26,10 @@ namespace OpenFences
         public double Height { get; set; } = 240;
         public bool Collapsed { get; set; } = false;
 
+        // Closed with ✕: stays closed (also across restarts) until reopened from
+        // View → Closed fences. It keeps owning its items, so nothing gets re-homed.
+        public bool Closed { get; set; } = false;
+
         // 0.0 (fully transparent) … 1.0 (opaque)
         public double BackgroundOpacity { get; set; } = 0.92;
 
