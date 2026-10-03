@@ -203,11 +203,12 @@
                                     MouseLeftButtonDown="Item_MouseLeftButtonDown"
                                     MouseRightButtonDown="Item_MouseRightButtonDown">
                                 <Border.ContextMenu>
-                                    <ContextMenu>
+                                    <ContextMenu Opened="ItemMenu_Opened">
                                         <MenuItem Header="Open" Click="Item_Open_Click"/>
                                         <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
                                         <Separator/>
-                                        <MenuItem Header="Delete" Click="Item_Delete_Click"/>
+                                        <MenuItem Header="Remove from fence" Tag="RemoveFromFence" Click="Item_RemoveFromFence_Click"/>
+                                        <MenuItem Header="Delete (Recycle Bin)" Click="Item_Delete_Click"/>
                                     </ContextMenu>
                                 </Border.ContextMenu>
                                 <StackPanel>

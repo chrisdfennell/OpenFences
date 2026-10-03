@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpenFences
@@ -7,12 +8,27 @@ namespace OpenFences
     // Fully-qualify to avoid WinForms ambiguity if present
     public partial class App : System.Windows.Application
     {
+        private const string InstanceMutexName = @"Local\OpenFences.SingleInstance";
+        private const string ShowEventName = @"Local\OpenFences.ShowMainWindow";
+
         private readonly string _logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "OpenFences", "error.log");
 
+        // Held for the app's lifetime so a second launch can tell we're running.
+        private readonly Mutex _instanceMutex;
+        private readonly bool _isPrimaryInstance;
+        private EventWaitHandle? _showEvent;
+
         public App()
         {
+            _instanceMutex = new Mutex(initiallyOwned: true, InstanceMutexName, out _isPrimaryInstance);
+
+            // A second copy only signals the first one and exits (see OnStartup). It must not
+            // register the icon-restore handler below, or exiting would un-hide the desktop
+            // icons that the running instance deliberately hid.
+            if (!_isPrimaryInstance) return;
+
             this.DispatcherUnhandledException += (s, e) =>
             {
                 SafeLog("DispatcherUnhandledException", e.Exception);
@@ -42,7 +58,45 @@ namespace OpenFences
             };
         }
 
-        private void SafeLog(string tag, Exception? ex)
+        protected override void OnStartup(System.Windows.StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            if (!_isPrimaryInstance)
+            {
+                // Ask the running instance to show its window, then quit quietly.
+                try
+                {
+                    if (EventWaitHandle.TryOpenExisting(ShowEventName, out var existing))
+                        using (existing) existing.Set();
+                }
+                catch { /* best effort */ }
+                Shutdown();
+                return;
+            }
+
+            var main = new MainWindow();
+            MainWindow = main;
+            main.Show();
+
+            // Later launches signal this event; bring the controller back from the tray.
+            _showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
+            ThreadPool.RegisterWaitForSingleObject(_showEvent, (_, __) =>
+                Dispatcher.BeginInvoke(() => main.RestoreFromTray()), null, Timeout.Infinite, executeOnlyOnce: false);
+        }
+
+        protected override void OnExit(System.Windows.ExitEventArgs e)
+        {
+            _showEvent?.Dispose();
+            if (_isPrimaryInstance)
+            {
+                try { _instanceMutex.ReleaseMutex(); } catch { /* ignore */ }
+            }
+            _instanceMutex.Dispose();
+            base.OnExit(e);
+        }
+
+        internal void SafeLog(string tag, Exception? ex)
         {
             try
             {

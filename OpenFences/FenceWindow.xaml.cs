@@ -96,18 +96,33 @@ namespace OpenFences
             if (_model.IsPortal)
             {
                 // ----- Portal: windowed view of a real folder -----
-                Directory.CreateDirectory(_model.FolderPath);
-                ReloadItems();
-
-                // Watch for folder changes
-                _watcher = new FileSystemWatcher(_model.FolderPath)
+                // The folder may be gone or on a drive that isn't connected. Never recreate it
+                // (that would leave an empty stand-in) — just show the portal as unavailable.
+                try
                 {
-                    IncludeSubdirectories = false,
-                    EnableRaisingEvents = true
-                };
-                _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
-                _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
-                _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
+                    if (!Directory.Exists(_model.FolderPath))
+                        throw new DirectoryNotFoundException(_model.FolderPath);
+
+                    ReloadItems();
+
+                    // Watch for folder changes
+                    _watcher = new FileSystemWatcher(_model.FolderPath)
+                    {
+                        IncludeSubdirectories = false,
+                        EnableRaisingEvents = true
+                    };
+                    _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
+                    _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
+                    _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
+                }
+                catch
+                {
+                    _watcher?.Dispose();
+                    _watcher = null;
+                    TitleText.Text = "🗁 " + model.Name + " (unavailable)";
+                    TitleText.ToolTip = $"This folder can't be reached:\n{_model.FolderPath}\n\n" +
+                                        "Reconnect the drive (or restore the folder) and restart OpenFences.";
+                }
             }
             else
             {
@@ -227,6 +242,24 @@ namespace OpenFences
                 // Width can still change while collapsed; height stays remembered.
                 _model.Width = Width;
             }
+
+            ScheduleSave();
+        }
+
+        // Moving/resizing fires many events; persist once the fence has settled, so the layout
+        // survives a crash or an upgrade instead of only being saved on a clean exit.
+        private System.Windows.Threading.DispatcherTimer? _saveTimer;
+
+        private void ScheduleSave()
+        {
+            if (!IsLoaded) return; // initial placement in the constructor isn't a user change
+            if (_saveTimer == null)
+            {
+                _saveTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(600) };
+                _saveTimer.Tick += (_, __) => { _saveTimer.Stop(); Changed?.Invoke(this, EventArgs.Empty); };
+            }
+            _saveTimer.Stop();
+            _saveTimer.Start();
         }
 
         public void ReloadItems()
@@ -470,6 +503,7 @@ namespace OpenFences
             Focus();
             EnsureBottomZOrder();
             SetCollapsed(!_model.Collapsed, animate: true);
+            ScheduleSave();
         }
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
@@ -519,38 +553,67 @@ namespace OpenFences
             foreach (var item in ItemsSource.Where(i => i.IsSelected).ToList()) OpenItem(item);
         }
 
-        // Deletes this fence's selected items without prompting (caller confirms).
-        public void DeleteSelectedItemsNoConfirm()
+        public static Action? RequestRemoveSelected;
+
+        /// <summary>Paths of the selected items (used by "Remove from fence").</summary>
+        public IEnumerable<string> SelectedPaths => ItemsSource.Where(i => i.IsSelected).Select(i => i.Path).ToList();
+
+        /// <summary>True when "Remove from fence" means something here: a real fence other than
+        /// the catch-all (where removed items go) with a selection.</summary>
+        public bool CanRemoveSelected => IsRealIcon && !IsCatchAllFence && SelectedCount > 0;
+
+        private bool IsCatchAllFence =>
+            string.Equals(_model.Name, MainWindow.CatchAllFenceName, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>The one delete confirmation. It says plainly that real files are deleted
+        /// (to the Recycle Bin), and points at "Remove from fence" when that applies.</summary>
+        public static bool ConfirmDelete(int count, bool offerRemove)
         {
+            string what = count == 1 ? "the selected item" : $"{count} selected items";
+            string msg = $"Move {what} to the Recycle Bin?\n\n" +
+                         "This deletes the actual file(s) or folder(s) from your computer, not just from the fence.";
+            if (offerRemove)
+                msg += "\n\nTo only take items out of a fence, right-click and choose “Remove from fence” instead.";
+            return MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                                   MessageBoxResult.No) == MessageBoxResult.Yes;
+        }
+
+        public static void ReportDeleteFailures(IReadOnlyCollection<string> failed)
+        {
+            if (failed.Count == 0) return;
+            var names = string.Join("\n", failed.Take(10).Select(p => "• " + Path.GetFileName(p)));
+            if (failed.Count > 10) names += $"\n…and {failed.Count - 10} more";
+            MessageBox.Show($"These items couldn't be deleted (they may be in use, need admin rights, " +
+                            $"or the delete was cancelled):\n\n{names}",
+                            "Delete", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        // Sends this fence's selected items to the Recycle Bin without prompting (caller
+        // confirms). Returns the paths that couldn't be deleted.
+        public List<string> DeleteSelectedItemsNoConfirm()
+        {
+            var failed = new List<string>();
             var selected = ItemsSource.Where(i => i.IsSelected).ToList();
-            if (selected.Count == 0) return;
+            if (selected.Count == 0) return failed;
 
             SetWatcherEnabled(false);
             try
             {
                 foreach (var item in selected)
                 {
-                    try
-                    {
-                        // Special (CLSID) items have no file to delete — just release them.
-                        if (item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
-                        {
-                            _model.ItemPaths.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
-                            ItemsSource.Remove(item);
-                            continue;
-                        }
+                    // Special (CLSID) items have no file to delete — just release them.
+                    bool gone = item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)
+                                || OpenFences.Services.RecycleBin.Send(item.Path);
+                    if (!gone) { failed.Add(item.Path); continue; }
 
-                        if (Directory.Exists(item.Path)) Directory.Delete(item.Path, true);
-                        else File.Delete(item.Path);
-                        // Real fences track ownership by path; drop it so it doesn't linger.
-                        _model.ItemPaths.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
-                        ItemsSource.Remove(item);
-                    }
-                    catch { /* skip one */ }
+                    // Real fences track ownership by path; drop it so it doesn't linger.
+                    _model.ItemPaths.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
+                    ItemsSource.Remove(item);
                 }
                 if (IsRealIcon) Changed?.Invoke(this, EventArgs.Empty);
             }
             finally { SetWatcherEnabled(true); }
+            return failed;
         }
 
         // Selects items whose on-screen bounds fall inside a physical-pixel rect
@@ -579,13 +642,23 @@ namespace OpenFences
         {
             int n = SelectedCount;
             if (n == 0) return;
-            string what = n == 1 ? "the selected item" : $"{n} selected items";
-            string msg = _model.IsPortal
-                ? $"Delete {what} from the folder?\n\nThis removes the real file(s)/folder(s)."
-                : $"Delete {what}?";
-            if (MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                return;
-            DeleteSelectedItemsNoConfirm();
+            if (!ConfirmDelete(n, offerRemove: CanRemoveSelected)) return;
+            ReportDeleteFailures(DeleteSelectedItemsNoConfirm());
+        }
+
+        // Item menu: "Remove from fence" only applies to real fences other than the catch-all.
+        private void ItemMenu_Opened(object sender, RoutedEventArgs e)
+        {
+            if (sender is not ContextMenu menu) return;
+            foreach (var obj in menu.Items)
+                if (obj is MenuItem mi && Equals(mi.Tag, "RemoveFromFence"))
+                    mi.Visibility = IsRealIcon && !IsCatchAllFence ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void Item_RemoveFromFence_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuSenderToItem(sender) is FenceItem item && !item.IsSelected) SelectOnly(item);
+            RequestRemoveSelected?.Invoke();
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)

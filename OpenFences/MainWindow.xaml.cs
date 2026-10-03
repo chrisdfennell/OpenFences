@@ -99,6 +99,7 @@ namespace OpenFences
             // Delete/Enter operate on the whole selection across all fences
             FenceWindow.RequestDeleteSelected = DeleteAllSelected;
             FenceWindow.RequestOpenSelected = OpenAllSelected;
+            FenceWindow.RequestRemoveSelected = RemoveSelectedFromFences;
 
             // Left-drag on the empty desktop = lasso that selects items across fences
             DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
@@ -122,15 +123,30 @@ namespace OpenFences
             int total = _openWindows.Sum(w => w.SelectedCount);
             if (total == 0) return;
 
-            bool anyPortal = _openWindows.Any(w => w.IsPortal && w.SelectedCount > 0);
-            string msg = total == 1 ? "Delete the selected item?" : $"Delete {total} selected items?";
-            if (anyPortal) msg += "\n\nSome are in folder portals — this removes the real files/folders.";
-
-            if (MessageBox.Show(msg, "Delete", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (!FenceWindow.ConfirmDelete(total, offerRemove: _openWindows.Any(w => w.CanRemoveSelected)))
                 return;
 
-            foreach (var w in _openWindows.ToList()) w.DeleteSelectedItemsNoConfirm();
+            var failed = new List<string>();
+            foreach (var w in _openWindows.ToList()) failed.AddRange(w.DeleteSelectedItemsNoConfirm());
+            FenceWindow.ReportDeleteFailures(failed);
         }
+
+        // "Remove from fence": hand the selected items back to the catch-all "Desktop" fence.
+        // Nothing is deleted. Portals mirror a real folder, so they're left alone.
+        private void RemoveSelectedFromFences()
+        {
+            var paths = RealFences
+                .Where(w => !IsCatchAll(w))
+                .SelectMany(w => w.SelectedPaths)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (paths.Count == 0) return;
+
+            AssignItemsToFence(EnsureRealFence(CatchAllFenceName), paths);
+        }
+
+        private static bool IsCatchAll(FenceWindow w) =>
+            !w.IsPortal && string.Equals(w.FenceName, CatchAllFenceName, StringComparison.OrdinalIgnoreCase);
 
         private void OpenAllSelected()
         {
@@ -290,7 +306,7 @@ namespace OpenFences
             }
         }
 
-        private void RestoreFromTray()
+        internal void RestoreFromTray()
         {
             Show();
             WindowState = WindowState.Normal;
@@ -341,35 +357,96 @@ namespace OpenFences
             Converters = { new JsonStringEnumConverter() }
         };
 
+        // SaveConfig keeps the previous good config here, so a damaged config.json can be recovered.
+        private string BackupConfigPath => _configPath + ".bak";
+
         private void LoadConfig()
         {
+            bool mainExists = File.Exists(_configPath);
+            if (TryReadConfig(_configPath, out var cfg)) { _config = cfg; return; }
+            if (!mainExists && !File.Exists(BackupConfigPath)) return; // first run
+
+            // config.json is missing or unreadable. Set the damaged file aside (never silently
+            // overwrite it), then fall back to the backup from the last good save.
+            string? damagedCopy = null;
+            if (mainExists)
+            {
+                try
+                {
+                    damagedCopy = Path.Combine(Path.GetDirectoryName(_configPath)!,
+                        $"config.damaged-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+                    File.Move(_configPath, damagedCopy);
+                }
+                catch { damagedCopy = null; }
+            }
+
+            if (TryReadConfig(BackupConfigPath, out var backup))
+            {
+                _config = backup;
+                if (mainExists)
+                    MessageBox.Show("Your OpenFences settings file was damaged, so your fences were restored " +
+                                    "from the last backup." +
+                                    (damagedCopy != null ? $"\n\nThe damaged file was kept as:\n{damagedCopy}" : ""),
+                                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (mainExists)
+                MessageBox.Show("Your OpenFences settings file couldn't be read and no backup was available, " +
+                                "so OpenFences is starting with a fresh layout." +
+                                (damagedCopy != null ? $"\n\nThe damaged file was kept as:\n{damagedCopy}" : ""),
+                                "OpenFences", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        private static bool TryReadConfig(string path, out AppConfig config)
+        {
+            config = new AppConfig();
             try
             {
-                if (!File.Exists(_configPath)) return;
-                var json = File.ReadAllText(_configPath);
+                if (!File.Exists(path)) return false;
+                var json = File.ReadAllText(path);
 
                 // Back-compat: old format was just a list of FenceModel
                 if (json.TrimStart().StartsWith("["))
                 {
                     var legacy = JsonSerializer.Deserialize<List<FenceModel>>(json);
-                    if (legacy != null) _config.Fences = legacy;
-                    return;
+                    if (legacy == null) return false;
+                    config.Fences = legacy;
+                    return true;
                 }
 
                 var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOpts);
-                if (cfg != null) _config = cfg;
+                if (cfg == null) return false;
+                config = cfg;
+                return true;
             }
-            catch { /* ignore parse errors for now */ }
+            catch { return false; }
         }
 
+        // Write to a temp file, flush it to disk, then swap it in. A crash or power loss can
+        // never leave a half-written config.json, and the previous version is kept as .bak.
         private void SaveConfig()
         {
+            var tmp = _configPath + ".tmp";
             try
             {
-                var json = JsonSerializer.Serialize(_config, JsonOpts);
-                File.WriteAllText(_configPath, json);
+                var json = JsonSerializer.SerializeToUtf8Bytes(_config, JsonOpts);
+                using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    fs.Write(json, 0, json.Length);
+                    fs.Flush(flushToDisk: true);
+                }
+
+                if (File.Exists(_configPath))
+                    File.Replace(tmp, _configPath, BackupConfigPath, ignoreMetadataErrors: true);
+                else
+                    File.Move(tmp, _configPath);
             }
-            catch { /* ignore */ }
+            catch (Exception ex)
+            {
+                (System.Windows.Application.Current as App)?.SafeLog("SaveConfig", ex);
+                try { File.Delete(tmp); } catch { /* ignore */ }
+            }
         }
 
         // ========== Fence windows ==========
@@ -377,11 +454,19 @@ namespace OpenFences
         {
             foreach (var m in _fences.ToList())
             {
-                var modelRef = m; // explicit capture
-                var win = new FenceWindow(modelRef);
-                HookFenceWindow(win, modelRef);
-                _openWindows.Add(win);
-                win.Show();
+                // One broken fence must never stop the app (and every other fence) from starting.
+                try
+                {
+                    var modelRef = m; // explicit capture
+                    var win = new FenceWindow(modelRef);
+                    HookFenceWindow(win, modelRef);
+                    _openWindows.Add(win);
+                    win.Show();
+                }
+                catch (Exception ex)
+                {
+                    (System.Windows.Application.Current as App)?.SafeLog($"Spawn fence '{m.Name}'", ex);
+                }
             }
         }
 
@@ -411,9 +496,19 @@ namespace OpenFences
                     return;
                 }
 
+                // The catch-all is where released items go, so it can only be deleted once empty.
+                if (IsCatchAll(win) && model.ItemPaths.Count > 0)
+                {
+                    MessageBox.Show(
+                        $"The “{CatchAllFenceName}” fence holds every desktop item that isn't in another fence, " +
+                        "so it can't be deleted while it has items.\n\nMove its items into other fences first.",
+                        "Delete Fence", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
                 var choice = MessageBox.Show(
                     $"Delete fence “{model.Name}”?\n\n" +
-                    "Its icons stay on your desktop — they're just released from the fence.",
+                    $"Nothing is deleted from your desktop — its items move to the “{CatchAllFenceName}” fence.",
                     "Delete Fence",
                     MessageBoxButton.OKCancel,
                     MessageBoxImage.Warning,
@@ -421,9 +516,16 @@ namespace OpenFences
 
                 if (choice != MessageBoxResult.OK) return;
 
+                var released = model.ItemPaths.ToList();
                 _fences.Remove(model);
-                SaveConfig();
-                win.Close();   // icons are left wherever the fence last placed them
+                win.Close();
+
+                // Desktop icons stay hidden while OpenFences runs, so the items need a new home
+                // right away or they'd vanish until the next launch.
+                if (released.Count > 0)
+                    AssignItemsToFence(EnsureRealFence(CatchAllFenceName), released); // saves
+                else
+                    SaveConfig();
             };
         }
 
@@ -463,7 +565,7 @@ namespace OpenFences
         }
 
         // ========== Desktop-item ownership (path-based, rendered) ==========
-        private const string CatchAllFenceName = "Desktop";
+        internal const string CatchAllFenceName = "Desktop";
 
         // Convert legacy name-based ownership into path-based ownership so old configs keep
         // their groupings after the render pivot.
@@ -822,14 +924,6 @@ namespace OpenFences
         // ========== Shutdown ==========
         protected override void OnClosed(EventArgs e)
         {
-            try
-            {
-                var p = Path.Combine(Path.GetDirectoryName(_configPath)!, "shutdown.log");
-                File.AppendAllText(p, $"[{DateTime.Now:HH:mm:ss.fff}] MainWindow.OnClosed " +
-                    $"isAppMain={ReferenceEquals(System.Windows.Application.Current?.MainWindow, this)}\n{Environment.StackTrace}\n----\n");
-            }
-            catch { }
-
             base.OnClosed(e);
 
             // QoL: always restore the real desktop icons on exit so users aren’t “stuck hidden”.

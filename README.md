@@ -10,7 +10,7 @@
 # OpenFences
 
 OpenFences is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
-Create and rename fences, drag files in to auto-create shortcuts, minimize the controller to the system tray, toggle desktop icons, and use the **Auto-Import** button to sort your existing desktop into **Apps**, **Documents**, and **System** fences.
+Your real desktop items are shown as tiles inside fences. Nothing is copied and no shortcuts are created; a fence just decides where each desktop item appears. Group items into fences, mirror any folder as a **Folder Portal**, lasso-select across fences, and use **Auto-Import** to sort your desktop into **Apps**, **Documents**, and **System** fences in one click.
 
 > Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner. This project is an educational/utility clone built from scratch in C#.
 
@@ -21,14 +21,29 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 - **Fences on the desktop layer**  
   Movable/resizable fence windows that sit above the wallpaper (nudged to the desktop Z-layer).
 
-- **Drag-in shortcuts**  
-  Drag files or folders onto a fence to create a `.lnk` shortcut inside that fence’s backing folder.
+- **Fences hold your real desktop items**  
+  While OpenFences runs, the normal desktop icons are hidden and each desktop item is shown in exactly one fence. Anything not in another fence lives in the **Desktop** fence. Quitting OpenFences shows the normal desktop icons again.
 
-- **Rename fences**  
-  Click the ✎ on a fence titlebar (or right-click) to rename, e.g., “Apps”, “Games”, etc.
+- **Drag in from anywhere**  
+  Drop files from outside the desktop onto a fence and choose whether to move them onto the desktop or create a desktop shortcut.
 
-- **Persisted layout**  
-  Sizes/positions saved to `%AppData%\\OpenFences\\config.json`.
+- **Folder Portals**  
+  A portal fence is a live view of any folder you choose; it updates as files change.
+
+- **Remove vs. Delete**  
+  Right-click an item → **Remove from fence** moves it back to the Desktop fence (nothing is deleted). **Delete** sends the real file to the Recycle Bin, after a clear confirmation.
+
+- **Selection across fences**  
+  Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
+
+- **Quick create & peek**  
+  Right-drag on empty desktop to draw a new fence. Optionally double-click the desktop to hide/show all fences.
+
+- **Rename & style fences**  
+  Right-click a fence title bar to rename it, change sort order, icon size, or transparency, or roll it up by double-clicking the title bar.
+
+- **Safe, persisted layout**  
+  Positions and sizes are saved automatically to `%AppData%\\OpenFences\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
 
 - **Minimize to tray**  
   The main controller window hides to the system tray; double-click the tray icon to restore.
@@ -36,15 +51,12 @@ Create and rename fences, drag files in to auto-create shortcuts, minimize the c
 - **Dark UI**  
   Modern, semi-transparent main window + dark menus with slim scrollbars.
 
-- **Desktop icons toggle**  
-  Hide/show default Windows desktop icons from **View → Toggle Desktop Icons**.
-
 - **⚡ Auto-Import Desktop Icons**  
-  One click creates (or reuses) three fences and populates them:
-  - **Apps** – `.lnk` that point to apps, `.exe`, `.url`, `.bat/.cmd/.ps1/.msi`, etc.
-  - **Documents** – everything else (documents, images, folders, zips…)
-  - **System** – shortcuts to *This PC*, *Control Panel*, *Network*, *Recycle Bin*, and your home folder.  
-  Import **does not move** your desktop items; it creates shortcuts in fences.
+  One click creates (or reuses) three fences and sorts your desktop items into them:
+  - **Apps**: shortcuts to apps, `.exe`, `.url`, `.bat/.cmd/.ps1/.msi`, etc.
+  - **Documents**: everything else (documents, images, folders, zips…)
+  - **System**: special items like *This PC*, *Network* and *Recycle Bin*.  
+  Your files stay where they are on the desktop; only which fence shows them changes.
 
 ---
 
@@ -85,20 +97,21 @@ dotnet run --project OpenFences/OpenFences.csproj
 
 ## 📁 Where things go
 
-- **Fence backing folders:** `C:\\Users\\<you>\\Desktop\\Fences\\<FenceName>`  
-- **Config:** `%AppData%\\OpenFences\\config.json`  
-- **Uninstall:** close the app, delete the EXE/folder, and (optionally) delete the config + `Desktop\\Fences` if you don’t want to keep your shortcuts.
+- **Your files:** they stay on your desktop. Fences don't copy or move them.  
+- **Config:** `%AppData%\\OpenFences\\config.json` (previous version kept as `config.json.bak`)  
+- **Error log:** `%AppData%\\OpenFences\\error.log`  
+- **Uninstall:** quit OpenFences (your desktop icons reappear), uninstall it, and optionally delete `%AppData%\\OpenFences`.
 
 ---
 
 ## 🚀 Usage
 
-- Create a fence: **File → New Fence** or the **➕ New Fence** button.  
-- Drag files/folders onto the fence to add shortcuts inside it.  
-- Rename: click **✎** on a fence title bar → enter a new name.  
+- Create a fence: **File → New Fence**, or right-drag a rectangle on empty desktop.  
+- Add items: drop files from Explorer onto a fence, or use **⚡ Auto-Import**.  
+- Take an item out of a fence: right-click it → **Remove from fence**.  
+- Rename: right-click a fence title bar → **Rename…**.  
 - Auto-import: click **⚡ Auto-Import Desktop Icons** to populate *Apps*, *Documents*, *System* fences.  
-- Hide desktop icons: **View → Toggle Desktop Icons**.  
-- Hide controller: minimize the main window; restore via tray icon.
+- Hide controller: minimize the main window; restore via tray icon (launching OpenFences again also brings it back).
 
 ---
 
@@ -117,7 +130,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 ## ⚠️ Known limitations
 
 - Z-order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows.  
-- Auto-import creates shortcuts; it does not move or delete your actual desktop items.  
+- A Folder Portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart OpenFences.  
 - Multi-monitor coordinates are persisted as absolute positions (future: per-monitor DPI/arrangement awareness).
 
 ---

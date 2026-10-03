@@ -46,6 +46,7 @@ jobs:
           -r win-${{ matrix.arch }}
           --self-contained true
           -p:PublishSingleFile=false
+          -p:Version=${{ steps.ver.outputs.version }}
           -o ${{ github.workspace }}\publish\${{ matrix.arch }}
 
       # WiX SDK builds the MSI; no Visual Studio / extension required.
