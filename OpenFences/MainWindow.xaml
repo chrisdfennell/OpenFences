@@ -76,6 +76,12 @@
                                   Header="Auto-organize new desktop items into fences"
                                   IsCheckable="True"
                                   Click="MiAutoOrganize_Click"/>
+                        <Separator/>
+                        <MenuItem x:Name="MiCheckForUpdates"
+                                  Header="Check for updates automatically"
+                                  IsCheckable="True"
+                                  Click="MiCheckForUpdates_Click"/>
+                        <MenuItem Header="Check for updates now…" Click="CheckForUpdatesNow_Click"/>
                     </MenuItem>
 
                     <MenuItem Header="_Help">

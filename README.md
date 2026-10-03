@@ -42,6 +42,9 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 - **Rename & style fences**  
   Right-click a fence title bar to rename it, change sort order, icon size, or transparency, or roll it up by double-clicking the title bar.
 
+- **Automatic update checks**  
+  OpenFences checks GitHub for a new release at startup and once a day, shows what's new, and installs it on request (one Windows permission prompt), then restarts with your fences intact. Turn it off under **Settings → Check for updates automatically**, or check any time with **Check for updates now…**. Portable-zip copies get a link to the download instead.
+
 - **Safe, persisted layout**  
   Positions and sizes are saved automatically to `%AppData%\\OpenFences\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
 

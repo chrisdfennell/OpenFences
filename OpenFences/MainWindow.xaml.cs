@@ -103,6 +103,9 @@ namespace OpenFences
 
             // Left-drag on the empty desktop = lasso that selects items across fences
             DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
+
+            // GitHub release checks (startup + daily, if enabled in Settings)
+            StartUpdateChecks();
         }
 
         // ========== Cross-fence selection (lasso + bulk actions) ==========
@@ -219,6 +222,99 @@ namespace OpenFences
             MiDoubleClickDesktop.IsChecked = _config.Options.DoubleClickDesktopToToggleIcons;
             MiPeekFences.IsChecked = _config.Options.DoubleClickPeekFences;
             MiAutoOrganize.IsChecked = _config.Options.AutoOrganize;
+            MiCheckForUpdates.IsChecked = _config.Options.CheckForUpdates;
+        }
+
+        // Settings → Check for updates automatically
+        private void MiCheckForUpdates_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.CheckForUpdates = MiCheckForUpdates.IsChecked;
+            SaveConfig();
+        }
+
+        private void CheckForUpdatesNow_Click(object? sender, RoutedEventArgs? e) => _ = CheckForUpdatesAsync(manual: true);
+
+        // ========== Updates ==========
+        private System.Windows.Threading.DispatcherTimer? _updateTimer;
+        private bool _updateDialogOpen;
+
+        // First check shortly after launch (so startup isn't slowed), then once a day.
+        private void StartUpdateChecks()
+        {
+            _updateTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+            _updateTimer.Tick += (_, __) =>
+            {
+                _updateTimer.Interval = TimeSpan.FromHours(24);
+                if (_config.Options.CheckForUpdates) _ = CheckForUpdatesAsync(manual: false);
+            };
+            _updateTimer.Start();
+        }
+
+        private async Task CheckForUpdatesAsync(bool manual)
+        {
+            if (_updateDialogOpen) return;
+
+            UpdateInfo? update;
+            try
+            {
+                update = await UpdateService.CheckAsync();
+            }
+            catch (Exception ex)
+            {
+                // Automatic checks fail quietly (offline, rate-limited…); a manual check says why.
+                (System.Windows.Application.Current as App)?.SafeLog("Update check", ex);
+                if (manual)
+                    MessageBox.Show("Couldn't check for updates:\n" + ex.Message,
+                                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (update == null)
+            {
+                if (manual)
+                    MessageBox.Show($"You're up to date (version {UpdateService.CurrentVersion.ToString(3)}).",
+                                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Automatic checks respect "Skip this version"; a manual check always offers it.
+            if (!manual && string.Equals(_config.Options.SkippedVersion, update.Version.ToString(3), StringComparison.Ordinal))
+                return;
+
+            _updateDialogOpen = true;
+            UpdateDialog dlg;
+            try
+            {
+                dlg = new UpdateDialog(update);
+                if (IsVisible) { dlg.Owner = this; dlg.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
+                dlg.ShowDialog();
+            }
+            finally { _updateDialogOpen = false; }
+
+            switch (dlg.Choice)
+            {
+                case UpdateDialog.Result.Skip:
+                    _config.Options.SkippedVersion = update.Version.ToString(3);
+                    SaveConfig();
+                    break;
+
+                case UpdateDialog.Result.ReadyToInstall when dlg.MsiPath != null:
+                    try
+                    {
+                        UpdateService.LaunchInstallerAndRestart(dlg.MsiPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        (System.Windows.Application.Current as App)?.SafeLog("Update install", ex);
+                        MessageBox.Show("The update couldn't be started:\n" + ex.Message,
+                                        "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                    // Exit normally so the config is saved and the desktop icons come back; the
+                    // helper installs once we're gone and then starts the new version.
+                    Close();
+                    break;
+            }
         }
 
 
@@ -252,6 +348,7 @@ namespace OpenFences
             var showAll = new WinForms.ToolStripMenuItem("Show All Fences", null, (_, __) => ShowAll_Click(null!, null!));
             var hideAll = new WinForms.ToolStripMenuItem("Hide All Fences", null, (_, __) => HideAll_Click(null!, null!));
             var toggle = new WinForms.ToolStripMenuItem("Toggle Desktop Icons", null, (_, __) => ToggleDesktopIcons_Click(null!, null!));
+            var updates = new WinForms.ToolStripMenuItem("Check for Updates…", null, (_, __) => CheckForUpdatesNow_Click(null, null));
             var exit = new WinForms.ToolStripMenuItem("Exit", null, (_, __) => Close());
 
             _trayMenu.Items.Add(restore);
@@ -262,6 +359,7 @@ namespace OpenFences
             _trayMenu.Items.Add(hideAll);
             _trayMenu.Items.Add(toggle);
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
+            _trayMenu.Items.Add(updates);
             _trayMenu.Items.Add(exit);
 
             _tray = new WinForms.NotifyIcon
@@ -932,6 +1030,7 @@ namespace OpenFences
 
             SaveConfig();
 
+            _updateTimer?.Stop();
             StopDesktopWatcher();
             DesktopDoubleClickMonitor.Stop();
             DesktopRightDragFenceSelector.Stop();

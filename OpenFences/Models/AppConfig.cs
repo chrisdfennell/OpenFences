@@ -13,6 +13,12 @@ namespace OpenFences
 
         // Double-clicking empty desktop hides/shows all fences ("peek").
         public bool DoubleClickPeekFences { get; set; } = false;
+
+        // Check GitHub for a newer release at startup and once a day.
+        public bool CheckForUpdates { get; set; } = true;
+
+        // A version the user chose "Skip this version" for; automatic checks stay quiet about it.
+        public string? SkippedVersion { get; set; }
     }
 
     // How a desktop item is matched to a target fence by the rules engine.
