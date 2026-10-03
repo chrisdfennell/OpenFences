@@ -147,6 +147,26 @@ namespace OpenFences
         }
 
         /// <summary>
+        /// The desktop's SysListView32 HWND (the control that hosts the real desktop icons),
+        /// or IntPtr.Zero if it can't be located. Used by DesktopIconManager to read/move icons.
+        /// </summary>
+        public static IntPtr GetIconListView()
+        {
+            EnsureHandles();
+            return _listView;
+        }
+
+        /// <summary>
+        /// The desktop's SHELLDLL_DefView HWND (the parent that owns the icon list view and
+        /// handles the desktop's WM_COMMAND verbs, e.g. the auto-arrange toggle).
+        /// </summary>
+        public static IntPtr GetDefView()
+        {
+            EnsureHandles();
+            return _defView;
+        }
+
+        /// <summary>
         /// Conservative, cheap check used from the hook: verifies the window under the cursor is explorer’s desktop.
         /// </summary>
         public static bool IsLikelyDesktopUnderCursor()

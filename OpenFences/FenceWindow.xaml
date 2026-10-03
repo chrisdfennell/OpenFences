@@ -168,8 +168,9 @@
                 </Grid.ContextMenu>
             </Grid>
 
-            <!-- Items area (with marquee selection overlay) -->
-            <Grid>
+            <!-- Items area (with marquee selection overlay). Portal fences only —
+                 real-icon fences collapse this to a click-through hole. -->
+            <Grid x:Name="ContentArea">
             <ScrollViewer x:Name="Scroller"
               Margin="6"
               Focusable="True"

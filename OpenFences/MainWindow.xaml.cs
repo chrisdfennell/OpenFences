@@ -45,6 +45,9 @@ namespace OpenFences
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath)!);
             LoadConfig();
 
+            // Migrate legacy name-based ownership (IconNames) → path-based (ItemPaths).
+            MigrateLegacyOwnership();
+
             // Initialize settings checkboxes from config + system (fully-qualify WPF CheckBox)
             if (FindName("ChkRunAtStartup") is System.Windows.Controls.CheckBox chkRun)
                 chkRun.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
@@ -74,14 +77,23 @@ namespace OpenFences
             // Wire checkbox click handlers (so XAML can keep old names if needed)
             WireSettingsHandlers();
 
+            // Cross-fence drops route through here so an item leaves any prior fence.
+            FenceWindow.RequestAssignItems = AssignItemsToFence;
+
             // Spawn fence windows from config
             SpawnFencesFromConfig();
+
+            // Sweep any desktop items not yet owned into the catch-all "Desktop" fence, then
+            // hide the real desktop icons — everything is rendered inside fences now.
+            BuildCatchAll();
+            StartDesktopWatcher();
+            DesktopHelper.SetDesktopIconsVisible(false);
 
             // Tray + minimize-to-tray behavior
             StateChanged += MainWindow_StateChanged;
             InitTrayIcon();
 
-            // Right-click-drag rectangle to create fence (fast XOR + menu)
+            // Right-click-drag rectangle to create an (empty) fence
             DesktopRightDragFenceSelector.Start(CreateFenceFromRect);
 
             // Delete/Enter operate on the whole selection across all fences
@@ -400,65 +412,34 @@ namespace OpenFences
                 }
 
                 var choice = MessageBox.Show(
-                    $"Delete fence “{model.Name}”?\n\nBacked folder:\n{model.FolderPath}\n\n" +
-                    "Click Yes to also delete the folder (and its shortcuts), No to keep the folder, or Cancel.",
+                    $"Delete fence “{model.Name}”?\n\n" +
+                    "Its icons stay on your desktop — they're just released from the fence.",
                     "Delete Fence",
-                    MessageBoxButton.YesNoCancel,
+                    MessageBoxButton.OKCancel,
                     MessageBoxImage.Warning,
-                    MessageBoxResult.No);
+                    MessageBoxResult.OK);
 
-                if (choice == MessageBoxResult.Cancel) return;
+                if (choice != MessageBoxResult.OK) return;
 
                 _fences.Remove(model);
                 SaveConfig();
-
-                try
-                {
-                    if (choice == MessageBoxResult.Yes && Directory.Exists(model.FolderPath))
-                        Directory.Delete(model.FolderPath, true);
-                }
-                catch { /* ignore filesystem errors */ }
-
-                win.Close();
+                win.Close();   // icons are left wherever the fence last placed them
             };
         }
 
-        private void SetAllWatchers(bool enabled)
-        {
-            foreach (var w in _openWindows) w.SetWatcherEnabled(enabled);
-        }
-
-        private void RefreshAllFences()
-        {
-            foreach (var w in _openWindows) w.ReloadItems();
-        }
-
         // ========== Right-drag rectangle → Create fence ==========
+        // Desktop icons are hidden and rendered inside fences, so a drawn box just creates a
+        // new empty fence at that spot; drag items into it afterward.
         private void CreateFenceFromRect(Rect screenRect)
         {
-            // Unique name
-            string baseName = "Fence";
-            int suffix = 1;
-            string name;
-            do { name = $"{baseName} {suffix++}"; }
-            while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
-
-            // Backing folder
-            string fenceFolder = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                "Fences", name);
-            Directory.CreateDirectory(fenceFolder);
-
-            // Build model
             var model = new FenceModel
             {
-                Name = name,
-                FolderPath = fenceFolder,
+                Name = UniqueFenceName(),
                 Left = screenRect.Left,
                 Top = screenRect.Top,
-                Width = Math.Max(120, screenRect.Width),
-                Height = Math.Max(100, screenRect.Height),
-                Collapsed = false
+                Width = Math.Max(160, screenRect.Width),
+                Height = Math.Max(120, screenRect.Height),
+                Collapsed = false,
             };
 
             _fences.Add(model);
@@ -469,6 +450,158 @@ namespace OpenFences
             _openWindows.Add(win);
             win.Show();
             win.EnsureBottomZOrder();
+        }
+
+        private string UniqueFenceName()
+        {
+            string baseName = "Fence";
+            int suffix = 1;
+            string name;
+            do { name = $"{baseName} {suffix++}"; }
+            while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
+            return name;
+        }
+
+        // ========== Desktop-item ownership (path-based, rendered) ==========
+        private const string CatchAllFenceName = "Desktop";
+
+        // Convert legacy name-based ownership into path-based ownership so old configs keep
+        // their groupings after the render pivot.
+        private void MigrateLegacyOwnership()
+        {
+            bool changed = false;
+            foreach (var m in _fences)
+            {
+                if (m.IsPortal || m.IconNames.Count == 0) continue;
+                foreach (var name in m.IconNames)
+                {
+                    var path = DesktopItems.ResolvePath(name);
+                    if (path != null && !m.ItemPaths.Contains(path, StringComparer.OrdinalIgnoreCase))
+                        m.ItemPaths.Add(path);
+                }
+                m.IconNames.Clear(); // fully migrated
+                changed = true;
+            }
+            if (changed) SaveConfig();
+        }
+
+        private IEnumerable<FenceWindow> RealFences => _openWindows.Where(w => !w.IsPortal);
+
+        private bool AnyFenceOwns(string path) => RealFences.Any(w => w.OwnsPath(path));
+
+        // Put every desktop item not already owned by a fence into the catch-all "Desktop" fence.
+        private void BuildCatchAll()
+        {
+            var unowned = DesktopItems.Enumerate()
+                .Select(e => e.Path)
+                .Where(p => !AnyFenceOwns(p))
+                .ToList();
+            if (unowned.Count == 0 && RealFences.Any()) return;
+
+            EnsureRealFence(CatchAllFenceName, 80, 80).AddItems(unowned);
+            SaveConfig();
+        }
+
+        // RequestAssignItems callback: give these desktop items to the target fence, removing
+        // them from any other fence that held them, and persist.
+        private void AssignItemsToFence(FenceWindow target, IReadOnlyList<string> paths)
+        {
+            foreach (var path in paths)
+                foreach (var w in RealFences)
+                    if (w != target) w.RemoveItemPath(path);
+
+            target.AddItems(paths);
+            SaveConfig();
+        }
+
+        private FenceWindow? FindRealFence(string name) =>
+            RealFences.FirstOrDefault(w => string.Equals(w.FenceName, name, StringComparison.OrdinalIgnoreCase));
+
+        // Returns the open window for a named real fence, creating it if needed.
+        private FenceWindow EnsureRealFence(string name, double left = 80, double top = 80)
+        {
+            var existing = FindRealFence(name);
+            if (existing != null) return existing;
+
+            var model = new FenceModel
+            {
+                Name = name,
+                Left = left,
+                Top = top,
+                Width = 420,
+                Height = 260,
+                Collapsed = false
+            };
+            _fences.Add(model);
+            SaveConfig();
+
+            var win = new FenceWindow(model);
+            HookFenceWindow(win, model);
+            _openWindows.Add(win);
+            win.Show();
+            return win;
+        }
+
+        // ========== Live desktop folder watcher ==========
+        private readonly List<FileSystemWatcher> _desktopWatchers = new();
+
+        private void StartDesktopWatcher()
+        {
+            foreach (var root in DesktopItems.Roots())
+            {
+                if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
+                try
+                {
+                    var w = new FileSystemWatcher(root) { IncludeSubdirectories = false, EnableRaisingEvents = true };
+                    w.Created += (_, e) => Dispatcher.BeginInvoke(() => OnDesktopFileCreated(e.FullPath));
+                    w.Deleted += (_, e) => Dispatcher.BeginInvoke(() => OnDesktopFileRemoved(e.FullPath));
+                    w.Renamed += (_, e) => Dispatcher.BeginInvoke(() =>
+                    {
+                        OnDesktopFileRemoved(e.OldFullPath);
+                        OnDesktopFileCreated(e.FullPath);
+                    });
+                    _desktopWatchers.Add(w);
+                }
+                catch { /* skip this root */ }
+            }
+        }
+
+        private void StopDesktopWatcher()
+        {
+            foreach (var w in _desktopWatchers)
+                try { w.EnableRaisingEvents = false; w.Dispose(); } catch { /* ignore */ }
+            _desktopWatchers.Clear();
+        }
+
+        // A new desktop item appeared → route to a rule target (if auto-organize is on) or the
+        // catch-all "Desktop" fence.
+        private void OnDesktopFileCreated(string path)
+        {
+            try
+            {
+                if (path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) ||
+                    path.EndsWith(".ini", StringComparison.OrdinalIgnoreCase)) return;
+                if (AnyFenceOwns(path)) return;
+
+                string target = CatchAllFenceName;
+                if (_config.Options.AutoOrganize)
+                {
+                    var ruleTarget = DesktopRules.ResolveTargetFence(path, _config.Rules);
+                    if (!string.IsNullOrWhiteSpace(ruleTarget)) target = ruleTarget!;
+                }
+
+                AssignItemsToFence(EnsureRealFence(target), new[] { path });
+            }
+            catch { /* ignore one bad item */ }
+        }
+
+        // A desktop item was removed/renamed away → drop it from whatever fence owned it.
+        private void OnDesktopFileRemoved(string path)
+        {
+            bool changed = false;
+            foreach (var w in RealFences)
+                if (w.RemoveItemPath(path)) changed = true;
+            if (changed) SaveConfig();
         }
 
         // ========== Menu / Buttons ==========
@@ -490,20 +623,10 @@ namespace OpenFences
 
         private void NewFence_Click(object? sender, RoutedEventArgs? e)
         {
-            string baseName = "Fence";
-            int suffix = 1;
-            string name;
-            do { name = $"{baseName} {suffix++}"; } while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)));
-
-            string fenceFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                                              "Fences", name);
-            Directory.CreateDirectory(fenceFolder);
-
             var (left, top) = SpawnNearCursor();
             var model = new FenceModel
             {
-                Name = name,
-                FolderPath = fenceFolder,
+                Name = UniqueFenceName(),
                 Left = left,
                 Top = top,
                 Width = 420,
@@ -587,7 +710,11 @@ namespace OpenFences
 
         private void ShowAll_Click(object? sender, RoutedEventArgs? e)
         {
-            foreach (var w in _openWindows) { w.Show(); w.EnsureBottomZOrder(); }
+            foreach (var w in _openWindows)
+            {
+                w.Show();
+                w.EnsureBottomZOrder();
+            }
         }
 
         private void HideAll_Click(object? sender, RoutedEventArgs? e)
@@ -597,73 +724,57 @@ namespace OpenFences
 
         private void OpenFencesFolder_Click(object? sender, RoutedEventArgs? e)
         {
+            // Real-icon fences have no backing folder anymore; just open the Desktop.
             try
             {
-                var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Fences");
-                if (!Directory.Exists(root)) Directory.CreateDirectory(root);
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = root,
-                    UseShellExecute = true
-                });
+                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                Process.Start(new ProcessStartInfo { FileName = desktop, UseShellExecute = true });
             }
             catch { /* ignore */ }
         }
 
+        // Organizes the *real* desktop icons into Apps / Documents / System fences by claiming
+        // them (no shortcuts created). Each icon is classified by the desktop file behind it.
         private void AutoImportDesktop_Click(object? sender, RoutedEventArgs? e)
         {
             try
             {
-                SetAllWatchers(false);
-
-                var appsFence = EnsureFence("Apps", left: 80, top: 80);
-                var docsFence = EnsureFence("Documents", left: 520, top: 80);
-                var systemFence = EnsureFence("System", left: 80, top: 380);
-
-                int apps = 0, docs = 0;
-
-                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                var fencesRoot = Path.Combine(desktop, "Fences");
-                var items = Directory.EnumerateFileSystemEntries(desktop)
-                                     .Where(p => !string.Equals(p, fencesRoot, StringComparison.OrdinalIgnoreCase));
-
-                foreach (var path in items)
+                var entries = DesktopItems.Enumerate();
+                if (entries.Count == 0)
                 {
-                    try
-                    {
-                        bool isDir = Directory.Exists(path);
-                        string ext = Path.GetExtension(path).ToLowerInvariant();
-
-                        if (ext == ".lnk")
-                        {
-                            var target = ShellLink.GetShortcutTarget(path);
-                            if (DesktopRules.IsExecutableTarget(target))
-                                apps += CopyShortcut(path, appsFence.FolderPath) ? 1 : 0;
-                            else
-                                docs += CopyShortcut(path, docsFence.FolderPath) ? 1 : 0;
-                        }
-                        else if (ext is ".exe" or ".url" or ".appref-ms" or ".msi" or ".bat" or ".cmd" or ".ps1")
-                        {
-                            if (CreateLinkIfMissing(appsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) apps++;
-                        }
-                        else if (isDir || DesktopRules.IsDocumentExtension(ext))
-                        {
-                            if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileName(path), path)) docs++;
-                        }
-                        else
-                        {
-                            if (CreateLinkIfMissing(docsFence.FolderPath, Path.GetFileNameWithoutExtension(path), path)) docs++;
-                        }
-                    }
-                    catch { /* skip single item */ }
+                    MessageBox.Show("No desktop items were found to organize.",
+                                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
                 }
 
-                // System fence: CLSIDs + Home
-                int sys = SystemShortcuts.AddToFolder(systemFence.FolderPath);
+                var groups = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+                void AddTo(string fence, string path)
+                {
+                    if (!groups.TryGetValue(fence, out var list)) groups[fence] = list = new();
+                    list.Add(path);
+                }
+
+                int apps = 0, docs = 0, sys = 0;
+                foreach (var entry in entries)
+                {
+                    if (entry.IsSpecial) { AddTo("System", entry.Path); sys++; continue; }
+                    if (DesktopRules.IsExecutableItem(entry.Path)) { AddTo("Apps", entry.Path); apps++; }
+                    else { AddTo("Documents", entry.Path); docs++; }
+                }
+
+                var pos = new Dictionary<string, (double l, double t)>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["Apps"] = (80, 80),
+                    ["Documents"] = (520, 80),
+                    ["System"] = (80, 380),
+                };
+                foreach (var kv in groups)
+                {
+                    var (l, t) = pos.TryGetValue(kv.Key, out var p) ? p : (80, 80);
+                    AssignItemsToFence(EnsureRealFence(kv.Key, l, t), kv.Value);
+                }
 
                 SaveConfig();
-                RefreshAllFences();
-
                 MessageBox.Show($"Auto-import complete.\n\nApps: {apps}\nDocuments: {docs}\nSystem: {sys}",
                                 "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -672,76 +783,13 @@ namespace OpenFences
                 MessageBox.Show("Auto-import failed:\n" + ex.Message,
                                 "OpenFences", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            finally
-            {
-                SetAllWatchers(true);
-            }
-        }
-
-        // ========== Helpers ==========
-        private FenceModel EnsureFence(string name, double left, double top)
-        {
-            var existing = _fences.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-            if (existing != null) return existing;
-
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Fences", name);
-            Directory.CreateDirectory(folder);
-
-            var model = new FenceModel
-            {
-                Name = name,
-                FolderPath = folder,
-                Left = left,
-                Top = top,
-                Width = 420,
-                Height = 260,
-                Collapsed = false
-            };
-            _fences.Add(model);
-            SaveConfig();
-
-            var win = new FenceWindow(model);
-            HookFenceWindow(win, model);
-            _openWindows.Add(win);
-            win.Show();
-
-            return model;
         }
 
         // ========== Rules engine: continuous auto-organize ==========
         private void ApplyAutoOrganizeSetting()
         {
-            if (_config.Options.AutoOrganize)
-                DesktopOrganizer.Start(OnDesktopItemAdded);
-            else
-                DesktopOrganizer.Stop();
-        }
-
-        // Called on the UI (STA) thread for each newly added desktop item.
-        private void OnDesktopItemAdded(string path)
-        {
-            try
-            {
-                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                var fencesRoot = Path.Combine(desktop, "Fences");
-
-                // Never re-process our own fence shortcuts.
-                if (path.StartsWith(fencesRoot, StringComparison.OrdinalIgnoreCase)) return;
-
-                var targetName = DesktopRules.ResolveTargetFence(path, _config.Rules);
-                if (string.IsNullOrWhiteSpace(targetName)) return;
-
-                var fence = EnsureFence(targetName!, left: 80, top: 80);
-
-                string ext = Path.GetExtension(path).ToLowerInvariant();
-                if (ext == ".lnk")
-                    CopyShortcut(path, fence.FolderPath);              // keep existing shortcut
-                else
-                    CreateLinkIfMissing(fence.FolderPath,
-                        Directory.Exists(path) ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path),
-                        path);
-            }
-            catch { /* ignore one bad item */ }
+            // The live desktop watcher (StartDesktopWatcher) always runs and reads this flag at
+            // event time, so there's no separate organizer to start/stop here.
         }
 
         // ========== Double-click empty desktop: peek fences and/or toggle icons ==========
@@ -771,51 +819,29 @@ namespace OpenFences
             }
         }
 
-        private static bool CopyShortcut(string sourceLnk, string destFolder)
-        {
-            try
-            {
-                string dest = Path.Combine(destFolder, Path.GetFileName(sourceLnk));
-                if (File.Exists(dest)) return false;
-                File.Copy(sourceLnk, dest);
-                return true;
-            }
-            catch { return false; }
-        }
-
-        private static bool CreateLinkIfMissing(string destFolder, string displayName, string targetPath)
-        {
-            try
-            {
-                string link = Path.Combine(destFolder, SanitizeFileName(displayName) + ".lnk");
-                if (File.Exists(link)) return false;
-                ShellLink.CreateShortcut(link, targetPath);
-                return true;
-            }
-            catch { return false; }
-        }
-
-        private static string SanitizeFileName(string name)
-        {
-            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
-            return name.Trim();
-        }
-
         // ========== Shutdown ==========
         protected override void OnClosed(EventArgs e)
         {
+            try
+            {
+                var p = Path.Combine(Path.GetDirectoryName(_configPath)!, "shutdown.log");
+                File.AppendAllText(p, $"[{DateTime.Now:HH:mm:ss.fff}] MainWindow.OnClosed " +
+                    $"isAppMain={ReferenceEquals(System.Windows.Application.Current?.MainWindow, this)}\n{Environment.StackTrace}\n----\n");
+            }
+            catch { }
+
             base.OnClosed(e);
 
-            // QoL: always restore icons on exit so users aren’t “stuck hidden”.
+            // QoL: always restore the real desktop icons on exit so users aren’t “stuck hidden”.
             // Synchronous (no DispatcherTimer) because we Shutdown() moments later.
             try { DesktopHelper.RestoreDesktopIconsOnExit(); } catch { }
 
             SaveConfig();
 
+            StopDesktopWatcher();
             DesktopDoubleClickMonitor.Stop();
             DesktopRightDragFenceSelector.Stop();
             DesktopLeftDragLasso.Stop();
-            DesktopOrganizer.Stop();
 
             if (_tray is not null)
             {

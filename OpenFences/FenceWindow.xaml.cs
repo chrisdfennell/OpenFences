@@ -29,7 +29,16 @@ namespace OpenFences
         private const double MinExpandedHeight = 120;
 
         private readonly FenceModel _model;
-        private readonly FileSystemWatcher _watcher;
+        // Portals watch their mirrored folder. Real-icon fences own desktop icons by
+        // name and have no backing folder, so the watcher is null for them.
+        private readonly FileSystemWatcher? _watcher;
+
+        // A "real" fence == every non-portal fence. It renders the desktop items it owns
+        // (_model.ItemPaths) as tiles, like a portal scoped to specific desktop items.
+        private bool IsRealIcon => !_model.IsPortal;
+
+
+        private const double TitleBarHeight = 34;
 
         // Set true while we drive Height/Width programmatically (collapse animation,
         // initial layout) so SizeChanged doesn't clobber the model's remembered size.
@@ -77,28 +86,34 @@ namespace OpenFences
 
             ApplyBackground();
 
-            // DnD for dropping files to create shortcuts
+            // Both portal and real fences render their items as tiles in the scrollable
+            // content area, and both accept drops.
             AllowDrop = true;
             DragEnter += FenceWindow_DragEnter;
             Drop += FenceWindow_Drop;
-
-            // Ensure backing folder exists
-            Directory.CreateDirectory(_model.FolderPath);
-
-            // Load initial items
-            ReloadItems();
-
-            // Watch for folder changes
-            _watcher = new FileSystemWatcher(_model.FolderPath)
-            {
-                IncludeSubdirectories = false,
-                EnableRaisingEvents = true
-            };
-            _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
-            _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
-            _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
-
             Items.ItemsSource = ItemsSource;
+
+            if (_model.IsPortal)
+            {
+                // ----- Portal: windowed view of a real folder -----
+                Directory.CreateDirectory(_model.FolderPath);
+                ReloadItems();
+
+                // Watch for folder changes
+                _watcher = new FileSystemWatcher(_model.FolderPath)
+                {
+                    IncludeSubdirectories = false,
+                    EnableRaisingEvents = true
+                };
+                _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
+                _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
+                _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
+            }
+            else
+            {
+                // ----- Real fence: renders the desktop items it owns (by path) as tiles -----
+                ReloadRealItems();
+            }
 
             if (_model.Collapsed) SetCollapsed(true, animate: false);
 
@@ -113,16 +128,79 @@ namespace OpenFences
             SizeChanged += (_, __) => SaveGeometry(null, null);
 
             // Stop watching the backing folder once this fence is gone.
-            Closed += (_, __) => { try { _watcher.Dispose(); } catch { /* ignore */ } };
+            Closed += (_, __) => { try { _watcher?.Dispose(); } catch { /* ignore */ } };
         }
 
         // ---------- UI/Background ----------
 
         private void ApplyBackground()
         {
+            // Real fences now render their own tiles (like portals), so they get the same
+            // solid card background rather than the old click-through hollow frame.
             var baseColor = MediaColor.FromRgb(0x20, 0x20, 0x20); // #202020
             byte a = (byte)Math.Round(255 * Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0));
             RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, baseColor.R, baseColor.G, baseColor.B));
+        }
+
+        // ---------- Real fence: owned desktop items (by path) ----------
+
+        public string FenceName => _model.Name;
+
+        /// <summary>The launchable paths of the desktop items this real fence owns.</summary>
+        public IReadOnlyList<string> OwnedItemPaths => _model.ItemPaths;
+
+        /// <summary>Wired by MainWindow so a drop can transfer items away from other fences and
+        /// persist. Given (targetFence, paths), it assigns those paths to the target.</summary>
+        public static Action<FenceWindow, IReadOnlyList<string>>? RequestAssignItems;
+
+        public bool OwnsPath(string path) =>
+            _model.ItemPaths.Contains(path, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Add desktop items (by path) to this fence and re-render. Does not remove them
+        /// from other fences — go through MainWindow (RequestAssignItems) for that.</summary>
+        public void AddItems(IEnumerable<string> paths)
+        {
+            bool any = false;
+            foreach (var p in paths)
+            {
+                if (string.IsNullOrWhiteSpace(p)) continue;
+                if (!_model.ItemPaths.Contains(p, StringComparer.OrdinalIgnoreCase))
+                {
+                    _model.ItemPaths.Add(p);
+                    any = true;
+                }
+            }
+            if (any) { Changed?.Invoke(this, EventArgs.Empty); ReloadRealItems(); }
+        }
+
+        /// <summary>Remove a desktop item (by path) from this fence and re-render.</summary>
+        public bool RemoveItemPath(string path)
+        {
+            int removed = _model.ItemPaths.RemoveAll(
+                p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            if (removed > 0) { Changed?.Invoke(this, EventArgs.Empty); ReloadRealItems(); return true; }
+            return false;
+        }
+
+        /// <summary>Rebuild this real fence's tiles from the desktop items it owns.</summary>
+        public void ReloadRealItems()
+        {
+            if (IsPortal) return;
+
+            var paths = SortEntries(_model.ItemPaths
+                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList());
+
+            ItemsSource.Clear();
+            foreach (var path in paths)
+            {
+                ItemsSource.Add(new FenceItem
+                {
+                    Path = path,
+                    DisplayName = OpenFences.Services.DesktopItems.LabelFor(path)
+                });
+            }
+
+            LoadIconsAsync();
         }
 
         public void EnsureBottomZOrder()
@@ -185,10 +263,15 @@ namespace OpenFences
                 });
             }
 
-            // Resolve icons off the UI thread so big fences don't freeze. This MUST run on an
-            // STA thread: IconHelper uses apartment-threaded shell COM (IShellLink), which is
-            // unreliable on MTA thread-pool threads and silently drops icons. IconHelper freezes
-            // the ImageSources, so they're safe to hand back to the UI thread.
+            LoadIconsAsync();
+        }
+
+        /// <summary>Resolve tile icons off the UI thread so big fences don't freeze. This MUST run
+        /// on an STA thread: IconHelper uses apartment-threaded shell COM (IShellLink), which is
+        /// unreliable on MTA thread-pool threads and silently drops icons. IconHelper freezes the
+        /// ImageSources, so they're safe to hand back to the UI thread.</summary>
+        private void LoadIconsAsync()
+        {
             var snapshot = ItemsSource.ToList();
             var loader = new System.Threading.Thread(() =>
             {
@@ -246,7 +329,8 @@ namespace OpenFences
             if (sender is MenuItem mi && Enum.TryParse<FenceSort>(Convert.ToString(mi.Tag), out var mode))
             {
                 _model.Sort = mode;
-                ReloadItems();
+                if (IsRealIcon) ReloadRealItems();
+                else ReloadItems();
                 Changed?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -256,7 +340,7 @@ namespace OpenFences
             if (sender is MenuItem mi && Enum.TryParse<FenceIconSize>(Convert.ToString(mi.Tag), out var size))
             {
                 _model.IconSize = size;
-                RaiseLayoutMetricsChanged();
+                RaiseLayoutMetricsChanged();   // tiles rebind their width/height from IconPx
                 Changed?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -272,23 +356,32 @@ namespace OpenFences
         // ---------- Context menu actions ----------
         private void Item_Open_Click(object sender, RoutedEventArgs e)
         {
-            if (MenuSenderToItem(sender) is not FenceItem item) return;
-            try
-            {
-                var psi = new ProcessStartInfo(item.Path) { UseShellExecute = true };
-                Process.Start(psi);
-            }
-            catch { /* ignore */ }
+            if (MenuSenderToItem(sender) is FenceItem item) LaunchPath(item.Path);
         }
 
         private void Item_OpenFolder_Click(object sender, RoutedEventArgs e)
         {
             if (MenuSenderToItem(sender) is not FenceItem item) return;
+            if (item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)) return; // no containing folder
             try
             {
                 var dir = Path.GetDirectoryName(item.Path);
                 if (!string.IsNullOrEmpty(dir))
                     Process.Start(new ProcessStartInfo { FileName = dir, UseShellExecute = true });
+            }
+            catch { /* ignore */ }
+        }
+
+        // Launch a desktop item: a real file/folder via ShellExecute, or a special item via its
+        // shell:::{CLSID} moniker (opened through Explorer).
+        private static void LaunchPath(string path)
+        {
+            try
+            {
+                if (path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
+                    Process.Start(new ProcessStartInfo("explorer.exe", path) { UseShellExecute = true });
+                else
+                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
             }
             catch { /* ignore */ }
         }
@@ -302,7 +395,7 @@ namespace OpenFences
 
         public void SetWatcherEnabled(bool enabled)
         {
-            try { _watcher.EnableRaisingEvents = enabled; } catch { /* ignore */ }
+            try { if (_watcher != null) _watcher.EnableRaisingEvents = enabled; } catch { /* ignore */ }
         }
 
         // ---------- Title bar ----------
@@ -398,11 +491,7 @@ namespace OpenFences
                 i.IsSelected = ReferenceEquals(i, item);
         }
 
-        private static void OpenItem(FenceItem item)
-        {
-            try { Process.Start(new ProcessStartInfo(item.Path) { UseShellExecute = true }); }
-            catch { /* ignore */ }
-        }
+        private static void OpenItem(FenceItem item) => LaunchPath(item.Path);
 
         // MainWindow wires these so Delete/Enter act on the WHOLE selection across all
         // fences (e.g. after a desktop lasso). Fallback to this fence if not wired.
@@ -431,12 +520,23 @@ namespace OpenFences
                 {
                     try
                     {
+                        // Special (CLSID) items have no file to delete — just release them.
+                        if (item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _model.ItemPaths.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
+                            ItemsSource.Remove(item);
+                            continue;
+                        }
+
                         if (Directory.Exists(item.Path)) Directory.Delete(item.Path, true);
                         else File.Delete(item.Path);
+                        // Real fences track ownership by path; drop it so it doesn't linger.
+                        _model.ItemPaths.RemoveAll(p => string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
                         ItemsSource.Remove(item);
                     }
                     catch { /* skip one */ }
                 }
+                if (IsRealIcon) Changed?.Invoke(this, EventArgs.Empty);
             }
             finally { SetWatcherEnabled(true); }
         }
@@ -586,27 +686,101 @@ namespace OpenFences
             if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)) return;
             var paths = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop)!;
 
-            foreach (var p in paths)
+            if (!IsRealIcon)
             {
-                try
+                // A portal is a live folder view: copy the real item into it.
+                foreach (var p in paths)
                 {
-                    if (_model.IsPortal)
+                    try
                     {
-                        // A portal is a live folder view: copy the real item into it.
                         if (Directory.Exists(p)) continue; // skip dropped folders for safety
                         var dest = Path.Combine(_model.FolderPath, Path.GetFileName(p));
                         if (!File.Exists(dest)) File.Copy(p, dest);
                     }
+                    catch { /* ignore */ }
+                }
+                ReloadItems();
+                return;
+            }
+
+            // Real fence: own the ACTUAL desktop items and render them as tiles. Items already
+            // on the desktop are assigned as-is (moved out of whatever fence held them). Items
+            // from elsewhere aren't desktop items yet, so we ask how to bring them onto the
+            // desktop first (move the real file, or drop a shortcut).
+            var onDesktop = new List<string>();  // desktop paths ready to assign now
+            var offDesktop = new List<string>(); // source paths needing the user's decision
+            foreach (var p in paths)
+            {
+                if (OpenFences.Services.DesktopItems.IsOnDesktop(p)) onDesktop.Add(p);
+                else offDesktop.Add(p);
+            }
+
+            if (onDesktop.Count > 0) AssignToThisFence(onDesktop);
+
+            if (offDesktop.Count > 0)
+                PromptOffDesktopDrop(offDesktop);
+        }
+
+        // Route an assignment through MainWindow so the items leave any other fence and get
+        // persisted; fall back to a local add if the app hasn't wired the callback.
+        private void AssignToThisFence(IReadOnlyList<string> desktopPaths)
+        {
+            if (RequestAssignItems != null) RequestAssignItems(this, desktopPaths);
+            else AddItems(desktopPaths);
+        }
+
+        /// <summary>Ask (via a menu at the drop point) how to bring off-desktop items onto the
+        /// desktop, then assign the resulting real desktop items to this fence.</summary>
+        private void PromptOffDesktopDrop(List<string> sources)
+        {
+            string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string what = sources.Count == 1 ? $"\"{Path.GetFileName(sources[0])}\"" : $"{sources.Count} items";
+
+            var menu = new ContextMenu
+            {
+                Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
+            };
+
+            var move = new MenuItem { Header = $"Move {what} to the desktop" };
+            move.Click += (_, __) => CompleteOffDesktopDrop(sources, userDesktop, asShortcut: false);
+
+            var link = new MenuItem { Header = "Create a shortcut on the desktop" };
+            link.Click += (_, __) => CompleteOffDesktopDrop(sources, userDesktop, asShortcut: true);
+
+            menu.Items.Add(move);
+            menu.Items.Add(link);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(new MenuItem { Header = "Cancel" });
+            menu.IsOpen = true;
+        }
+
+        private void CompleteOffDesktopDrop(List<string> sources, string userDesktop, bool asShortcut)
+        {
+            var assigned = new List<string>();
+            foreach (var src in sources)
+            {
+                try
+                {
+                    if (asShortcut)
+                    {
+                        // Reference the item in place with a .lnk on the real desktop.
+                        var linkPath = Path.Combine(userDesktop, $"{Path.GetFileNameWithoutExtension(src)}.lnk");
+                        ShellLink.CreateShortcut(linkPath, src);
+                        assigned.Add(linkPath);
+                    }
                     else
                     {
-                        string linkName = Path.Combine(_model.FolderPath, $"{Path.GetFileNameWithoutExtension(p)}.lnk");
-                        ShellLink.CreateShortcut(linkName, p);
+                        // Physically move the real file onto the desktop.
+                        if (Directory.Exists(src)) continue; // don't relocate whole folders
+                        var dest = Path.Combine(userDesktop, Path.GetFileName(src));
+                        if (!File.Exists(dest)) File.Move(src, dest);
+                        assigned.Add(dest);
                     }
                 }
                 catch { /* ignore */ }
             }
 
-            ReloadItems();
+            if (assigned.Count > 0) AssignToThisFence(assigned);
         }
 
         // ---------- Context menu actions ----------
@@ -644,77 +818,46 @@ namespace OpenFences
                     return;
                 }
 
-                // A portal mirrors the user's real folder — renaming only changes the
-                // display label; never move/rename the underlying folder.
-                if (_model.IsPortal)
-                {
-                    _model.Name = newName;
-                    TitleText.Text = "🗁 " + _model.Name;
-                    FenceRenamed?.Invoke(this, EventArgs.Empty);
-                    return;
-                }
-
-                try
-                {
-                    var fencesRoot = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
-                        "Fences");
-
-                    var oldFolder = _model.FolderPath;
-                    var newFolder = Path.Combine(fencesRoot, newName);
-
-                    Directory.CreateDirectory(fencesRoot);
-
-                    if (!string.Equals(oldFolder, newFolder, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Don't silently swap onto an existing folder — that would orphan
-                        // this fence's current shortcuts and surface someone else's.
-                        if (Directory.Exists(newFolder))
-                        {
-                            MessageBox.Show(
-                                $"A fence folder named “{newName}” already exists:\n\n{newFolder}\n\n" +
-                                "Please choose a different name.",
-                                "Name In Use", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
-                        }
-
-                        Directory.Move(oldFolder, newFolder);
-
-                        _watcher.EnableRaisingEvents = false;
-                        _watcher.Path = newFolder;
-                        _watcher.EnableRaisingEvents = true;
-
-                        _model.FolderPath = newFolder;
-                    }
-
-                    _model.Name = newName;
-                    TitleText.Text = _model.Name;
-
-                    ReloadItems();
-                    FenceRenamed?.Invoke(this, EventArgs.Empty);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Rename failed:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                // Renaming only changes the fence's display label. Portals never touch the
+                // mirrored folder, and real-icon fences have no backing folder at all.
+                _model.Name = newName;
+                TitleText.Text = _model.IsPortal ? "🗁 " + _model.Name : _model.Name;
+                FenceRenamed?.Invoke(this, EventArgs.Empty);
             }
         }
 
         private void OpenFolder_Click(object sender, RoutedEventArgs e)
         {
+            // Portals open their mirrored folder; real-icon fences open the Desktop.
+            string folder = _model.IsPortal
+                ? _model.FolderPath
+                : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             try
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = _model.FolderPath,
-                    UseShellExecute = true
-                });
+                Process.Start(new ProcessStartInfo { FileName = folder, UseShellExecute = true });
             }
             catch { /* ignore */ }
         }
 
         private void AddSystemShortcuts_Click(object sender, RoutedEventArgs e)
         {
+            if (IsRealIcon)
+            {
+                // Assign the well-known special desktop items (This PC, Recycle Bin, …) to this
+                // fence as tiles. They render straight from their shell:::{CLSID} monikers.
+                var monikers = new[]
+                {
+                    "shell:::{20D04FE0-3AEA-1069-A2D8-08002B30309D}", // This PC
+                    "shell:::{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}", // Control Panel
+                    "shell:::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}", // Network
+                    "shell:::{645FF040-5081-101B-9F08-00AA002F954E}", // Recycle Bin
+                };
+                AssignToThisFence(monikers);
+                MessageBox.Show("Added system items to this fence.",
+                    "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
                 SetWatcherEnabled(false);
