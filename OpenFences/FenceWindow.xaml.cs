@@ -99,6 +99,8 @@ namespace OpenFences
             // content area, and both accept drops.
             AllowDrop = true;
             DragEnter += FenceWindow_DragEnter;
+            MouseEnter += FenceWindow_MouseEnter;
+            MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
             Items.ItemsSource = ItemsSource;
 
@@ -157,7 +159,12 @@ namespace OpenFences
             SizeChanged += (_, __) => SaveGeometry(null, null);
 
             // Stop watching the backing folder once this fence is gone.
-            Closed += (_, __) => { try { _watcher?.Dispose(); } catch { /* ignore */ } };
+            Closed += (_, __) =>
+            {
+                _hoverTimer?.Stop();
+                _rollTimer?.Stop();
+                try { _watcher?.Dispose(); } catch { /* ignore */ }
+            };
         }
 
         // ---------- UI/Background ----------
@@ -578,6 +585,80 @@ namespace OpenFences
             BeginAnimation(HeightProperty, anim);
         }
 
+        // ---------- Roll-up: collapsed fences open temporarily on hover / drag-over ----------
+        // While "temp-expanded" the model stays Collapsed, so nothing is persisted; a poll timer
+        // closes it again once the cursor has left (IsMouseOver is unreliable during drag/drop).
+        private bool _tempExpanded;
+        private bool _holdOpen;
+        private System.Windows.Threading.DispatcherTimer? _hoverTimer;
+        private System.Windows.Threading.DispatcherTimer? _rollTimer;
+
+        private void FenceWindow_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (!_model.Collapsed || _tempExpanded || Options?.ExpandCollapsedOnHover != true) return;
+            _hoverTimer ??= NewTimer(350, () =>
+            {
+                _hoverTimer!.Stop();
+                if (CursorInside()) TempExpand(true);
+            });
+            _hoverTimer.Start();
+        }
+
+        private void FenceWindow_MouseLeave(object sender, MouseEventArgs e) => _hoverTimer?.Stop();
+
+        /// <summary>Keep a collapsed fence open (e.g. while search shows its matches).
+        /// Releasing lets it roll back up once the cursor isn't over it.</summary>
+        public void HoldOpen(bool hold)
+        {
+            _holdOpen = hold;
+            if (hold) TempExpand(true);
+        }
+
+        private void TempExpand(bool open)
+        {
+            if (open)
+            {
+                if (!_model.Collapsed || _tempExpanded) return;
+                _tempExpanded = true;
+                EnsureBottomZOrder(); // in front of neighbouring fences
+                Scroller.Visibility = Visibility.Visible;
+                AnimateHeight(Math.Max(_model.Height, MinExpandedHeight), onCompleted: null);
+
+                _rollTimer ??= NewTimer(400, () =>
+                {
+                    if (_holdOpen || CursorInside() || _marqueeActive || AnyMenuOpen()) return;
+                    TempExpand(false);
+                });
+                _rollTimer.Start();
+            }
+            else
+            {
+                if (!_tempExpanded) return;
+                _tempExpanded = false;
+                _rollTimer?.Stop();
+                if (_model.Collapsed)
+                    AnimateHeight(CollapsedHeight, onCompleted: () => Scroller.Visibility = Visibility.Collapsed);
+            }
+        }
+
+        private System.Windows.Threading.DispatcherTimer NewTimer(int ms, Action tick)
+        {
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(ms) };
+            t.Tick += (_, __) => tick();
+            return t;
+        }
+
+        private bool CursorInside()
+        {
+            var p = System.Windows.Forms.Cursor.Position;
+            double s = OpenFences.Services.ScreenLayout.Scale;
+            return p.X >= Left * s && p.X < (Left + ActualWidth) * s &&
+                   p.Y >= Top * s && p.Y < (Top + ActualHeight) * s;
+        }
+
+        // Item right-click menus are ContextMenus too, but they close when the cursor leaves.
+        private bool AnyMenuOpen() => FenceMenu?.IsOpen == true || _dropMenu?.IsOpen == true;
+
         private void Collapse_Click(object sender, RoutedEventArgs e) => ToggleCollapsed();
 
         // User-driven collapse/expand. Bring this fence to the front of the other fences (still
@@ -589,6 +670,17 @@ namespace OpenFences
             Activate();
             Focus();
             EnsureBottomZOrder();
+
+            // Opened by hover: collapsing again would feel like nothing happened, so keep it open.
+            if (_tempExpanded)
+            {
+                _tempExpanded = false;
+                _rollTimer?.Stop();
+                _model.Collapsed = false;
+                ScheduleSave();
+                return;
+            }
+
             SetCollapsed(!_model.Collapsed, animate: true);
             ScheduleSave();
         }
@@ -847,6 +939,8 @@ namespace OpenFences
         // WPF DragEventArgs explicitly (avoid WinForms ambiguity)
         private void FenceWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
         {
+            if (_model.Collapsed) TempExpand(true); // let the user drop into a rolled-up fence
+
             e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
                 ? System.Windows.DragDropEffects.Copy
                 : System.Windows.DragDropEffects.None;
@@ -901,6 +995,8 @@ namespace OpenFences
             else AddItems(desktopPaths);
         }
 
+        private ContextMenu? _dropMenu;
+
         /// <summary>Ask (via a menu at the drop point) how to bring off-desktop items onto the
         /// desktop, then assign the resulting real desktop items to this fence.</summary>
         private void PromptOffDesktopDrop(List<string> sources)
@@ -908,7 +1004,7 @@ namespace OpenFences
             string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             string what = sources.Count == 1 ? $"\"{Path.GetFileName(sources[0])}\"" : $"{sources.Count} items";
 
-            var menu = new ContextMenu
+            var menu = _dropMenu = new ContextMenu
             {
                 Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
             };

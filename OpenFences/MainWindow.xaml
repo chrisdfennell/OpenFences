@@ -82,6 +82,10 @@
                                   IsCheckable="True"
                                   Click="MiSnap_Click"/>
                         <Separator/>
+                        <MenuItem x:Name="MiExpandOnHover"
+                                  Header="Open rolled-up fences on hover"
+                                  IsCheckable="True"
+                                  Click="MiExpandOnHover_Click"/>
                         <MenuItem x:Name="MiGlobalHotkeys"
                                   Header="Global shortcuts (Ctrl+Alt+H hide/show, Ctrl+Alt+F search)"
                                   IsCheckable="True"

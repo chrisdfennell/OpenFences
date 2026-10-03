@@ -27,6 +27,9 @@ namespace OpenFences
 
         // System-wide shortcuts: Ctrl+Alt+H hides/shows fences, Ctrl+Alt+F searches them.
         public bool GlobalHotkeys { get; set; } = true;
+
+        // Rolled-up (collapsed) fences open while the mouse rests on them.
+        public bool ExpandCollapsedOnHover { get; set; } = true;
     }
 
     // How a desktop item is matched to a target fence by the rules engine.

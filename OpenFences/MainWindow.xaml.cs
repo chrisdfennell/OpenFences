@@ -291,6 +291,14 @@ namespace OpenFences
             MiSnapToEdges.IsChecked = _config.Options.SnapToEdges;
             MiSnapToGrid.IsChecked = _config.Options.SnapToGrid;
             MiGlobalHotkeys.IsChecked = _config.Options.GlobalHotkeys;
+            MiExpandOnHover.IsChecked = _config.Options.ExpandCollapsedOnHover;
+        }
+
+        // Settings → Open rolled-up fences on hover (fences read it live)
+        private void MiExpandOnHover_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.ExpandCollapsedOnHover = MiExpandOnHover.IsChecked;
+            SaveConfig();
         }
 
         // Settings → Snap to edges / grid (fences read these live while moving)
