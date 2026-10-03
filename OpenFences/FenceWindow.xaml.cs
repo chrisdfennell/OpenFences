@@ -403,7 +403,7 @@ namespace OpenFences
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2)
-                SetCollapsed(!_model.Collapsed, animate: true);
+                ToggleCollapsed();
             else if (e.LeftButton == MouseButtonState.Pressed)
                 DragMove();
         }
@@ -458,7 +458,19 @@ namespace OpenFences
             BeginAnimation(HeightProperty, anim);
         }
 
-        private void Collapse_Click(object sender, RoutedEventArgs e) => SetCollapsed(!_model.Collapsed, animate: true);
+        private void Collapse_Click(object sender, RoutedEventArgs e) => ToggleCollapsed();
+
+        // User-driven collapse/expand. Bring this fence to the front of the other fences (still
+        // in the desktop layer) first, so expanding never leaves its body hidden behind a
+        // neighbouring fence. Activated only re-stacks when the fence wasn't already active,
+        // so re-stack explicitly too.
+        private void ToggleCollapsed()
+        {
+            Activate();
+            Focus();
+            EnsureBottomZOrder();
+            SetCollapsed(!_model.Collapsed, animate: true);
+        }
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
