@@ -843,6 +843,7 @@ namespace OpenFences
             if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
             Scroller.Focus();
 
+            _cursorIndex = ItemsSource.IndexOf(item);
             if (e.ClickCount == 2) { OpenItem(item); return; }
 
             // Ctrl+click toggles; plain click selects just this one.
@@ -1008,6 +1009,76 @@ namespace OpenFences
                 foreach (var i in ItemsSource) i.IsSelected = true;
                 e.Handled = true;
             }
+        }
+
+        // ---------- Keyboard navigation ----------
+        // The item the arrow keys move from (last clicked or keyed to).
+        private int _cursorIndex = -1;
+
+        // ScrollViewer consumes arrow keys in its own KeyDown, so navigation runs in Preview.
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var mods = Keyboard.Modifiers;
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+            switch (key)
+            {
+                case Key.F2:
+                    Rename_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    return;
+                case Key.Escape:
+                    SelectOnly(null);
+                    e.Handled = true;
+                    return;
+                case Key.Back:
+                case Key.Left when mods == ModifierKeys.Alt:
+                    if (IsInSubfolder) { PortalUp(); e.Handled = true; }
+                    return;
+            }
+
+            if (ItemsSource.Count == 0 || (mods & (ModifierKeys.Control | ModifierKeys.Alt)) != 0) return;
+
+            int count = ItemsSource.Count;
+            int cur = _cursorIndex >= 0 && _cursorIndex < count ? _cursorIndex : -1;
+            int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
+            int next = key switch
+            {
+                Key.Right => cur < 0 ? 0 : Math.Min(count - 1, cur + 1),
+                Key.Left => cur < 0 ? 0 : Math.Max(0, cur - 1),
+                Key.Down => cur < 0 ? 0 : Math.Min(count - 1, cur + cols),
+                Key.Up => cur < 0 ? 0 : Math.Max(0, cur - cols),
+                Key.Home => 0,
+                Key.End => count - 1,
+                _ => NextByLetter(key, cur)
+            };
+            if (next < 0) return;
+
+            // Shift extends the selection; otherwise the keyed-to item becomes the selection.
+            if ((mods & ModifierKeys.Shift) == ModifierKeys.Shift) ItemsSource[next].IsSelected = true;
+            else SelectOnly(ItemsSource[next]);
+
+            _cursorIndex = next;
+            (Items.ItemContainerGenerator.ContainerFromIndex(next) as FrameworkElement)?.BringIntoView();
+            e.Handled = true;
+        }
+
+        // Typing a letter or digit jumps to the next item whose name starts with it.
+        private int NextByLetter(Key key, int cur)
+        {
+            char c;
+            if (key >= Key.A && key <= Key.Z) c = (char)('a' + (key - Key.A));
+            else if (key >= Key.D0 && key <= Key.D9) c = (char)('0' + (key - Key.D0));
+            else return -1;
+
+            int count = ItemsSource.Count;
+            for (int step = 1; step <= count; step++)
+            {
+                int i = (Math.Max(cur, -1) + step) % count;
+                var name = ItemsSource[i].DisplayName;
+                if (name.Length > 0 && char.ToLowerInvariant(name[0]) == c) return i;
+            }
+            return -1;
         }
 
         // ---------- Marquee (rubber-band) selection ----------

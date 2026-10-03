@@ -10,6 +10,7 @@
         Topmost="False"
         Focusable="True"
         KeyDown="Window_KeyDown"
+        PreviewKeyDown="Window_PreviewKeyDown"
         Width="420" Height="260">
 
     <!-- Borderless chrome (resize grips, no caption buttons) -->
