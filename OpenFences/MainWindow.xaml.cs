@@ -1051,6 +1051,8 @@ namespace OpenFences
                     list.Add(path);
                 }
 
+                AutoSnapshot("Before Auto-Import");
+
                 int apps = 0, docs = 0, sys = 0;
                 foreach (var entry in entries)
                 {
@@ -1082,6 +1084,100 @@ namespace OpenFences
             }
         }
 
+        // ========== Layout snapshots ==========
+        // File → Layouts is rebuilt each time it opens, so it always lists what's on disk.
+        private void MiLayouts_SubmenuOpened(object sender, RoutedEventArgs e)
+        {
+            if (!ReferenceEquals(e.OriginalSource, MiLayouts)) return; // a nested submenu opened
+
+            MiLayouts.Items.Clear();
+            var save = new MenuItem { Header = "Save current layout…" };
+            save.Click += (_, __) => SaveLayoutSnapshot();
+            MiLayouts.Items.Add(save);
+
+            var snaps = LayoutSnapshots.List();
+            if (snaps.Count > 0) MiLayouts.Items.Add(new Separator());
+            foreach (var snap in snaps)
+            {
+                var label = (snap.Automatic ? "Auto: " : "") + snap.Name + $"  ({snap.Created:MMM d, h:mm tt})";
+                var entry = new MenuItem { Header = label };
+
+                var restore = new MenuItem { Header = "Restore" };
+                restore.Click += (_, __) => RestoreLayoutSnapshot(snap);
+                var delete = new MenuItem { Header = "Delete" };
+                delete.Click += (_, __) => LayoutSnapshots.Delete(snap);
+
+                entry.Items.Add(restore);
+                entry.Items.Add(delete);
+                MiLayouts.Items.Add(entry);
+            }
+
+            MiLayouts.Items.Add(new Separator());
+            var open = new MenuItem { Header = "Open layouts folder" };
+            open.Click += (_, __) =>
+            {
+                try
+                {
+                    Directory.CreateDirectory(LayoutSnapshots.Folder);
+                    Process.Start(new ProcessStartInfo { FileName = LayoutSnapshots.Folder, UseShellExecute = true });
+                }
+                catch { /* ignore */ }
+            };
+            MiLayouts.Items.Add(open);
+        }
+
+        private void SaveLayoutSnapshot()
+        {
+            var prompt = new InputDialog("Save Layout", "Name this layout:", $"Layout {DateTime.Now:MMM d}");
+            if (IsVisible) prompt.Owner = this;
+            if (prompt.ShowDialog() != true) return;
+
+            var name = prompt.Value.Trim();
+            if (name.Length == 0) return;
+            try { LayoutSnapshots.Save(name, _fences, automatic: false); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("The layout couldn't be saved:\n" + ex.Message, "OpenFences",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // Taken before anything that rearranges many fences at once, so it can be undone.
+        private void AutoSnapshot(string reason)
+        {
+            try { LayoutSnapshots.Save(reason, _fences, automatic: true); }
+            catch (Exception ex) { (System.Windows.Application.Current as App)?.SafeLog("Auto snapshot", ex); }
+        }
+
+        private void RestoreLayoutSnapshot(LayoutSnapshots.Snapshot snap)
+        {
+            var ok = MessageBox.Show(
+                $"Restore the layout “{snap.Name}”?\n\nYour current fences are replaced by the ones in this layout. " +
+                "Nothing on your desktop is deleted, and the current layout is saved first so you can go back.",
+                "Restore Layout", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (ok != MessageBoxResult.OK) return;
+
+            AutoSnapshot($"Before restoring “{snap.Name}”");
+
+            // Items that no longer exist are dropped; an item claimed by two fences stays in the first.
+            var fences = LayoutSnapshots.Clone(snap.Fences);
+            var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var f in fences.Where(f => !f.IsPortal))
+                f.ItemPaths = f.ItemPaths
+                    .Where(p => p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || File.Exists(p) || Directory.Exists(p))
+                    .Where(p => claimed.Add(p))
+                    .ToList();
+
+            foreach (var w in _openWindows.ToList()) w.Close();
+            _openWindows.Clear();
+            _config.Fences = fences;
+            _peeked = false;
+
+            SpawnFencesFromConfig();
+            BuildCatchAll(); // anything on the desktop the snapshot doesn't place
+            SaveConfig();
+        }
+
         // ========== Rules editor ==========
         private void EditRules_Click(object? sender, RoutedEventArgs? e)
         {
@@ -1095,7 +1191,11 @@ namespace OpenFences
             InitSettingsChecks();
             SaveConfig();
 
-            if (dlg.ApplyNow) ApplyRulesToCatchAll();
+            if (dlg.ApplyNow)
+            {
+                AutoSnapshot("Before sorting the Desktop fence");
+                ApplyRulesToCatchAll();
+            }
         }
 
         // Re-sort what's already in the Desktop fence with the current rules. System items

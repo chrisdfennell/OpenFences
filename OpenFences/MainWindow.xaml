@@ -45,6 +45,10 @@
                         <MenuItem Header="New Fence" Click="NewFence_Click"/>
                         <MenuItem Header="New Folder Portal…" Click="NewFolderPortal_Click"/>
                         <Separator/>
+                        <MenuItem x:Name="MiLayouts" Header="Layouts" SubmenuOpened="MiLayouts_SubmenuOpened">
+                            <MenuItem Header="Save current layout…"/>
+                        </MenuItem>
+                        <Separator/>
                         <MenuItem Header="Exit" Click="Exit_Click"/>
                     </MenuItem>
 
