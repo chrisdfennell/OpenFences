@@ -97,10 +97,14 @@
         <DockPanel>
 
             <!-- Title bar -->
-            <Grid x:Name="TitleBar"
-                  DockPanel.Dock="Top"
-                  Height="34"
-                  Background="#2B2B2B"
+            <!-- Title bar background is a Border whose top corners follow the card's rounding
+                 (outer radius 10 minus the 1px edge), so the corners don't poke out square. -->
+            <Border x:Name="TitleBar"
+                    DockPanel.Dock="Top"
+                    CornerRadius="9,9,0,0"
+                    Background="#2B2B2B">
+            <Grid Height="34"
+                  Background="Transparent"
                   MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                   ContextMenuOpening="TitleBar_ContextMenuOpening">
                 <Grid.ColumnDefinitions>
@@ -207,6 +211,7 @@
                     </ContextMenu>
                 </Grid.ContextMenu>
             </Grid>
+            </Border>
 
             <!-- Portal breadcrumbs: shown only after opening a subfolder -->
             <DockPanel x:Name="BreadcrumbBar"
