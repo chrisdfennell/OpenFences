@@ -492,17 +492,36 @@ namespace OpenFences
             _tray.DoubleClick += (_, __) => RestoreFromTray();
         }
 
+        // Ask for the small-icon size so the tray gets the crisp 16px (or DPI-scaled) frame.
+        // Try the .ico shipped next to the exe, then the embedded resource, then the exe's own
+        // icon; failures are logged rather than silently showing the generic app icon.
         private static Drawing.Icon LoadAppIconOrFallback()
         {
+            var size = WinForms.SystemInformation.SmallIconSize;
+            var log = (System.Windows.Application.Current as App);
+
             try
             {
-                // Load WPF resource (pack URI) ico for the tray
-                var uri = new Uri("pack://application:,,,/Assets/open-fence.ico", UriKind.Absolute);
-                var s = System.Windows.Application.GetResourceStream(uri)?.Stream;
-                // Ask for the small-icon size so the tray gets the crisp 16px (or DPI-scaled) frame
-                if (s != null) return new Drawing.Icon(s, WinForms.SystemInformation.SmallIconSize);
+                var file = Path.Combine(AppContext.BaseDirectory, "Assets", "open-fence.ico");
+                if (File.Exists(file)) return new Drawing.Icon(file, size);
             }
-            catch { /* fallback below */ }
+            catch (Exception ex) { log?.SafeLog("Tray icon (file)", ex); }
+
+            try
+            {
+                var uri = new Uri("pack://application:,,,/OpenFences;component/Assets/open-fence.ico", UriKind.Absolute);
+                var s = System.Windows.Application.GetResourceStream(uri)?.Stream;
+                if (s != null) return new Drawing.Icon(s, size);
+            }
+            catch (Exception ex) { log?.SafeLog("Tray icon (resource)", ex); }
+
+            try
+            {
+                if (Environment.ProcessPath is { } exe && Drawing.Icon.ExtractAssociatedIcon(exe) is { } assoc)
+                    return new Drawing.Icon(assoc, size);
+            }
+            catch (Exception ex) { log?.SafeLog("Tray icon (exe)", ex); }
+
             return Drawing.SystemIcons.Application;
         }
 
