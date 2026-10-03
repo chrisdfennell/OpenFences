@@ -1082,6 +1082,51 @@ namespace OpenFences
             }
         }
 
+        // ========== Rules editor ==========
+        private void EditRules_Click(object? sender, RoutedEventArgs? e)
+        {
+            var dlg = new RulesDialog(_config.Rules, _config.Options.AutoOrganize, RealFences.Select(w => w.FenceName));
+            if (IsVisible) dlg.Owner = this;
+            else dlg.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            if (dlg.ShowDialog() != true) return;
+
+            _config.Rules = dlg.Rules;
+            _config.Options.AutoOrganize = dlg.AutoOrganize;
+            InitSettingsChecks();
+            SaveConfig();
+
+            if (dlg.ApplyNow) ApplyRulesToCatchAll();
+        }
+
+        // Re-sort what's already in the Desktop fence with the current rules. System items
+        // (This PC, Recycle Bin…) stay put; rules are about files.
+        private void ApplyRulesToCatchAll()
+        {
+            var catchAll = FindRealFence(CatchAllFenceName);
+            if (catchAll == null) return;
+
+            var groups = catchAll.OwnedItemPaths
+                .Where(p => !p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase))
+                .Select(p => (path: p, target: DesktopRules.ResolveTargetFence(p, _config.Rules)))
+                .Where(x => !string.IsNullOrWhiteSpace(x.target) &&
+                            !string.Equals(x.target, CatchAllFenceName, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(x => x.target!, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            int moved = 0;
+            foreach (var g in groups)
+            {
+                var paths = g.Select(x => x.path).ToList();
+                AssignItemsToFence(EnsureRealFence(g.Key), paths);
+                moved += paths.Count;
+            }
+
+            MessageBox.Show(moved == 0
+                    ? "Nothing in the Desktop fence matched a rule."
+                    : $"Moved {moved} item(s) out of the Desktop fence into {groups.Count} fence(s).",
+                "OpenFences", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         // ========== Rules engine: continuous auto-organize ==========
         private void ApplyAutoOrganizeSetting()
         {

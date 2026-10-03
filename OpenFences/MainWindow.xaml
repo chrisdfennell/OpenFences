@@ -96,6 +96,7 @@
                                   Header="Auto-organize new desktop items into fences"
                                   IsCheckable="True"
                                   Click="MiAutoOrganize_Click"/>
+                        <MenuItem Header="Edit auto-organize rules…" Click="EditRules_Click"/>
                         <Separator/>
                         <MenuItem x:Name="MiCheckForUpdates"
                                   Header="Check for updates automatically"

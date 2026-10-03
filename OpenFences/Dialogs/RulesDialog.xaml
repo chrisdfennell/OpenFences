@@ -1,0 +1,110 @@
+<Window x:Class="OpenFences.RulesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Auto-organize rules"
+        Width="680" Height="560"
+        MinWidth="560" MinHeight="380"
+        WindowStartupLocation="CenterOwner"
+        Background="#1B1B20"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Themes/DialogStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="Auto-organize rules" FontSize="18" FontWeight="SemiBold"/>
+            <TextBlock Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{StaticResource Dlg.Subtle}"
+                       Text="When something new appears on your desktop, these rules decide which fence it goes into. They're checked top to bottom and the first match wins; anything no rule matches goes to the Desktop fence. A fence that doesn't exist yet is created."/>
+            <CheckBox x:Name="ChkAutoOrganize" Margin="0,0,0,12"
+                      Content="Auto-organize new desktop items using these rules"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource Dlg.Card}" BorderBrush="{StaticResource Dlg.CardEdge}"
+                BorderThickness="1" CornerRadius="10" Padding="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="RuleList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="28"/>
+                                    <ColumnDefinition Width="190"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="{Binding Number}" Foreground="{StaticResource Dlg.Subtle}"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                                <!-- What the rule matches (dropdown menu) -->
+                                <Button Grid.Column="1" HorizontalContentAlignment="Stretch" Padding="10,6"
+                                        FontWeight="Normal" Click="Kind_Click" ToolTip="What this rule matches">
+                                    <DockPanel Width="160">
+                                        <TextBlock DockPanel.Dock="Right" Text="▾" Foreground="{StaticResource Dlg.Subtle}"/>
+                                        <TextBlock Text="{Binding KindLabel}"/>
+                                    </DockPanel>
+                                </Button>
+
+                                <!-- File types (only for "File types") -->
+                                <TextBox Grid.Column="2" Margin="8,0,0,0" Height="32"
+                                         Text="{Binding ExtensionsText, UpdateSourceTrigger=PropertyChanged}"
+                                         Visibility="{Binding ExtensionsVisibility}"
+                                         ToolTip="File types, e.g. .png .jpg .gif"/>
+
+                                <TextBlock Grid.Column="3" Text="→" Margin="10,0" VerticalAlignment="Center"
+                                           Foreground="{StaticResource Dlg.Subtle}"/>
+
+                                <!-- Target fence: type a name or pick an existing fence -->
+                                <Grid Grid.Column="4">
+                                    <TextBox Height="32" Padding="6,6,30,6"
+                                             Text="{Binding Target, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Fence to put matching items in"/>
+                                    <Button Style="{StaticResource IconButton}" BorderThickness="0"
+                                            HorizontalAlignment="Right" Width="28" Height="28" Margin="0,0,2,0"
+                                            Content="▾" Click="PickFence_Click" ToolTip="Choose an existing fence"/>
+                                </Grid>
+
+                                <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="8,0,0,0">
+                                    <Button Style="{StaticResource IconButton}" Content="↑" Click="Up_Click" ToolTip="Move up"/>
+                                    <Button Style="{StaticResource IconButton}" Content="↓" Margin="4,0" Click="Down_Click" ToolTip="Move down"/>
+                                    <Button Style="{StaticResource IconButton}" Content="✕" Click="Remove_Click" ToolTip="Delete rule"/>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="＋  Add rule" Click="Add_Click"/>
+            <Button Content="Reset to defaults" Margin="8,0,0,0" Click="Reset_Click"/>
+        </StackPanel>
+
+        <DockPanel Grid.Row="3" Margin="0,16,0,0" LastChildFill="False">
+            <Button DockPanel.Dock="Left" Content="Save &amp; sort Desktop fence now" Click="SaveAndApply_Click"
+                    ToolTip="Save, then move items already in the Desktop fence to wherever these rules send them"/>
+            <Button DockPanel.Dock="Right" Content="Save" Width="100" Style="{StaticResource PrimaryButton}"
+                    IsDefault="True" Click="Save_Click"/>
+            <Button DockPanel.Dock="Right" Content="Cancel" Width="100" Margin="0,0,8,0"
+                    IsCancel="True"/>
+        </DockPanel>
+    </Grid>
+</Window>
