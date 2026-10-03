@@ -93,6 +93,17 @@
                                 Margin="0,0,8,0"
                                 VerticalAlignment="Center"/>
 
+                            <!-- Checkmark for checkable items (shares the icon column) -->
+                            <TextBlock x:Name="Check"
+                                Grid.Column="0"
+                                Text="✓"
+                                Width="14"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"
+                                Foreground="{StaticResource DarkMenu.Accent}"
+                                FontWeight="Bold"
+                                Visibility="Collapsed"/>
+
                             <ContentPresenter Grid.Column="1"
                                 x:Name="HeaderHost"
                                 ContentSource="Header"
@@ -161,6 +172,14 @@
 
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.55"/>
+                        </Trigger>
+
+                        <!-- Checkable items reserve the check column so labels line up -->
+                        <Trigger Property="IsCheckable" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Hidden"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
                         </Trigger>
 
                         <Trigger Property="IsSubmenuOpen" Value="True">
