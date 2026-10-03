@@ -72,6 +72,15 @@
                                   IsCheckable="True"
                                   Click="MiPeekFences_Click"/>
                         <Separator/>
+                        <MenuItem x:Name="MiSnapToEdges"
+                                  Header="Snap fences to screen edges and each other (hold Alt to move freely)"
+                                  IsCheckable="True"
+                                  Click="MiSnap_Click"/>
+                        <MenuItem x:Name="MiSnapToGrid"
+                                  Header="Snap fences to a grid"
+                                  IsCheckable="True"
+                                  Click="MiSnap_Click"/>
+                        <Separator/>
                         <MenuItem x:Name="MiAutoOrganize"
                                   Header="Auto-organize new desktop items into fences"
                                   IsCheckable="True"

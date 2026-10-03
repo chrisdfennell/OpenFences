@@ -48,6 +48,9 @@ namespace OpenFences
             // Migrate legacy name-based ownership (IconNames) → path-based (ItemPaths).
             MigrateLegacyOwnership();
 
+            // Fences read app-wide options (snapping, hover roll-up) live.
+            FenceWindow.Options = _config.Options;
+
             // Initialize settings checkboxes from config + system (fully-qualify WPF CheckBox)
             if (FindName("ChkRunAtStartup") is System.Windows.Controls.CheckBox chkRun)
                 chkRun.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
@@ -251,6 +254,16 @@ namespace OpenFences
             MiPeekFences.IsChecked = _config.Options.DoubleClickPeekFences;
             MiAutoOrganize.IsChecked = _config.Options.AutoOrganize;
             MiCheckForUpdates.IsChecked = _config.Options.CheckForUpdates;
+            MiSnapToEdges.IsChecked = _config.Options.SnapToEdges;
+            MiSnapToGrid.IsChecked = _config.Options.SnapToGrid;
+        }
+
+        // Settings → Snap to edges / grid (fences read these live while moving)
+        private void MiSnap_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.SnapToEdges = MiSnapToEdges.IsChecked;
+            _config.Options.SnapToGrid = MiSnapToGrid.IsChecked;
+            SaveConfig();
         }
 
         // Settings → Check for updates automatically

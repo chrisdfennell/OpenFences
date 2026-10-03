@@ -75,10 +75,18 @@ namespace OpenFences
         }
 
 
+        /// <summary>App-wide options (snapping, hover roll-up…), wired by MainWindow.</summary>
+        public static AppOptions? Options;
+
+        /// <summary>Every open fence window, so fences can snap to and search across each other.</summary>
+        public static readonly List<FenceWindow> AllFences = new();
+
         public FenceWindow(FenceModel model)
         {
             InitializeComponent();
             _model = model;
+            AllFences.Add(this);
+            Closed += (_, __) => AllFences.Remove(this);
 
             TitleText.Text = model.IsPortal ? "🗁 " + model.Name : model.Name;
             Left = model.Left; Top = model.Top;
@@ -257,11 +265,37 @@ namespace OpenFences
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            // Only a user move/resize is remembered for this monitor arrangement. Windows also
-            // moves fences itself when a monitor disappears; that must not overwrite the spot
-            // the user chose for the arrangement it came from.
-            if (msg == WM_EXITSIZEMOVE) RememberPlacementForScreens();
+            switch (msg)
+            {
+                case OpenFences.Services.FenceSnapper.WM_MOVING:
+                case OpenFences.Services.FenceSnapper.WM_SIZING:
+                    SnapProposedRect(hwnd, msg == OpenFences.Services.FenceSnapper.WM_SIZING ? wParam.ToInt32() : 0, lParam);
+                    break;
+
+                // Only a user move/resize is remembered for this monitor arrangement. Windows
+                // also moves fences itself when a monitor disappears; that must not overwrite
+                // the spot the user chose for the arrangement it came from.
+                case WM_EXITSIZEMOVE:
+                    RememberPlacementForScreens();
+                    break;
+            }
             return IntPtr.Zero;
+        }
+
+        private void SnapProposedRect(IntPtr self, int sizingEdge, IntPtr lParam)
+        {
+            var opts = Options;
+            if (opts == null || lParam == IntPtr.Zero) return;
+
+            var r = System.Runtime.InteropServices.Marshal.PtrToStructure<OpenFences.Services.FenceSnapper.RECT>(lParam);
+            var others = AllFences
+                .Where(f => f != this && f.IsVisible)
+                .Select(f => new WindowInteropHelper(f).Handle)
+                .Where(h => h != IntPtr.Zero && h != self)
+                .ToList();
+
+            if (OpenFences.Services.FenceSnapper.Snap(ref r, sizingEdge, others, opts.SnapToEdges, opts.SnapToGrid))
+                System.Runtime.InteropServices.Marshal.StructureToPtr(r, lParam, false);
         }
 
         private void RememberPlacementForScreens()

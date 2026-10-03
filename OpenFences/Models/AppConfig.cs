@@ -19,6 +19,11 @@ namespace OpenFences
 
         // A version the user chose "Skip this version" for; automatic checks stay quiet about it.
         public string? SkippedVersion { get; set; }
+
+        // While moving/resizing, fences snap to screen edges and to each other (Alt = free)…
+        public bool SnapToEdges { get; set; } = true;
+        // …and optionally to a 20px grid.
+        public bool SnapToGrid { get; set; } = false;
     }
 
     // How a desktop item is matched to a target fence by the rules engine.
