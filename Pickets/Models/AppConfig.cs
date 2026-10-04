@@ -25,6 +25,12 @@ namespace Pickets
         // …and optionally to a 20px grid.
         public bool SnapToGrid { get; set; } = false;
 
+        // Fences snapped one under another stay together: dragging a title bar moves the whole
+        // stack, and rolling one up pulls the ones below it up (Services/FenceStacks).
+        public bool MoveStacksTogether { get; set; } = true;
+        // In a stack, opening one fence rolls the others up.
+        public bool StackOneOpen { get; set; } = false;
+
         // System-wide shortcuts: Ctrl+Alt+H hides/shows fences, Ctrl+Alt+F searches them.
         public bool GlobalHotkeys { get; set; } = true;
         public string SearchHotkey { get; set; } = "Ctrl+Alt+F";

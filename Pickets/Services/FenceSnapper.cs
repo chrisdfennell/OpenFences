@@ -22,7 +22,7 @@ namespace Pickets.Services
                           WMSZ_TOPRIGHT = 5, WMSZ_BOTTOM = 6, WMSZ_BOTTOMLEFT = 7, WMSZ_BOTTOMRIGHT = 8;
 
         private const double ThresholdDip = 10;
-        private const double GapDip = 8;
+        public const double GapDip = 8;
         public const double GridDip = 20;
 
         [StructLayout(LayoutKind.Sequential)]

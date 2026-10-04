@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,7 +28,7 @@ namespace Pickets
             // A second copy only signals the first one and exits (see OnStartup). It must not
             // register the icon-restore handler below, or exiting would un-hide the desktop
             // icons that the running instance deliberately hid.
-            if (!_isPrimaryInstance) return;
+            if (!_isPrimaryInstance || RestoreIconsOnly) return;
 
             // First start after the rename from OpenFences: bring the old settings along.
             Pickets.Services.LegacyMigration.Run();
@@ -61,9 +62,40 @@ namespace Pickets
             };
         }
 
+        /// <summary>"Pickets.exe --restore-icons": just bring the desktop icons back and quit, for
+        /// when Pickets crashed (or won't start) and left them hidden. Also in the Start menu.</summary>
+        private static bool RestoreIconsOnly => Environment.GetCommandLineArgs().Skip(1).Any(a =>
+            a.Equals("--restore-icons", StringComparison.OrdinalIgnoreCase) ||
+            a.Equals("/restore-icons", StringComparison.OrdinalIgnoreCase));
+
+        private void RestoreIconsAndQuit()
+        {
+            string message;
+            var icon = System.Windows.MessageBoxImage.Information;
+            if (!_isPrimaryInstance)
+                message = "Pickets is running. While it runs, your desktop items show inside fences instead of as " +
+                          "desktop icons.\n\nTo get your normal desktop back, exit Pickets from its tray icon.";
+            else if (DesktopHelper.ForceShowDesktopIcons())
+                message = "Your desktop icons are back.";
+            else
+            {
+                message = "Pickets couldn't bring your desktop icons back by itself.\n\n" +
+                          "Right-click an empty spot on the desktop and choose View → Show desktop icons.";
+                icon = System.Windows.MessageBoxImage.Warning;
+            }
+            System.Windows.MessageBox.Show(message, "Pickets", System.Windows.MessageBoxButton.OK, icon);
+            Shutdown();
+        }
+
         protected override void OnStartup(System.Windows.StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            if (RestoreIconsOnly)
+            {
+                RestoreIconsAndQuit();
+                return;
+            }
 
             if (!_isPrimaryInstance)
             {
@@ -98,6 +130,9 @@ namespace Pickets
             _instanceMutex.Dispose();
             base.OnExit(e);
         }
+
+        /// <summary>Where errors are logged (About → Copy diagnostics includes its end).</summary>
+        internal string LogPath => _logPath;
 
         internal void SafeLog(string tag, Exception? ex)
         {

@@ -66,6 +66,14 @@ namespace Pickets
             RestoreWindowPlacement();
             Closing += (_, __) => RememberWindowPlacement();
 
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key != Key.F1) return;
+                ShowKeyboardHelp();
+                e.Handled = true;
+            };
+            FenceWindow.RequestKeyboardHelp = ShowKeyboardHelp;
+
             RefreshSettingsPage();
             RefreshHome();
         }
@@ -121,6 +129,40 @@ namespace Pickets
 
             if (page == "Home") RefreshHome();
             if (page == "Settings") RefreshSettingsPage();
+        }
+
+        // F1 (here or in a fence), or About → Keyboard shortcuts. One window, brought back if open.
+        private KeyboardHelpWindow? _keyboardHelp;
+
+        private void ShowKeyboardHelp()
+        {
+            if (_keyboardHelp != null) { _keyboardHelp.Activate(); return; }
+            _keyboardHelp = new KeyboardHelpWindow(_config.Options);
+            _keyboardHelp.Closed += (_, __) => _keyboardHelp = null;
+            _keyboardHelp.Show();
+            _keyboardHelp.Activate();
+        }
+
+        private void KeyboardHelp_Click(object sender, RoutedEventArgs e) => ShowKeyboardHelp();
+
+        // About → Copy diagnostics: a redacted summary to paste into a bug report.
+        private void CopyDiagnostics_Click(object sender, RoutedEventArgs e)
+        {
+            var log = (System.Windows.Application.Current as App)?.LogPath ?? "";
+            try
+            {
+                System.Windows.Clipboard.SetText(Diagnostics.Build(_config, log));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "The diagnostics couldn't be copied:\n" + ex.Message, "Pickets",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            MessageBox.Show(this, "Diagnostics copied. Paste them into your bug report.\n\n" +
+                                  "Your user name and PC name are replaced, and fence and file names aren't included, " +
+                                  "but have a quick look before you share it.",
+                            "Pickets", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void Link_Click(object sender, RoutedEventArgs e)

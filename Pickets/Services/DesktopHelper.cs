@@ -127,6 +127,24 @@ namespace Pickets
             catch { /* ignore */ }
         }
 
+        /// <summary>
+        /// Recovery ("Pickets.exe --restore-icons"): make the desktop icons visible again, e.g. after
+        /// Pickets was killed while they were hidden. Returns true if they're showing afterwards.
+        /// </summary>
+        public static bool ForceShowDesktopIcons()
+        {
+            try
+            {
+                InitializeDesktopHandles();
+                RestoreDesktopIconsOnExit(); // the shell's own "Show desktop icons" toggle
+                RefreshHandles();
+                if (_listView != IntPtr.Zero && !IsWindowVisible(_listView))
+                    ShowWindow(_listView, SW_SHOW);
+                return !DesktopIconsHiddenPerRegistry() && AreIconsVisible();
+            }
+            catch { return false; }
+        }
+
         private static bool DesktopIconsHiddenPerRegistry()
         {
             try
@@ -374,6 +392,13 @@ namespace Pickets
             double s = GetDpiForWindow(hwnd) is uint dpi and > 0 ? dpi / 96.0 : 1.0;
             SetWindowPos(hwnd, IntPtr.Zero, x, y, (int)Math.Round(dip.Width * s), (int)Math.Round(dip.Height * s),
                          SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+
+        /// <summary>Move a window to a screen-pixel position, keeping its size and z-order.</summary>
+        public static void MoveWindowPx(IntPtr hwnd, int x, int y)
+        {
+            if (hwnd != IntPtr.Zero)
+                SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
 
         /// <summary>A window's rectangle in screen pixels.</summary>

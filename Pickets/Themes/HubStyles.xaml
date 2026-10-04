@@ -119,7 +119,7 @@
     <Style x:Key="Hub.PrimaryButton" TargetType="Button" BasedOn="{StaticResource Hub.ButtonBase}">
         <Setter Property="Background" Value="{DynamicResource Hub.Accent}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.OnAccent}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -286,7 +286,7 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="track" Property="Background" Value="{DynamicResource Hub.Accent}"/>
                             <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
-                            <Setter TargetName="thumb" Property="Fill" Value="White"/>
+                            <Setter TargetName="thumb" Property="Fill" Value="{DynamicResource Hub.OnAccent}"/>
                             <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
                             <Setter TargetName="thumb" Property="Margin" Value="0,0,5,0"/>
                         </Trigger>

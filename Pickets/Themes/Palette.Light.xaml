@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="Hub.Text"         Color="#1A1D24"/>
     <SolidColorBrush x:Key="Hub.Muted"        Color="#5C6577"/>
     <SolidColorBrush x:Key="Hub.Accent"       Color="#2563EB"/>
+    <SolidColorBrush x:Key="Hub.OnAccent"     Color="#FFFFFF"/>
     <SolidColorBrush x:Key="Hub.AccentHover"  Color="#1D4ED8"/>
     <SolidColorBrush x:Key="Hub.AccentSoft"   Color="#DCE7FD"/>
     <SolidColorBrush x:Key="Hub.Danger"       Color="#DC2626"/>
@@ -43,6 +44,8 @@
     <SolidColorBrush x:Key="Dlg.InputBg"   Color="#FFFFFF"/>
     <SolidColorBrush x:Key="Dlg.InputEdge" Color="#C9CFD9"/>
     <SolidColorBrush x:Key="Dlg.InputFg"   Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Dlg.Primary"     Color="#2563EB"/>
+    <SolidColorBrush x:Key="Dlg.PrimaryEdge" Color="#3B82F6"/>
     <SolidColorBrush x:Key="Dlg.Accent"    Color="#2563EB"/>
 
     <!-- Menus and scroll bars -->

@@ -32,6 +32,9 @@ namespace Pickets
         public double Height { get; set; } = 240;
         public bool Collapsed { get; set; } = false;
 
+        // "Keep fitted to contents": the height follows the items (no scrollbar, within the screen).
+        public bool AutoHeight { get; set; } = false;
+
         // Closed with ✕: stays closed (also across restarts) until reopened from
         // the Pickets window. It keeps owning its items, so nothing gets re-homed.
         public bool Closed { get; set; } = false;

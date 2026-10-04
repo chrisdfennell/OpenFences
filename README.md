@@ -48,6 +48,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
 - **Move to fence.** Right-click tiles → **Move to fence…** (another fence, or one of its tabs) or **Move to new fence**, which creates a fence right beside the current one holding the selection.
 - **Select across fences.** Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
+- **Undo.** **Ctrl+Z** in a fence undoes the last organizing step: moving or rearranging tiles, **Remove from fence**, tab changes, a deleted fence, Auto-Import. The tray menu's **Undo** says what it will undo. Up to 30 steps per session; files sent to the Recycle Bin come back from there.
 - **Close or delete.** ✕ closes a fence and it stays closed (it keeps its items) until you reopen it from the Pickets window; **Delete Fence…** removes it and its items go back to the Desktop fence. Nothing on your disk is deleted either way.
 
 ### Find and open
@@ -65,9 +66,10 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Style each fence.** Colors (presets or any custom color), title size, transparency, **frosted glass**, or a **picture or looping video background** (fill, fit or stretch, optional darkening, sound on or off per video).
 - **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden. Hover a tile for its full name, type, size, date and folder.
 - **Icons or a list.** Fence menu → **View → List** shows one compact row per item with its size and date, handy for long fences and portals.
-- **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles. Rolled-up fences show how many items they hold.
+- **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles, and **Keep fitted to contents** makes it grow and shrink with them. Rolled-up fences show how many items they hold.
 - **Roll up and peek.** Double-click a title to roll a fence up; rest the mouse on it (or drag files over it) to open it until you move away.
 - **Snap and align.** Fences snap to screen edges and to each other while you move or resize them, with an optional grid. Hold **Alt** to move freely. Lock a fence to stop accidental moves.
+- **Stacks.** Fences snapped one under another stay together: drag any title bar to move the whole stack, and rolling one up pulls the ones below it up. Turn on **One open fence per stack** in Settings for an accordion that keeps a tall column compact. **Alt**-drag takes a fence out of its stack.
 
 ### Stays out of your way
 
@@ -79,6 +81,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Sharp on every monitor.** Fences and windows render at each monitor's own scaling, so a 150% laptop next to a 100% monitor looks crisp on both.
 - **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
 - **Safe settings.** Saved continuously with a backup copy that's restored automatically if the file is ever damaged.
+- **Accessible.** Press **F1** for every keyboard shortcut. Under a Windows high-contrast theme, fences, menus and the Pickets window use the theme's own colors.
 
 ---
 
@@ -114,6 +117,9 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Rules for new files:** **Settings → Organizing → Edit rules…**.
 - **Start over:** **Settings → Start over → Delete all fences…** (the current layout is saved first).
 - **Bring back the window:** double-click the tray icon, or start Pickets again.
+- **See every shortcut:** press **F1** in a fence or in the Pickets window.
+- **Desktop icons missing after a crash:** Start menu → **Pickets - Restore desktop icons**, or run `Pickets.exe --restore-icons`. Exiting Pickets normally always brings them back.
+- **Report a problem:** **About → Copy diagnostics** copies your version, Windows, monitors, settings and recent errors (with your user and PC names replaced) to paste into an [issue](https://github.com/chrisdfennell/Pickets/issues).
 
 ---
 

@@ -78,7 +78,12 @@ namespace Pickets
             ApplyAutoOrganizeSetting();
 
             // Cross-fence drops route through here so an item leaves any prior fence.
-            FenceWindow.RequestAssignItems = AssignItemsToFence;
+            FenceWindow.RequestAssignItems = (target, paths) =>
+                Undoable(FenceWindow.MoveDescription(paths.Count, $"“{target.FenceName}”"), () => AssignItemsToFence(target, paths));
+
+            // Ctrl+Z in a fence undoes the last organizing action (MainWindow.Undo.cs).
+            FenceWindow.RequestUndoable = Undoable;
+            FenceWindow.RequestUndo = Undo;
 
             // Spawn fence windows from config
             SpawnFencesFromConfig();
@@ -268,7 +273,7 @@ namespace Pickets
                 .ToList();
             if (paths.Count == 0) return;
 
-            AssignItemsToFence(EnsureRealFence(CatchAllFenceName), paths);
+            Undoable("Remove from fence", () => AssignItemsToFence(EnsureRealFence(CatchAllFenceName), paths));
         }
 
         private static bool IsCatchAll(FenceWindow w) =>
@@ -374,6 +379,8 @@ namespace Pickets
             Theme.Changed += () => { if (_trayMenu != null) TrayMenuTheme.Apply(_trayMenu, Theme.IsLight); };
 
             var restore = new WinForms.ToolStripMenuItem("Restore Pickets", null, (_, __) => RestoreFromTray());
+            var undo = new WinForms.ToolStripMenuItem("Undo", null, (_, __) => Undo());
+            _trayMenu.Opening += (_, __) => { undo.Text = UndoMenuText; undo.Enabled = _undo.Count > 0; };
             var newFence = new WinForms.ToolStripMenuItem("New Fence", null, (_, __) => NewFence_Click(null!, null!));
             var newPortal = new WinForms.ToolStripMenuItem("New Folder Portal…", null, (_, __) => NewFolderPortal_Click(null!, null!));
             var search = new WinForms.ToolStripMenuItem("Search Fences…", null, (_, __) => OpenSearch());
@@ -385,6 +392,7 @@ namespace Pickets
             var exit = new WinForms.ToolStripMenuItem("Exit", null, (_, __) => Close());
 
             _trayMenu.Items.Add(restore);
+            _trayMenu.Items.Add(undo);
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(newFence);
             _trayMenu.Items.Add(newPortal);
@@ -612,9 +620,12 @@ namespace Pickets
 
                     if (ok != MessageBoxResult.OK) return;
 
-                    _fences.Remove(model);
-                    SaveConfig();
-                    win.Close();
+                    Undoable($"Remove portal “{model.Name}”", () =>
+                    {
+                        _fences.Remove(model);
+                        SaveConfig();
+                        win.Close();
+                    });
                     return;
                 }
 
@@ -642,16 +653,19 @@ namespace Pickets
 
                 if (choice != MessageBoxResult.OK) return;
 
-                var released = model.ItemPaths.ToList();
-                _fences.Remove(model);
-                win.Close();
+                Undoable($"Delete fence “{model.Name}”", () =>
+                {
+                    var released = model.ItemPaths.ToList();
+                    _fences.Remove(model);
+                    win.Close();
 
-                // Desktop icons stay hidden while Pickets runs, so the items need a new home
-                // right away or they'd vanish until the next launch.
-                if (released.Count > 0)
-                    AssignItemsToFence(EnsureRealFence(CatchAllFenceName), released); // saves
-                else
-                    SaveConfig();
+                    // Desktop icons stay hidden while Pickets runs, so the items need a new home
+                    // right away or they'd vanish until the next launch.
+                    if (released.Count > 0)
+                        AssignItemsToFence(EnsureRealFence(CatchAllFenceName), released); // saves
+                    else
+                        SaveConfig();
+                });
             };
         }
 
@@ -685,6 +699,12 @@ namespace Pickets
         private void CreateFenceWithItems(FenceWindow source, IReadOnlyList<string> paths)
         {
             if (paths.Count == 0) return;
+            Undoable(paths.Count == 1 ? "Move 1 item to a new fence" : $"Move {paths.Count} items to a new fence",
+                     () => CreateFenceWithItemsCore(source, paths));
+        }
+
+        private void CreateFenceWithItemsCore(FenceWindow source, IReadOnlyList<string> paths)
+        {
             var model = new FenceModel
             {
                 Name = UniqueFenceName(),
@@ -1076,13 +1096,16 @@ namespace Pickets
                     ["Documents"] = (520, 80),
                     ["System"] = (80, 380),
                 };
-                foreach (var kv in groups)
+                Undoable("Auto-Import", () =>
                 {
-                    var (l, t) = pos.TryGetValue(kv.Key, out var p) ? p : (80, 80);
-                    var target = EnsureRealFence(kv.Key, l, t);
-                    if (target.IsClosedByUser) target.Reopen(); // the user asked to see these
-                    AssignItemsToFence(target, kv.Value);
-                }
+                    foreach (var kv in groups)
+                    {
+                        var (l, t) = pos.TryGetValue(kv.Key, out var p) ? p : (80, 80);
+                        var target = EnsureRealFence(kv.Key, l, t);
+                        if (target.IsClosedByUser) target.Reopen(); // the user asked to see these
+                        AssignItemsToFence(target, kv.Value);
+                    }
+                });
 
                 SaveConfig();
                 MessageBox.Show($"Auto-import complete.\n\nApps: {apps}\nDocuments: {docs}\nSystem: {sys}",
@@ -1110,13 +1133,16 @@ namespace Pickets
 
             AutoSnapshot("Before deleting all fences");
 
-            foreach (var w in _openWindows.ToList()) w.Close();
-            _openWindows.Clear();
-            _config.Fences = new List<FenceModel>();
-            _peeked = false;
+            Undoable("Delete all fences", () =>
+            {
+                foreach (var w in _openWindows.ToList()) w.Close();
+                _openWindows.Clear();
+                _fences.Clear();
+                _peeked = false;
 
-            BuildCatchAll(); // creates the one Desktop fence with every desktop item
-            SaveConfig();
+                BuildCatchAll(); // creates the one Desktop fence with every desktop item
+                SaveConfig();
+            });
         }
 
         // ========== Layout snapshots ==========
@@ -1175,6 +1201,7 @@ namespace Pickets
             _openWindows.Clear();
             _config.Fences = fences;
             _peeked = false;
+            _undo.Clear(); // its steps belong to the fences that were just replaced
 
             SpawnFencesFromConfig();
             BuildCatchAll(); // anything on the desktop the new set doesn't place
@@ -1217,12 +1244,16 @@ namespace Pickets
                 .ToList();
 
             int moved = 0;
-            foreach (var g in groups)
-            {
-                var paths = g.Select(x => x.path).ToList();
-                AssignItemsToFence(EnsureRealFence(g.Key), paths);
-                moved += paths.Count;
-            }
+            if (groups.Count > 0)
+                Undoable("Sort the Desktop fence", () =>
+                {
+                    foreach (var g in groups)
+                    {
+                        var paths = g.Select(x => x.path).ToList();
+                        AssignItemsToFence(EnsureRealFence(g.Key), paths);
+                        moved += paths.Count;
+                    }
+                });
 
             MessageBox.Show(moved == 0
                     ? "Nothing in the Desktop fence matched a rule."

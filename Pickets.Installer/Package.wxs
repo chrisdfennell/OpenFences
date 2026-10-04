@@ -42,6 +42,14 @@
                   Target="[INSTALLFOLDER]Pickets.exe"
                   WorkingDirectory="INSTALLFOLDER"
                   Icon="AppIcon" />
+        <!-- Recovery: brings the desktop icons back if Pickets crashed while they were hidden. -->
+        <Shortcut Id="RestoreIconsShortcut"
+                  Name="Pickets - Restore desktop icons"
+                  Description="Show your desktop icons again if Pickets stopped unexpectedly"
+                  Target="[INSTALLFOLDER]Pickets.exe"
+                  Arguments="--restore-icons"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="AppIcon" />
         <RegistryValue Root="HKCU"
                        Key="Software\Fennell\Pickets"
                        Name="installed"

@@ -74,8 +74,8 @@
                     <Setter Property="Opacity" Value="0.25"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="Background" Value="#3354708F"/>
-                    <Setter Property="BorderBrush" Value="#5A8FD8"/>
+                    <Setter Property="Background" Value="{DynamicResource Fence.Selected}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource Fence.SelectedEdge}"/>
                 </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Fence.ItemHover}"/>
@@ -272,6 +272,8 @@
                         <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
                         <MenuItem Header="Fit to contents" Click="FitToContents_Click"
                                   ToolTip="Resize the fence so all its tiles fit without scrolling"/>
+                        <MenuItem x:Name="MiAutoHeight" Header="Keep fitted to contents" IsCheckable="True" Click="AutoHeight_Click"
+                                  ToolTip="Grow and shrink with the items inside. Choosing a height by hand turns this off"/>
                         <Separator/>
                         <MenuItem x:Name="SortMenu" Header="Sort by">
                             <MenuItem Header="Name"          Tag="Name"         IsCheckable="True" Click="Sort_Click"/>
