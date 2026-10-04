@@ -17,6 +17,25 @@ namespace Pickets.Services
     {
         public sealed record Extra(string Label, Action OnClick);
 
+        // Windows draws native menus dark only for apps that ask, as Explorer does. These uxtheme
+        // exports are undocumented (by ordinal only) but stable since Windows 10 1903 and used by
+        // many apps for exactly this; on anything older the menu just stays light.
+        private enum PreferredAppMode { Default, AllowDark, ForceDark, ForceLight }
+
+        [DllImport("uxtheme.dll", EntryPoint = "#135")] private static extern int SetPreferredAppMode(PreferredAppMode mode);
+        [DllImport("uxtheme.dll", EntryPoint = "#136")] private static extern void FlushMenuThemes();
+
+        private static void MatchMenuTheme()
+        {
+            if (Environment.OSVersion.Version.Build < 18362) return;
+            try
+            {
+                SetPreferredAppMode(Theme.IsLight ? PreferredAppMode.ForceLight : PreferredAppMode.ForceDark);
+                FlushMenuThemes();
+            }
+            catch { /* not available: keep the default (light) menu */ }
+        }
+
         private const uint FirstShellId = 1, LastShellId = 0x7FFF, FirstExtraId = 0x8000;
         private static IContextMenu2? _active2;
         private static IContextMenu3? _active3;
@@ -68,6 +87,7 @@ namespace Pickets.Services
 
                 GetCursorPos(out var pt);
                 SetForegroundWindow(owner);
+                MatchMenuTheme();
                 uint cmd = TrackPopupMenuEx(hmenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.X, pt.Y, owner, IntPtr.Zero);
                 _active2 = null;
                 _active3 = null;
