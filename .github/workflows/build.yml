@@ -18,6 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         arch: [ x64, arm64 ]
+    # Code signing switches on once these repository secrets exist (docs/RELEASING.md).
+    env:
+      CODESIGN_PFX_BASE64: ${{ secrets.CODESIGN_PFX_BASE64 }}
+      CODESIGN_PFX_PASSWORD: ${{ secrets.CODESIGN_PFX_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v5
@@ -55,6 +59,12 @@ jobs:
           -p:Version=${{ steps.ver.outputs.version }}
           -o ${{ github.workspace }}\publish\${{ matrix.arch }}
 
+      - name: Sign app (if a certificate is configured)
+        shell: pwsh
+        run: >
+          ./.github/scripts/sign.ps1 -Files
+          publish\${{ matrix.arch }}\OpenFences.exe,publish\${{ matrix.arch }}\OpenFences.dll
+
       # WiX SDK builds the MSI; no Visual Studio / extension required.
       - name: Build MSI (WiX)
         run: >
@@ -71,6 +81,7 @@ jobs:
           $msi = Get-ChildItem -Recurse -Filter *.msi -Path OpenFences.Installer | Select-Object -First 1
           if (-not $msi) { throw 'No MSI produced.' }
           Copy-Item $msi.FullName "out\OpenFences-${{ matrix.arch }}.msi" -Force
+          ./.github/scripts/sign.ps1 -Files "out\OpenFences-${{ matrix.arch }}.msi"
           Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\OpenFences-${{ matrix.arch }}-portable.zip" -Force
           Get-ChildItem out
 
@@ -95,3 +106,23 @@ jobs:
         with:
           files: artifacts/**/*
           generate_release_notes: true
+
+  # Opens a PR at microsoft/winget-pkgs for each release, once a WINGET_TOKEN secret exists
+  # and the first version has been submitted by hand (docs/RELEASING.md).
+  winget:
+    name: Publish to winget
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Skip (not configured)
+        if: env.WINGET_TOKEN == ''
+        run: echo "No WINGET_TOKEN secret; skipping winget."
+      - uses: vedantmgoyal9/winget-releaser@v2
+        if: env.WINGET_TOKEN != ''
+        with:
+          identifier: chrisdfennell.OpenFences
+          installers-regex: 'OpenFences-(x64|arm64)\.msi$'
+          token: ${{ secrets.WINGET_TOKEN }}
