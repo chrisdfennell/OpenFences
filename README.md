@@ -30,8 +30,14 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 - **Folder Portals**  
   A portal fence is a live view of any folder you choose; it updates as files change. Double-click a subfolder to browse into it (with a back button and breadcrumbs); Ctrl+double-click opens it in Explorer. Point a portal at a different folder with **Change folder…** or by dropping a folder onto it.
 
-- **Remove vs. Delete**  
-  Right-click an item → **Remove from fence** moves it back to the Desktop fence (nothing is deleted). **Delete** sends the real file to the Recycle Bin, after a clear confirmation.
+- **The real Windows right-click menu**  
+  Right-click a tile for Windows' own menu (Open with, Send to, Properties, menu entries other apps add…) plus **Remove from fence**, which moves it back to the Desktop fence (nothing is deleted). **Rename** (or F2) renames the actual file, and it stays in its fence. Renames made in Explorer or by other apps keep the item in its fence too.
+
+- **Drag tiles anywhere**  
+  Drag tiles to another fence to move them there, into Explorer, an email or any app as real files, or within a fence to arrange them in your own order.
+
+- **Thumbnails**  
+  Pictures and videos show a preview instead of a generic icon. **Settings** can turn this off, or hide file extensions on labels.
 
 - **Selection across fences**  
   Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
@@ -40,7 +46,7 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   Right-drag on empty desktop to draw a new fence. Optionally double-click the desktop to hide/show all fences.
 
 - **Rename & style fences**  
-  Right-click a fence title bar to rename it, change sort order, icon size, transparency, **color** (preset swatches or any custom color) and **title size**.
+  Right-click a fence title bar to rename it, change sort order, icon size, transparency, **frosted glass**, **color** (preset swatches or any custom color) and **title size**, or **lock** it so it can't be moved or resized by accident.
 
 - **Roll up, peek on hover**  
   Double-click a title bar to roll a fence up. Rest the mouse on a rolled-up fence (or drag files over it) and it opens until you move away.
@@ -55,7 +61,7 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   **Ctrl+Alt+H** hides or shows all fences from anywhere, even while OpenFences is in the tray.
 
 - **Keyboard friendly**  
-  Arrow keys, Home/End and type-a-letter move through a fence; Enter opens, Delete recycles, F2 renames the fence, Esc clears the selection, Backspace goes up a folder in a portal.
+  Arrow keys, Home/End and type-a-letter move through a fence; Enter opens, Delete recycles, F2 renames the selected item (or the fence, when nothing is selected), Esc clears the selection, Backspace goes up a folder in a portal.
 
 - **Multi-monitor aware**  
   Each fence remembers where you put it for every monitor arrangement (docked, undocked, projector…) and returns there; fences that would land off-screen are pulled back onto a visible display.
@@ -179,7 +185,8 @@ dotnet run --project OpenFences/OpenFences.csproj
 PRs and issues welcome! If you’re proposing a new feature, please include a quick mock or description of the UI/UX.
 
 - Fork and create a feature branch  
-- `dotnet build` to ensure it compiles  
+- `dotnet build` to ensure it compiles, and `dotnet test tests/OpenFences.Tests` (CI runs the tests on every push)  
+- Maintainers: see [docs/RELEASING.md](docs/RELEASING.md) for releases, code signing and winget  
 - Open a PR with a clear summary and screenshots if there are UI changes
 
 ---
