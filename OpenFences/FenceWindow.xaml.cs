@@ -1967,6 +1967,46 @@ namespace OpenFences
             Changed?.Invoke(this, EventArgs.Empty);
         }
 
+        // ---------- Used by the main window's fence list ----------
+        public string? AccentColor => _model.AccentColor;
+        public bool IsCollapsed => _model.Collapsed;
+        public string FolderPath => _model.FolderPath;
+        public int ItemCount => IsPortal ? ItemsSource.Count : _model.ItemPaths.Count;
+
+        /// <summary>Same as Delete Fence… in the fence menu (MainWindow confirms).</summary>
+        public void RequestDelete() => DeleteRequested?.Invoke(this, EventArgs.Empty);
+
+        /// <summary>Help the user find this fence: lift it above all windows for a moment and
+        /// pulse its border.</summary>
+        public void Locate()
+        {
+            if (!IsVisible) Show();
+            SetRaised(true);
+
+            var original = RootBorder.BorderBrush;
+            var pulse = new SolidColorBrush(MediaColor.FromRgb(0x3B, 0x82, 0xF6));
+            RootBorder.BorderBrush = pulse;
+            RootBorder.BorderThickness = new Thickness(3);
+            pulse.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation
+            {
+                From = MediaColor.FromRgb(0x3B, 0x82, 0xF6),
+                To = MediaColor.FromRgb(0x93, 0xC5, 0xFD),
+                Duration = TimeSpan.FromMilliseconds(300),
+                AutoReverse = true,
+                RepeatBehavior = new RepeatBehavior(3)
+            });
+
+            var done = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            done.Tick += (_, __) =>
+            {
+                done.Stop();
+                RootBorder.BorderBrush = original;
+                RootBorder.BorderThickness = new Thickness(1);
+                SetRaised(false);
+            };
+            done.Start();
+        }
+
         private void DeleteFence_Click(object sender, RoutedEventArgs e)
         {
             // MainWindow owns the single confirm + folder handling (portal-aware).

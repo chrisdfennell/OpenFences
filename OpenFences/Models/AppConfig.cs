@@ -27,6 +27,8 @@ namespace OpenFences
 
         // System-wide shortcuts: Ctrl+Alt+H hides/shows fences, Ctrl+Alt+F searches them.
         public bool GlobalHotkeys { get; set; } = true;
+        public string SearchHotkey { get; set; } = "Ctrl+Alt+F";
+        public string ToggleFencesHotkey { get; set; } = "Ctrl+Alt+H";
 
         // Rolled-up (collapsed) fences open while the mouse rests on them.
         public bool ExpandCollapsedOnHover { get; set; } = true;

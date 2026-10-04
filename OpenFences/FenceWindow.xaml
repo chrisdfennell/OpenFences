@@ -150,7 +150,7 @@
                             Style="{StaticResource FenceCloseButton}"
                             Width="28" Height="24"
                             Click="Close_Click"
-                            ToolTip="Close fence (reopen it from View → Closed fences)"/>
+                            ToolTip="Close fence (reopen it from the OpenFences window)"/>
                 </StackPanel>
 
                 <!-- Right-click menu on the title bar -->

@@ -55,16 +55,6 @@ namespace OpenFences
             // Fences read app-wide options (snapping, hover roll-up) live.
             FenceWindow.Options = _config.Options;
 
-            // Initialize settings checkboxes from config + system (fully-qualify WPF CheckBox)
-            if (FindName("ChkRunAtStartup") is System.Windows.Controls.CheckBox chkRun)
-                chkRun.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
-
-            if (FindName("ChkHideIconsOnStart") is System.Windows.Controls.CheckBox chkHide)
-                chkHide.IsChecked = _config.Options.HideIconsOnStartup;
-
-            if (FindName("ChkDoubleClickDesktop") is System.Windows.Controls.CheckBox chkDbl)
-                chkDbl.IsChecked = _config.Options.DoubleClickDesktopToToggleIcons;
-
             // Apply settings effects at startup
             if (_config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled())
                 StartupHelper.SetRunAtStartup(true);
@@ -77,12 +67,6 @@ namespace OpenFences
 
             // Continuous auto-organize of new desktop items
             ApplyAutoOrganizeSetting();
-
-            // Reflect persisted settings in the menu checkmarks
-            InitSettingsChecks();
-
-            // Wire checkbox click handlers (so XAML can keep old names if needed)
-            WireSettingsHandlers();
 
             // Cross-fence drops route through here so an item leaves any prior fence.
             FenceWindow.RequestAssignItems = AssignItemsToFence;
@@ -120,6 +104,9 @@ namespace OpenFences
             // System-wide shortcuts (Ctrl+Alt+H hide/show fences, …)
             ApplyHotkeySetting();
 
+            // Main window: Home (fence list), Settings, About.
+            InitHub();
+
             // Brand-new install: explain the basics once fences are on screen.
             if (firstRun)
                 Dispatcher.BeginInvoke(ShowWelcome, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
@@ -138,8 +125,22 @@ namespace OpenFences
 
         // ========== Global hotkeys ==========
         private GlobalHotkeys? _hotkeys;
-        private const uint VK_H = 0x48;
-        private const uint VK_F = 0x46;
+        private readonly List<string> _hotkeyProblems = new();
+
+        // A shortcut another app already owns can't be registered; remember it so Settings can say so.
+        private void RegisterHotkey(string text, Action action)
+        {
+            if (!HotkeyText.TryParse(text, out var mods, out var vk))
+            {
+                _hotkeyProblems.Add($"“{text}” isn't a valid shortcut.");
+                return;
+            }
+            if (!_hotkeys!.Register(mods, vk, action))
+            {
+                _hotkeyProblems.Add($"{text} is already used by another app.");
+                (System.Windows.Application.Current as App)?.SafeLog("Hotkey " + text, new InvalidOperationException("Already in use by another app."));
+            }
+        }
 
         private void ApplyHotkeySetting()
         {
@@ -150,11 +151,9 @@ namespace OpenFences
             try
             {
                 _hotkeys = new GlobalHotkeys(new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle());
-                const uint ctrlAlt = GlobalHotkeys.MOD_CONTROL | GlobalHotkeys.MOD_ALT;
-                if (!_hotkeys.Register(ctrlAlt, VK_H, TogglePeek))
-                    (System.Windows.Application.Current as App)?.SafeLog("Hotkey Ctrl+Alt+H", new InvalidOperationException("Already in use by another app."));
-                if (!_hotkeys.Register(ctrlAlt, VK_F, OpenSearch))
-                    (System.Windows.Application.Current as App)?.SafeLog("Hotkey Ctrl+Alt+F", new InvalidOperationException("Already in use by another app."));
+                _hotkeyProblems.Clear();
+                RegisterHotkey(_config.Options.ToggleFencesHotkey, TogglePeek);
+                RegisterHotkey(_config.Options.SearchHotkey, OpenSearch);
             }
             catch (Exception ex)
             {
@@ -176,14 +175,6 @@ namespace OpenFences
         }
 
         private void Search_Click(object? sender, RoutedEventArgs? e) => OpenSearch();
-
-        // Settings → Global keyboard shortcuts
-        private void MiGlobalHotkeys_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.GlobalHotkeys = MiGlobalHotkeys.IsChecked;
-            ApplyHotkeySetting();
-            SaveConfig();
-        }
 
         // ========== Monitor arrangement changes ==========
         private System.Windows.Threading.DispatcherTimer? _displayTimer;
@@ -256,112 +247,6 @@ namespace OpenFences
         private void OpenAllSelected()
         {
             foreach (var w in _openWindows.ToList()) w.OpenSelectedItems();
-        }
-
-        private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
-            => WindowState = WindowState.Minimized;
-
-        private void OnCloseClicked(object? sender, RoutedEventArgs e)
-            => Close();
-
-        // Drag the window when the transparent header pad is grabbed
-        private void HeaderDrag_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
-            {
-                try { DragMove(); } catch { /* ignore while maximized etc. */ }
-            }
-        }
-
-        // Settings → Start with Windows
-        private void MiRunAtStartup_Click(object sender, RoutedEventArgs e)
-        {
-            bool enabled = MiRunAtStartup.IsChecked;
-            _config.Options.RunAtStartup = enabled;
-            StartupHelper.SetRunAtStartup(enabled);
-            SaveConfig();
-        }
-
-        // Settings → Hide desktop icons on startup
-        private void MiHideIconsOnStart_Click(object sender, RoutedEventArgs e)
-        {
-            bool hide = MiHideIconsOnStart.IsChecked;
-            _config.Options.HideIconsOnStartup = hide;
-            SaveConfig();
-        }
-
-        // Settings → Double-click empty desktop toggles icons
-        private void MiDoubleClickDesktop_Click(object sender, RoutedEventArgs e)
-        {
-            bool enabled = MiDoubleClickDesktop.IsChecked;
-            _config.Options.DoubleClickDesktopToToggleIcons = enabled;
-            ApplyDoubleClickSetting();
-            SaveConfig();
-        }
-
-        // Settings → Double-click empty desktop hides/shows fences (peek)
-        private void MiPeekFences_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.DoubleClickPeekFences = MiPeekFences.IsChecked;
-            if (!_config.Options.DoubleClickPeekFences && _peeked) TogglePeek(); // un-peek if turning off
-            ApplyDoubleClickSetting();
-            SaveConfig();
-        }
-
-        // Settings → Auto-organize new desktop items into fences
-        private void MiAutoOrganize_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.AutoOrganize = MiAutoOrganize.IsChecked;
-            ApplyAutoOrganizeSetting();
-            SaveConfig();
-        }
-
-        // Reflect persisted settings in the menu checkmarks at startup.
-        private void InitSettingsChecks()
-        {
-            MiRunAtStartup.IsChecked = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
-            MiHideIconsOnStart.IsChecked = _config.Options.HideIconsOnStartup;
-            MiDoubleClickDesktop.IsChecked = _config.Options.DoubleClickDesktopToToggleIcons;
-            MiPeekFences.IsChecked = _config.Options.DoubleClickPeekFences;
-            MiAutoOrganize.IsChecked = _config.Options.AutoOrganize;
-            MiCheckForUpdates.IsChecked = _config.Options.CheckForUpdates;
-            MiSnapToEdges.IsChecked = _config.Options.SnapToEdges;
-            MiSnapToGrid.IsChecked = _config.Options.SnapToGrid;
-            MiGlobalHotkeys.IsChecked = _config.Options.GlobalHotkeys;
-            MiExpandOnHover.IsChecked = _config.Options.ExpandCollapsedOnHover;
-            MiShowThumbnails.IsChecked = _config.Options.ShowThumbnails;
-            MiHideExtensions.IsChecked = _config.Options.HideFileExtensions;
-        }
-
-        // Settings → thumbnails / file extensions: re-render every fence's tiles
-        private void MiItemDisplay_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.ShowThumbnails = MiShowThumbnails.IsChecked;
-            _config.Options.HideFileExtensions = MiHideExtensions.IsChecked;
-            SaveConfig();
-            foreach (var w in _openWindows) w.RefreshItems();
-        }
-
-        // Settings → Open rolled-up fences on hover (fences read it live)
-        private void MiExpandOnHover_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.ExpandCollapsedOnHover = MiExpandOnHover.IsChecked;
-            SaveConfig();
-        }
-
-        // Settings → Snap to edges / grid (fences read these live while moving)
-        private void MiSnap_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.SnapToEdges = MiSnapToEdges.IsChecked;
-            _config.Options.SnapToGrid = MiSnapToGrid.IsChecked;
-            SaveConfig();
-        }
-
-        // Settings → Check for updates automatically
-        private void MiCheckForUpdates_Click(object sender, RoutedEventArgs e)
-        {
-            _config.Options.CheckForUpdates = MiCheckForUpdates.IsChecked;
-            SaveConfig();
         }
 
         private void CheckForUpdatesNow_Click(object? sender, RoutedEventArgs? e) => _ = CheckForUpdatesAsync(manual: true);
@@ -449,25 +334,6 @@ namespace OpenFences
             }
         }
 
-
-        // ========== UI header interactions (borderless drag, min/close) ==========
-        private void Header_MouseLeftButtonDown(object? sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
-                DragMove();
-        }
-        private void MinimizeButton_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-        private void CloseButton_Click(object? sender, RoutedEventArgs e) => Close();
-
-        // === BRIDGES for older XAML handler names (safe to keep; or update XAML to new names) ===
-        private void Header_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-            => Header_MouseLeftButtonDown(sender, e);
-        private void ChkRunAtStartup_CheckedChanged(object sender, System.Windows.RoutedEventArgs e)
-            => ChkRunAtStartup_Click(sender, e);
-        private void ChkHideIconsOnStart_CheckedChanged(object sender, System.Windows.RoutedEventArgs e)
-            => ChkHideIconsOnStart_Click(sender, e);
-        private void ChkDoubleClickDesktop_CheckedChanged(object sender, System.Windows.RoutedEventArgs e)
-            => ChkDoubleClickDesktop_Click(sender, e);
 
         // ========== Tray ==========
         private void InitTrayIcon()
@@ -568,42 +434,6 @@ namespace OpenFences
             Activate();
         }
 
-        // ========== Settings: wire checkbox handlers ==========
-        private void WireSettingsHandlers()
-        {
-            if (FindName("ChkRunAtStartup") is System.Windows.Controls.CheckBox chkRun)
-                chkRun.Click += ChkRunAtStartup_Click;
-
-            if (FindName("ChkHideIconsOnStart") is System.Windows.Controls.CheckBox chkHide)
-                chkHide.Click += ChkHideIconsOnStart_Click;
-
-            if (FindName("ChkDoubleClickDesktop") is System.Windows.Controls.CheckBox chkDbl)
-                chkDbl.Click += ChkDoubleClickDesktop_Click;
-        }
-
-        private void ChkRunAtStartup_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not System.Windows.Controls.CheckBox chk) return;
-            _config.Options.RunAtStartup = chk.IsChecked == true;
-            StartupHelper.SetRunAtStartup(_config.Options.RunAtStartup);
-            SaveConfig();
-        }
-
-        private void ChkHideIconsOnStart_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not System.Windows.Controls.CheckBox chk) return;
-            _config.Options.HideIconsOnStartup = chk.IsChecked == true;
-            SaveConfig();
-        }
-
-        private void ChkDoubleClickDesktop_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not System.Windows.Controls.CheckBox chk) return;
-            _config.Options.DoubleClickDesktopToToggleIcons = chk.IsChecked == true;
-            ApplyDoubleClickSetting();
-            SaveConfig();
-        }
-
         // ========== Config I/O ==========
         private static readonly JsonSerializerOptions JsonOpts = new()
         {
@@ -681,6 +511,7 @@ namespace OpenFences
         // never leave a half-written config.json, and the previous version is kept as .bak.
         private void SaveConfig()
         {
+            QueueHomeRefresh();
             var tmp = _configPath + ".tmp";
             try
             {
@@ -758,7 +589,7 @@ namespace OpenFences
                         $"The “{CatchAllFenceName}” fence holds the {model.ItemPaths.Count} desktop item(s) that aren't in any " +
                         "other fence, so it can't be removed, but it can be hidden.\n\n" +
                         "Hide it? It stays hidden after restarts. Its items stay on your desktop: Ctrl+Alt+F still finds them, " +
-                        "and View → Closed fences brings the fence back.",
+                        "and the OpenFences window (Home) brings the fence back.",
                         "Delete Fence", MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.OK);
                     if (hide == MessageBoxResult.OK) win.CloseFence();
                     return;
@@ -1101,23 +932,10 @@ namespace OpenFences
             win.Show();
         }
 
-        private void Exit_Click(object? sender, RoutedEventArgs? e) => Close();
-
         private void About_Click(object? sender, RoutedEventArgs? e)
         {
-            try
-            {
-                var about = new AboutDialog();
-                about.Owner = System.Windows.Application.Current?.MainWindow;
-                about.ShowDialog();
-            }
-            catch
-            {
-                MessageBox.Show("OpenFences\nGroup your desktop into movable fences.\n\n" +
-                                "GitHub: https://github.com/chrisdfennell/OpenFences",
-                                "About OpenFences",
-                                MessageBoxButton.OK, MessageBoxImage.Information);
-            }
+            RestoreFromTray();
+            NavAbout.IsChecked = true;
         }
 
         private void ToggleDesktopIcons_Click(object? sender, RoutedEventArgs? e)
@@ -1132,44 +950,7 @@ namespace OpenFences
             SetFencesHidden(false);
         }
 
-        // View → Closed fences: lists fences closed with ✕ so they can be reopened.
-        private void MiClosedFences_SubmenuOpened(object sender, RoutedEventArgs e)
-        {
-            if (!ReferenceEquals(e.OriginalSource, MiClosedFences)) return;
-            MiClosedFences.Items.Clear();
-
-            var closed = _openWindows.Where(w => w.IsClosedByUser).ToList();
-            if (closed.Count == 0)
-            {
-                MiClosedFences.Items.Add(new MenuItem { Header = "(none)", IsEnabled = false });
-                return;
-            }
-            foreach (var w in closed)
-            {
-                var mi = new MenuItem { Header = w.FenceName };
-                mi.Click += (_, __) => { w.Reopen(); SaveConfig(); };
-                MiClosedFences.Items.Add(mi);
-            }
-            MiClosedFences.Items.Add(new Separator());
-            var all = new MenuItem { Header = "Reopen all" };
-            all.Click += (_, __) => ShowAll_Click(null, null);
-            MiClosedFences.Items.Add(all);
-        }
-
         private void HideAll_Click(object? sender, RoutedEventArgs? e) => SetFencesHidden(true);
-
-        private void ToggleFences_Click(object? sender, RoutedEventArgs? e) => TogglePeek();
-
-        private void OpenFencesFolder_Click(object? sender, RoutedEventArgs? e)
-        {
-            // Real-icon fences have no backing folder anymore; just open the Desktop.
-            try
-            {
-                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                Process.Start(new ProcessStartInfo { FileName = desktop, UseShellExecute = true });
-            }
-            catch { /* ignore */ }
-        }
 
         // Organizes the *real* desktop icons into Apps / Documents / System fences by claiming
         // them (no shortcuts created). Each icon is classified by the desktop file behind it.
@@ -1236,7 +1017,7 @@ namespace OpenFences
                 "Delete all fences and portals?\n\n" +
                 $"Nothing on your desktop is deleted: every item goes back into a single “{CatchAllFenceName}” fence. " +
                 "Portals are removed but their folders are left alone.\n\n" +
-                "The current layout is saved first, so you can bring it back from File → Layouts.",
+                "The current layout is saved first, so you can bring it back from Settings → Layouts.",
                 "Delete All Fences", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
             if (ok != MessageBoxResult.OK) return;
 
@@ -1252,47 +1033,6 @@ namespace OpenFences
         }
 
         // ========== Layout snapshots ==========
-        // File → Layouts is rebuilt each time it opens, so it always lists what's on disk.
-        private void MiLayouts_SubmenuOpened(object sender, RoutedEventArgs e)
-        {
-            if (!ReferenceEquals(e.OriginalSource, MiLayouts)) return; // a nested submenu opened
-
-            MiLayouts.Items.Clear();
-            var save = new MenuItem { Header = "Save current layout…" };
-            save.Click += (_, __) => SaveLayoutSnapshot();
-            MiLayouts.Items.Add(save);
-
-            var snaps = LayoutSnapshots.List();
-            if (snaps.Count > 0) MiLayouts.Items.Add(new Separator());
-            foreach (var snap in snaps)
-            {
-                var label = (snap.Automatic ? "Auto: " : "") + snap.Name + $"  ({snap.Created:MMM d, h:mm tt})";
-                var entry = new MenuItem { Header = label };
-
-                var restore = new MenuItem { Header = "Restore" };
-                restore.Click += (_, __) => RestoreLayoutSnapshot(snap);
-                var delete = new MenuItem { Header = "Delete" };
-                delete.Click += (_, __) => LayoutSnapshots.Delete(snap);
-
-                entry.Items.Add(restore);
-                entry.Items.Add(delete);
-                MiLayouts.Items.Add(entry);
-            }
-
-            MiLayouts.Items.Add(new Separator());
-            var open = new MenuItem { Header = "Open layouts folder" };
-            open.Click += (_, __) =>
-            {
-                try
-                {
-                    Directory.CreateDirectory(LayoutSnapshots.Folder);
-                    Process.Start(new ProcessStartInfo { FileName = LayoutSnapshots.Folder, UseShellExecute = true });
-                }
-                catch { /* ignore */ }
-            };
-            MiLayouts.Items.Add(open);
-        }
-
         private void SaveLayoutSnapshot()
         {
             var prompt = new InputDialog("Save Layout", "Name this layout:", $"Layout {DateTime.Now:MMM d}");
@@ -1355,7 +1095,7 @@ namespace OpenFences
 
             _config.Rules = dlg.Rules;
             _config.Options.AutoOrganize = dlg.AutoOrganize;
-            InitSettingsChecks();
+            RefreshSettingsPage();
             SaveConfig();
 
             if (dlg.ApplyNow)

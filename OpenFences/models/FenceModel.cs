@@ -30,7 +30,7 @@ namespace OpenFences
         public bool Collapsed { get; set; } = false;
 
         // Closed with ✕: stays closed (also across restarts) until reopened from
-        // View → Closed fences. It keeps owning its items, so nothing gets re-homed.
+        // the OpenFences window. It keeps owning its items, so nothing gets re-homed.
         public bool Closed { get; set; } = false;
 
         // Locked fences can't be moved or resized (until unlocked from the fence menu).
