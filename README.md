@@ -42,6 +42,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Fences hold your real desktop items.** Each desktop item shows in exactly one fence; anything not in another fence lives in the **Desktop** fence.
 - **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
 - **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
+- **Recent files.** One click on the Home page adds a fence of the files you opened lately, newest first.
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
 - **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions), name (`invoice*`), age (not changed in 30 days) or size (larger than 100 MB), and the Desktop fence can be re-sorted on demand.
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
@@ -73,7 +74,9 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **One home for everything.** The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete it, plus quick actions, a **Settings** page with simple switches, and About. It hides to the system tray and reopens where you left it.
 - **Global shortcuts.** **Ctrl+Alt+H** hides or shows all fences from anywhere; all three shortcuts can be changed in Settings.
 - **Multi-monitor aware.** Each fence remembers where you put it for every monitor setup (docked, undocked, projector) and is never left off-screen.
-- **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import.
+- **Desktop profiles.** Keep several fence arrangements, such as Work and Home, and switch from the Home page, the tray, **Ctrl+Alt+P**, or automatically at a time of day.
+- **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import. **Export** and **Import** move your fences and rules to another PC.
+- **Sharp on every monitor.** Fences and windows render at each monitor's own scaling, so a 150% laptop next to a 100% monitor looks crisp on both.
 - **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
 - **Safe settings.** Saved continuously with a backup copy that's restored automatically if the file is ever damaged.
 
@@ -104,7 +107,8 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Use fences while apps are open:** **Ctrl+Alt+Space**; click another window or press Esc when you're done.
 - **Hide or show all fences:** **Ctrl+Alt+H**, or double-click empty desktop if that's turned on in Settings.
 - **Reopen a closed fence:** open the Pickets window; closed fences are listed on Home with an **Open** button.
-- **Save or restore a layout:** **Settings → Layouts**.
+- **Save or restore a layout:** **Settings → Layouts**. To move to another PC: **Export…** there, then **Import…** on the new PC.
+- **Switch between Work and Home fences:** the profile button at the top of the Home page (**Make a profile…** the first time), or **Ctrl+Alt+P**.
 - **Rules for new files:** **Settings → Organizing → Edit rules…**.
 - **Start over:** **Settings → Start over → Delete all fences…** (the current layout is saved first).
 - **Bring back the window:** double-click the tray icon, or start Pickets again.
@@ -150,10 +154,8 @@ In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and
 
 ## 🧭 Roadmap (ideas)
 
-- Export and import layouts as a file
 - Different fences per virtual desktop
 - Sticky-note fences
-- Proper per-monitor DPI on mixed-scaling setups
 - Screen reader support and translations
 
 Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets/issues).
@@ -165,7 +167,6 @@ Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets
 - Z-order on the desktop can vary by Windows build; fences are kept in the desktop layer behind normal windows (search and Locate bring them to the front briefly).
 - A folder portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart Pickets, or point it at another folder with **Change folder…**.
 - A global shortcut that another app already uses can't be registered; Settings flags it so you can pick another.
-- Monitors with different scaling use the system scale factor, so on mixed-DPI setups a fence can look slightly larger or smaller on one screen.
 - Background videos need Windows' codecs: MP4 and WMV work out of the box; MKV and WebM may need the free extensions from the Microsoft Store. Animated GIFs show their first frame.
 
 ---

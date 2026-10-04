@@ -102,10 +102,16 @@
 
                 <!-- ===================== HOME ===================== -->
                 <StackPanel x:Name="HomePage">
-                    <TextBlock Text="Your fences" Style="{StaticResource Hub.PageTitle}"/>
-                    <TextBlock x:Name="SummaryText" Style="{StaticResource Hub.PageSubtitle}"/>
+                    <DockPanel>
+                        <Button x:Name="ProfileButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="0,6,0,0"
+                                Style="{StaticResource Hub.SecondaryButton}" Click="ProfileButton_Click"/>
+                        <StackPanel>
+                            <TextBlock Text="Your fences" Style="{StaticResource Hub.PageTitle}"/>
+                            <TextBlock x:Name="SummaryText" Style="{StaticResource Hub.PageSubtitle}"/>
+                        </StackPanel>
+                    </DockPanel>
 
-                    <UniformGrid Columns="4" Margin="-6,22,-6,0">
+                    <UniformGrid Columns="5" Margin="-6,22,-6,0">
                         <Button Style="{StaticResource Hub.ActionTile}" Click="NewFence_Click">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE710;"/>
@@ -118,6 +124,13 @@
                                 <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE8B7;"/>
                                 <TextBlock Style="{StaticResource Hub.TileTitle}" Text="New folder portal"/>
                                 <TextBlock Style="{StaticResource Hub.TileText}" Text="A live view of any folder"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Hub.ActionTile}" Click="RecentFiles_Click">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE81C;"/>
+                                <TextBlock Style="{StaticResource Hub.TileTitle}" Text="Recent files"/>
+                                <TextBlock Style="{StaticResource Hub.TileText}" Text="A fence of what you opened lately"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource Hub.ActionTile}" Click="AutoImportDesktop_Click">
@@ -289,6 +302,13 @@
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Bring fences in front of windows"/>
                                     <TextBlock Style="{StaticResource Hub.RowText}" Text="Use your fences without minimizing anything. Click another window or press Esc to put them back."/></StackPanel>
                             </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <TextBox x:Name="ProfileHotkeyBox" DockPanel.Dock="Right" Style="{StaticResource Hub.HotkeyBox}" Tag="Profile"
+                                         PreviewKeyDown="HotkeyBox_PreviewKeyDown" GotKeyboardFocus="HotkeyBox_GotFocus" LostKeyboardFocus="HotkeyBox_LostFocus"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Next desktop profile"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Switch to your next set of fences (profiles are on the Home page)."/></StackPanel>
+                            </DockPanel>
                             <TextBlock x:Name="HotkeyStatus" Margin="16,0,16,14" TextWrapping="Wrap" Foreground="{DynamicResource Hub.Warning}" Visibility="Collapsed"/>
                         </StackPanel>
                     </Border>
@@ -338,6 +358,16 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Hub.Card}" Margin="0,8,0,0">
+                        <DockPanel Style="{StaticResource Hub.SettingRow}">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Style="{StaticResource Hub.SecondaryButton}" Content="Import…" Click="ImportLayout_Click"/>
+                                <Button Style="{StaticResource Hub.SecondaryButton}" Margin="8,0,0,0" Content="Export…" Click="ExportLayout_Click"/>
+                            </StackPanel>
+                            <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Move to another PC"/>
+                                <TextBlock Style="{StaticResource Hub.RowText}" Text="Export your fences and rules to a file, then import it on the other PC. Items in your desktop and user folders are found there too."/></StackPanel>
+                        </DockPanel>
                     </Border>
 
                     <!-- Updates -->

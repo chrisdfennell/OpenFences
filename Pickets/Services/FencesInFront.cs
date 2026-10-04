@@ -40,10 +40,8 @@ namespace Pickets.Services
             // Activate a fence (the one under the mouse if any) so keyboard input goes to the
             // fences and the next click on another app is a foreground change we can see.
             var cursor = WinForms.Cursor.Position;
-            double s = ScreenLayout.Scale;
             var target = shown.FirstOrDefault(f =>
-                cursor.X / s >= f.Left && cursor.X / s < f.Left + f.ActualWidth &&
-                cursor.Y / s >= f.Top && cursor.Y / s < f.Top + f.ActualHeight) ?? shown[0];
+                DesktopHelper.WindowRectPx(new WindowInteropHelper(f).Handle).Contains(cursor.X, cursor.Y)) ?? shown[0];
             target.Activate();
 
             _proc = OnForegroundChanged;

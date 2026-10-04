@@ -93,6 +93,9 @@ namespace Pickets
             StateChanged += MainWindow_StateChanged;
             InitTrayIcon();
 
+            // Desktop profiles that switch at a time of day
+            StartProfileSchedule();
+
             // Right-click-drag rectangle to create an (empty) fence or a folder portal there
             DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r));
 
@@ -165,6 +168,7 @@ namespace Pickets
                 RegisterHotkey(_config.Options.ToggleFencesHotkey, TogglePeek);
                 RegisterHotkey(_config.Options.SearchHotkey, OpenSearch);
                 RegisterHotkey(_config.Options.FrontHotkey, ToggleFencesInFront);
+                RegisterHotkey(_config.Options.ProfileHotkey, NextProfile);
             }
             catch (Exception ex)
             {
@@ -386,6 +390,7 @@ namespace Pickets
             _trayMenu.Items.Add(hideAll);
             _trayMenu.Items.Add(toggle);
             _trayMenu.Items.Add(deleteAll);
+            _trayMenu.Items.Add(BuildTrayProfilesMenu());
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(updates);
             _trayMenu.Items.Add(exit);
@@ -912,12 +917,9 @@ namespace Pickets
         {
             try
             {
-                var p = WinForms.Cursor.Position; // screen pixels
-                var src = PresentationSource.FromVisual(this);
-                double sx = src?.CompositionTarget?.TransformFromDevice.M11 ?? 1.0;
-                double sy = src?.CompositionTarget?.TransformFromDevice.M22 ?? 1.0;
-                // Convert device pixels → WPF DIPs and nudge so the title bar sits under the cursor.
-                return (p.X * sx - 40, p.Y * sy - 16);
+                // Nudge so the title bar sits under the cursor.
+                var p = ScreenLayout.CursorDip();
+                return (p.X - 40, p.Y - 16);
             }
             catch { return (120, 120); }
         }
@@ -958,9 +960,29 @@ namespace Pickets
 
             string folder = dlg.FolderName;
             if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return;
+            AddPortal(folder, new DirectoryInfo(folder).Name, screenRect);
+        }
 
-            // Display name from the folder; de-dupe against existing fences.
-            string baseName = new DirectoryInfo(folder).Name;
+        // A ready-made portal of Windows' Recent folder: shortcuts to recently opened files,
+        // newest first. The filter hides its two internal subfolders (jump-list data).
+        private void RecentFiles_Click(object? sender, RoutedEventArgs? e)
+        {
+            var recent = Environment.GetFolderPath(Environment.SpecialFolder.Recent);
+            if (!Directory.Exists(recent)) return;
+            AddPortal(recent, "Recent files", null, m =>
+            {
+                m.Sort = FenceSort.DateModified;
+                m.PortalFilter = "*.lnk";
+                m.PortalMaxItems = 30;
+                m.View = FenceView.List;
+            });
+        }
+
+        /// <summary>Add a portal showing <paramref name="folder"/>, named <paramref name="baseName"/>
+        /// (made unique), in <paramref name="screenRect"/> or near the mouse.</summary>
+        private void AddPortal(string folder, string baseName, Rect? screenRect, Action<FenceModel>? setup = null)
+        {
+            // De-dupe the name against existing fences.
             if (string.IsNullOrWhiteSpace(baseName)) baseName = "Portal";
             string name = baseName;
             int n = 1;
@@ -983,6 +1005,7 @@ namespace Pickets
                 Height = height,
                 Collapsed = false
             };
+            setup?.Invoke(model);
 
             _fences.Add(model);
             SaveConfig();
@@ -1120,15 +1143,24 @@ namespace Pickets
         private void RestoreLayoutSnapshot(LayoutSnapshots.Snapshot snap)
         {
             var ok = MessageBox.Show(
-                $"Restore the layout “{snap.Name}”?\n\nYour current fences are replaced by the ones in this layout. " +
+                $"Restore the layout “{snap.Name}”?\n\nYour current fences are replaced by the ones in this layout" +
+                (snap.Rules != null ? ", and your auto-organize rules by its rules" : "") + ". " +
                 "Nothing on your desktop is deleted, and the current layout is saved first so you can go back.",
                 "Restore Layout", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (ok != MessageBoxResult.OK) return;
 
             AutoSnapshot($"Before restoring “{snap.Name}”");
+            if (snap.Rules != null) _config.Rules = snap.Rules; // imported from a file
+            ReplaceFences(snap.Fences);
+        }
 
-            // Items that no longer exist are dropped; an item claimed by two fences stays in the first.
-            var fences = LayoutSnapshots.Clone(snap.Fences);
+        /// <summary>Show <paramref name="source"/> (copied) instead of the current fences. Items that
+        /// no longer exist are dropped, an item claimed by two fences stays in the first, and
+        /// anything on the desktop the new set doesn't place goes to the Desktop fence.</summary>
+        private void ReplaceFences(IEnumerable<FenceModel> source)
+        {
+            FencesInFront.Exit();
+            var fences = LayoutSnapshots.Clone(source);
             var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var f in fences.Where(f => !f.IsPortal))
                 f.ItemPaths = f.ItemPaths
@@ -1142,7 +1174,7 @@ namespace Pickets
             _peeked = false;
 
             SpawnFencesFromConfig();
-            BuildCatchAll(); // anything on the desktop the snapshot doesn't place
+            BuildCatchAll(); // anything on the desktop the new set doesn't place
             SaveConfig();
         }
 

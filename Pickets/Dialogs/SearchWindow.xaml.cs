@@ -47,10 +47,9 @@ namespace Pickets
         // Upper third of whichever monitor the cursor is on.
         private void PlaceOnCursorMonitor()
         {
-            var area = WinForms.Screen.FromPoint(WinForms.Cursor.Position).WorkingArea;
-            double s = Pickets.Services.ScreenLayout.Scale;
-            Left = area.Left / s + (area.Width / s - Width) / 2;
-            Top = area.Top / s + area.Height / s * 0.2;
+            var area = Pickets.Services.ScreenLayout.WorkAreaAtCursor();
+            DesktopHelper.PlaceWindow(this, new Rect(area.Left + (area.Width - Width) / 2, area.Top + area.Height * 0.2,
+                                                     Width, Height));
         }
 
         private void QueryBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => Refresh();

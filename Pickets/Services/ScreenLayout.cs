@@ -12,14 +12,18 @@ namespace Pickets.Services
     /// <summary>
     /// Monitor-arrangement helpers. Fences remember a position per arrangement (docked vs.
     /// undocked laptop, projector attached…) and are kept on a visible screen when it changes.
-    /// The app is system-DPI aware, so screen pixels divide by one system scale to get the
-    /// WPF units that Window.Left/Top use.
+    ///
+    /// The app is per-monitor DPI aware (app.manifest), so each monitor has its own scale and
+    /// WPF's Window.Left/Top on a monitor are its screen pixels divided by that monitor's scale.
+    /// "DIP rects" below use that convention: a rect is converted with the scale of the monitor
+    /// it's on. Screen pixels (hooks, GetWindowRect, WinForms.Screen) are physical.
     /// </summary>
     internal static class ScreenLayout
     {
         private static double? _scale;
 
-        /// <summary>Screen pixels per WPF unit (system DPI / 96).</summary>
+        /// <summary>Screen pixels per WPF unit on the primary monitor (system DPI / 96). For
+        /// anything tied to a place on screen, use ScaleAtPx or the conversions below.</summary>
         public static double Scale
         {
             get
@@ -44,15 +48,74 @@ namespace Pickets.Services
                 .OrderBy(b => b.X).ThenBy(b => b.Y)
                 .Select(b => $"{b.X},{b.Y},{b.Width},{b.Height}"));
 
-        /// <summary>Work areas (screen minus taskbar) of every monitor, in WPF units.</summary>
-        public static List<Rect> WorkAreas()
+        /// <summary>Work areas (screen minus taskbar) of every monitor, as DIP rects.</summary>
+        public static List<Rect> WorkAreas() =>
+            WinForms.Screen.AllScreens.Select(sc => ToDip(sc.WorkingArea, ScaleOf(sc))).ToList();
+
+        /// <summary>The work area (DIP rect) of the monitor under the mouse.</summary>
+        public static Rect WorkAreaAtCursor()
         {
-            double s = Scale;
-            return WinForms.Screen.AllScreens
-                .Select(sc => sc.WorkingArea)
-                .Select(a => new Rect(a.X / s, a.Y / s, a.Width / s, a.Height / s))
-                .ToList();
+            var sc = WinForms.Screen.FromPoint(WinForms.Cursor.Position);
+            return ToDip(sc.WorkingArea, ScaleOf(sc));
         }
+
+        /// <summary>The mouse position in DIPs (of the monitor it's on).</summary>
+        public static Point CursorDip()
+        {
+            var p = WinForms.Cursor.Position;
+            double s = ScaleAtPx(p.X, p.Y);
+            return new Point(p.X / s, p.Y / s);
+        }
+
+        /// <summary>Scale (DPI / 96) of the monitor at (or nearest to) a screen-pixel point.</summary>
+        public static double ScaleAtPx(int x, int y)
+        {
+            try
+            {
+                var mon = MonitorFromPoint(new POINT { X = x, Y = y }, MONITOR_DEFAULTTONEAREST);
+                if (GetDpiForMonitor(mon, 0, out uint dpi, out _) == 0 && dpi > 0) return dpi / 96.0;
+            }
+            catch { /* older Windows */ }
+            return Scale;
+        }
+
+        private static double ScaleOf(WinForms.Screen sc)
+        {
+            var b = sc.Bounds;
+            return ScaleAtPx(b.X + b.Width / 2, b.Y + b.Height / 2);
+        }
+
+        private static Rect ToDip(Drawing.Rectangle px, double s) => new(px.X / s, px.Y / s, px.Width / s, px.Height / s);
+
+        /// <summary>Screen-pixel rect → DIP rect, using the scale of the monitor its top-left is on.</summary>
+        public static Rect DipFromPx(Rect px)
+        {
+            double s = ScaleAtPx((int)px.X, (int)px.Y);
+            return new Rect(px.X / s, px.Y / s, px.Width / s, px.Height / s);
+        }
+
+        /// <summary>DIP rect → screen pixels, using the monitor whose DIP bounds contain its
+        /// top-left (or the nearest one: monitors at different scales leave gaps in DIP space).</summary>
+        public static Rect PxFromDip(Rect dip)
+        {
+            var screens = WinForms.Screen.AllScreens.Select(sc => (dip: ToDip(sc.Bounds, ScaleOf(sc)), s: ScaleOf(sc))).ToList();
+            if (screens.Count == 0) return dip;
+            var p = dip.TopLeft;
+            double s = screens.Where(x => x.dip.Contains(p)).Select(x => x.s).FirstOrDefault();
+            if (s == 0) s = screens.OrderBy(x => DistanceSquared(x.dip, p)).First().s;
+            return new Rect(dip.X * s, dip.Y * s, dip.Width * s, dip.Height * s);
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
+
+        [System.Runtime.InteropServices.DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 
         /// <summary>
         /// Returns <paramref name="r"/> unchanged if enough of its title bar is on a screen to

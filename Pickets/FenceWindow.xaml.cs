@@ -153,6 +153,11 @@ namespace Pickets
                 ApplyGlass();
             };
 
+            // Land on the right monitor at the right scale once the window exists.
+            _suppressGeometrySave = true;
+            DesktopHelper.PlaceWindow(this, new Rect(Left, Top, Width, Height));
+            SourceInitialized += (_, __) => _suppressGeometrySave = false;
+
             Loaded += (_, __) => EnsureBottomZOrder();
             // Clicking a fence: back below app windows, but in front of the other fences.
             Activated += (_, __) => { EnsureBottomZOrder(); BringToFrontOfFences(); };
@@ -165,6 +170,7 @@ namespace Pickets
             {
                 _hoverTimer?.Stop();
                 _rollTimer?.Stop();
+                _reloadTimer?.Stop();
                 ReleaseMedia();
                 try { _watcher?.Dispose(); } catch { /* ignore */ }
             };
@@ -278,7 +284,7 @@ namespace Pickets
                     bmp.BeginInit();
                     bmp.UriSource = new Uri(path);
                     bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                    bmp.DecodePixelWidth = (int)Math.Min(2560, 1600 * Pickets.Services.ScreenLayout.Scale);
+                    bmp.DecodePixelWidth = (int)Math.Min(2560, 1600 * VisualTreeHelper.GetDpi(this).DpiScaleX);
                     bmp.EndInit();
                     bmp.Freeze();
                     _mediaBrush = new ImageBrush(bmp) { Stretch = stretch };
@@ -636,9 +642,15 @@ namespace Pickets
             _model.Left = r.Left; _model.Top = r.Top;
             _model.Width = r.Width; _model.Height = r.Height;
 
+            var target = new Rect(r.Left, r.Top, r.Width, _model.Collapsed ? Height : r.Height);
+            if (new WindowInteropHelper(this).Handle == IntPtr.Zero)
+            {
+                // Still in the constructor: placed for real once the window exists.
+                Left = target.Left; Top = target.Top; Width = target.Width; Height = target.Height;
+                return true;
+            }
             _suppressGeometrySave = true;
-            Left = r.Left; Top = r.Top; Width = r.Width;
-            if (!_model.Collapsed) Height = r.Height;
+            DesktopHelper.PlaceWindow(this, target);
             _suppressGeometrySave = false;
             return true;
         }
@@ -686,9 +698,14 @@ namespace Pickets
                     IncludeSubdirectories = false,
                     EnableRaisingEvents = true
                 };
-                _watcher.Created += (_, __) => Dispatcher.Invoke(ReloadItems);
-                _watcher.Deleted += (_, __) => Dispatcher.Invoke(ReloadItems);
-                _watcher.Renamed += (_, __) => Dispatcher.Invoke(ReloadItems);
+                _watcher.Created += (_, __) => Dispatcher.BeginInvoke(ScheduleReload);
+                _watcher.Deleted += (_, __) => Dispatcher.BeginInvoke(ScheduleReload);
+                _watcher.Renamed += (_, __) => Dispatcher.BeginInvoke(ScheduleReload);
+                // Sorted by date, an edit (e.g. reopening a recent file) changes the order.
+                _watcher.Changed += (_, __) =>
+                {
+                    if (_model.Sort == FenceSort.DateModified) Dispatcher.BeginInvoke(ScheduleReload);
+                };
             }
             catch
             {
@@ -773,6 +790,20 @@ namespace Pickets
             FenceRenamed?.Invoke(this, EventArgs.Empty); // persists
         }
 
+        // Folder events come in bursts (a download, a save); reload once things settle.
+        private System.Windows.Threading.DispatcherTimer? _reloadTimer;
+
+        private void ScheduleReload()
+        {
+            if (_reloadTimer == null)
+            {
+                _reloadTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+                _reloadTimer.Tick += (_, __) => { _reloadTimer.Stop(); ReloadItems(); };
+            }
+            _reloadTimer.Stop();
+            _reloadTimer.Start();
+        }
+
         // With "changed within N days", items age out without any file event; re-check now and then.
         private System.Windows.Threading.DispatcherTimer? _ageTimer;
 
@@ -844,6 +875,8 @@ namespace Pickets
             }
 
             entries = SortEntries(entries);
+            if (_model.IsPortal && _model.PortalMaxItems is int max and > 0 && entries.Count > max)
+                entries = entries.Take(max).ToList();
 
             // Add tiles immediately (no icon yet) so the UI never blocks on shell calls.
             foreach (var path in entries)
@@ -866,7 +899,7 @@ namespace Pickets
         {
             var snapshot = ItemsSource.ToList();
             bool thumbnails = Options?.ShowThumbnails ?? true;
-            int thumbPx = (int)Math.Round(IconPx * Pickets.Services.ScreenLayout.Scale * 2); // room for crisp scaling
+            int thumbPx = (int)Math.Round(IconPx * VisualTreeHelper.GetDpi(this).DpiScaleX * 2); // room for crisp scaling
             var loader = new System.Threading.Thread(() =>
             {
                 foreach (var item in snapshot)
@@ -1073,7 +1106,7 @@ namespace Pickets
         // The blur covers the whole window rectangle; clip it to the card's rounded corners.
         private void UpdateGlassRegion()
         {
-            double s = Pickets.Services.ScreenLayout.Scale;
+            double s = VisualTreeHelper.GetDpi(this).DpiScaleX;
             Pickets.Services.WindowBlur.SetRoundedRegion(new WindowInteropHelper(this).Handle,
                 (int)Math.Round(ActualWidth * s), (int)Math.Round(ActualHeight * s), (int)Math.Round(10 * s));
         }
@@ -1224,9 +1257,7 @@ namespace Pickets
         private bool CursorInside()
         {
             var p = System.Windows.Forms.Cursor.Position;
-            double s = Pickets.Services.ScreenLayout.Scale;
-            return p.X >= Left * s && p.X < (Left + ActualWidth) * s &&
-                   p.Y >= Top * s && p.Y < (Top + ActualHeight) * s;
+            return DesktopHelper.WindowRectPx(new WindowInteropHelper(this).Handle).Contains(p.X, p.Y);
         }
 
         // Item right-click menus are ContextMenus too, but they close when the cursor leaves.

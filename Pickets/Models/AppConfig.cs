@@ -31,6 +31,8 @@ namespace Pickets
         public string ToggleFencesHotkey { get; set; } = "Ctrl+Alt+H";
         // Brings every fence in front of app windows until you click elsewhere (Services/FencesInFront).
         public string FrontHotkey { get; set; } = "Ctrl+Alt+Space";
+        // Switches to the next desktop profile.
+        public string ProfileHotkey { get; set; } = "Ctrl+Alt+P";
 
         // The "still running in the tray" notification is shown once, not on every minimize.
         public bool TrayHintShown { get; set; }
@@ -76,10 +78,26 @@ namespace Pickets
         public string TargetFence { get; set; } = "Documents";
     }
 
+    /// <summary>A named set of fences ("Work", "Home"). The active profile's fences are
+    /// AppConfig.Fences; the others wait here until switched to.</summary>
+    public class DeskProfile
+    {
+        public string Name { get; set; } = "Profile";
+        public List<FenceModel> Fences { get; set; } = new();
+
+        // Switch to this profile when the clock reaches this time ("HH:mm"); null = never.
+        public string? SwitchAt { get; set; }
+        public bool WeekdaysOnly { get; set; }
+    }
+
     public class AppConfig
     {
         public List<FenceModel> Fences { get; set; } = new();
         public AppOptions Options { get; set; } = new();
+
+        // Empty until the first profile is made; ActiveProfile names the one whose fences are shown.
+        public List<DeskProfile> Profiles { get; set; } = new();
+        public string? ActiveProfile { get; set; }
 
         // Evaluated top-to-bottom; first match wins. Defaults mirror the one-shot import.
         public List<FenceRule> Rules { get; set; } = new()

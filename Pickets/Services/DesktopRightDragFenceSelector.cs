@@ -55,24 +55,12 @@ namespace Pickets.Services
         private const long InjectedMarker = 0x0F0E;
 
         // Overlay
-        private RubberbandOverlay? _overlay;
-
-        // DPI (for px -> DIP conversion)
-        private readonly double _dpiScaleX;
-        private readonly double _dpiScaleY;
+        private ScreenOverlay? _overlay;
 
         private DesktopRightDragFenceSelector(Action<Rect> onConfirm, Action<Rect> onPortal)
         {
             _onConfirm = onConfirm;
             _onPortal = onPortal;
-
-            var visual = System.Windows.Application.Current?.MainWindow as Visual;
-            var dpi = (visual != null)
-                ? VisualTreeHelper.GetDpi(visual)
-                : new DpiScale(1.0, 1.0);
-
-            _dpiScaleX = dpi.DpiScaleX;
-            _dpiScaleY = dpi.DpiScaleY;
         }
 
         // ---------- Hook lifecycle ----------
@@ -175,19 +163,22 @@ namespace Pickets.Services
             System.Windows.Application.Current!.Dispatcher.BeginInvoke(() =>
             {
                 if (_overlay is not null) { try { _overlay.Close(); } catch { } _overlay = null; }
-                _overlay = new RubberbandOverlay(_dpiScaleX, _dpiScaleY);
+                _overlay = new ScreenOverlay(
+                    new SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 120, 180, 255)), 1.5,
+                    new SolidColorBrush(System.Windows.Media.Color.FromArgb(55, 120, 180, 255)), 6, topmost: false);
                 _overlay.Show();
-                _overlay.UpdateRect(ScreenToDipRect(new RectPx(startPx.X, startPx.Y, 0, 0)));
+                _overlay.UpdateRectPx(new Rect(startPx.X, startPx.Y, 0, 0));
             });
         }
 
         private void UpdateOverlay()
         {
             // BeginInvoke (non-blocking) so the hook thread never stalls on the UI thread.
-            var rectDip = ScreenToDipRect(RectFromPointsPx(_ptStartPx, _ptLastPx));
+            var r = RectFromPointsPx(_ptStartPx, _ptLastPx);
+            var rectPx = new Rect(r.X, r.Y, r.Width, r.Height);
             System.Windows.Application.Current!.Dispatcher.BeginInvoke(() =>
             {
-                _overlay?.UpdateRect(rectDip);
+                _overlay?.UpdateRectPx(rectPx);
             });
         }
 
@@ -281,64 +272,9 @@ namespace Pickets.Services
             return new RectPx(x1, y1, x2 - x1, y2 - y1);
         }
 
-        private Rect ScreenToDipRect(RectPx rPx)
-        {
-            // Return ABSOLUTE WPF screen coordinates. WPF Window.Left/Top live in the same
-            // virtual-screen space as physical pixels (negative on monitors left of primary),
-            // so we must NOT subtract the virtual-screen origin here — doing that shifts new
-            // fences onto the wrong monitor. The overlay subtracts its own origin separately.
-            double xDip = rPx.X / _dpiScaleX;
-            double yDip = rPx.Y / _dpiScaleY;
-            double wDip = rPx.Width / _dpiScaleX;
-            double hDip = rPx.Height / _dpiScaleY;
-
-            return new Rect(xDip, yDip, wDip, hDip);
-        }
-
-        // ---------- Overlay window ----------
-        private sealed class RubberbandOverlay : Window
-        {
-            private readonly Canvas _canvas = new();
-            private readonly System.Windows.Shapes.Rectangle _rect = new();
-
-            public RubberbandOverlay(double dpiScaleX, double dpiScaleY)
-            {
-                WindowStyle = WindowStyle.None;
-                ResizeMode = ResizeMode.NoResize;
-                AllowsTransparency = true;
-                Background = System.Windows.Media.Brushes.Transparent;
-                ShowInTaskbar = false;
-                Topmost = false;                  // no need to be topmost
-                IsHitTestVisible = false;         // never block clicks
-
-                // Size to the entire virtual desktop (DIPs)
-                Width = (SystemParameters.VirtualScreenWidth / dpiScaleX);
-                Height = (SystemParameters.VirtualScreenHeight / dpiScaleY);
-                Left = (SystemParameters.VirtualScreenLeft / dpiScaleX);
-                Top = (SystemParameters.VirtualScreenTop / dpiScaleY);
-
-                // Rubber-band look (fully-qualified Color/Brushes to avoid Drawing clashes)
-                _rect.Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(200, 120, 180, 255));
-                _rect.StrokeThickness = 1.5;
-                _rect.Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(55, 120, 180, 255));
-                _rect.RadiusX = _rect.RadiusY = 6;
-
-                _canvas.SnapsToDevicePixels = true;
-                _canvas.Children.Add(_rect);
-                Content = _canvas;
-            }
-
-            public void UpdateRect(Rect r)
-            {
-                if (r.Width < 0 || r.Height < 0) return;
-                // r is in absolute virtual-screen coords; convert to this overlay's local
-                // canvas space by subtracting the overlay's own origin.
-                Canvas.SetLeft(_rect, r.X - Left);
-                Canvas.SetTop(_rect, r.Y - Top);
-                _rect.Width = r.Width;
-                _rect.Height = r.Height;
-            }
-        }
+        // The new fence's rect in WPF units of the monitor where the drag started (see ScreenLayout).
+        private static Rect ScreenToDipRect(RectPx rPx) =>
+            ScreenLayout.DipFromPx(new Rect(rPx.X, rPx.Y, rPx.Width, rPx.Height));
 
         // ---------- P/Invoke ----------
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);

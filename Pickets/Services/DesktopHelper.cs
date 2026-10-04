@@ -348,6 +348,46 @@ namespace Pickets
             SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr(style));
         }
 
+        /// <summary>
+        /// Put <paramref name="window"/> at a DIP rect (see ScreenLayout) on whichever monitor that
+        /// is. Setting Left/Top only converts with the scale of the monitor the window is on now,
+        /// so a window going to a monitor with another scale lands in the wrong place; this
+        /// positions it in screen pixels instead. Before the window exists it waits for it.
+        /// </summary>
+        public static void PlaceWindow(Window window, Rect dip)
+        {
+            var hwnd = new WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero)
+            {
+                window.Left = dip.Left; window.Top = dip.Top; window.Width = dip.Width; window.Height = dip.Height;
+                void Once(object? s, EventArgs e) { window.SourceInitialized -= Once; PlaceWindow(window, dip); }
+                window.SourceInitialized += Once;
+                return;
+            }
+
+            var px = Pickets.Services.ScreenLayout.PxFromDip(dip);
+            int x = (int)Math.Round(px.X), y = (int)Math.Round(px.Y);
+            // Move first: arriving on a monitor with another scale makes WPF rescale the window
+            // to keep its size in DIPs. Then size it with the scale it ended up with.
+            SetWindowPos(hwnd, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            if (double.IsNaN(dip.Width) || double.IsNaN(dip.Height)) return; // sized to content: move only
+            double s = GetDpiForWindow(hwnd) is uint dpi and > 0 ? dpi / 96.0 : 1.0;
+            SetWindowPos(hwnd, IntPtr.Zero, x, y, (int)Math.Round(dip.Width * s), (int)Math.Round(dip.Height * s),
+                         SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+
+        /// <summary>A window's rectangle in screen pixels.</summary>
+        public static Rect WindowRectPx(IntPtr hwnd) =>
+            GetWindowRect(hwnd, out var r) ? new Rect(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top) : Rect.Empty;
+
+        private const uint SWP_NOZORDER = 0x0004;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+
+        [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
+
         public static void SendToDesktopLayer(IntPtr hwnd)
         {
             EnsureHandles();

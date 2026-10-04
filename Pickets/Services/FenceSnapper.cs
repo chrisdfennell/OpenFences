@@ -35,7 +35,7 @@ namespace Pickets.Services
             if (!toEdges && !toGrid) return false;
             if ((GetKeyState(VK_MENU) & 0x8000) != 0) return false; // Alt = no snapping
 
-            double scale = ScreenLayout.Scale;
+            double scale = ScreenLayout.ScaleAtPx(r.Left, r.Top); // the monitor the fence is on
             int threshold = (int)Math.Round(ThresholdDip * scale);
             int gap = (int)Math.Round(GapDip * scale);
             int grid = Math.Max(1, (int)Math.Round(GridDip * scale));

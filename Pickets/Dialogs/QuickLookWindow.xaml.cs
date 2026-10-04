@@ -50,12 +50,9 @@ namespace Pickets
         // About two-thirds of the monitor the mouse is on, centered.
         private void PlaceOnCursorMonitor()
         {
-            var area = WinForms.Screen.FromPoint(WinForms.Cursor.Position).WorkingArea;
-            double s = Pickets.Services.ScreenLayout.Scale;
-            Width = Math.Min(1200, area.Width / s * 0.7);
-            Height = Math.Min(860, area.Height / s * 0.78);
-            Left = area.Left / s + (area.Width / s - Width) / 2;
-            Top = area.Top / s + (area.Height / s - Height) / 2;
+            var area = Pickets.Services.ScreenLayout.WorkAreaAtCursor();
+            double w = Math.Min(1200, area.Width * 0.7), h = Math.Min(860, area.Height * 0.78);
+            DesktopHelper.PlaceWindow(this, new Rect(area.Left + (area.Width - w) / 2, area.Top + (area.Height - h) / 2, w, h));
         }
 
         private void ShowItem()

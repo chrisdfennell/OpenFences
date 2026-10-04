@@ -79,7 +79,7 @@ namespace Pickets
             {
                 var r = ScreenLayout.FitOnScreen(new Rect(l, t, Math.Max(MinWidth, w), Math.Max(MinHeight, h)));
                 WindowStartupLocation = WindowStartupLocation.Manual;
-                Left = r.Left; Top = r.Top; Width = r.Width; Height = r.Height;
+                DesktopHelper.PlaceWindow(this, r);
             }
             else
             {
@@ -192,6 +192,7 @@ namespace Pickets
                                (closed > 0 ? $" · {closed} closed" : "");
 
             ToggleAllButton.Content = _peeked ? "Show all fences" : "Hide all fences";
+            RefreshProfileButton();
             SearchTileHint.Text = _config.Options.GlobalHotkeys
                 ? $"Find any item ({_config.Options.SearchHotkey})"
                 : "Find any item in any fence";
@@ -241,6 +242,7 @@ namespace Pickets
             SearchHotkeyBox.Text = _config.Options.SearchHotkey;
             ToggleHotkeyBox.Text = _config.Options.ToggleFencesHotkey;
             FrontHotkeyBox.Text = _config.Options.FrontHotkey;
+            ProfileHotkeyBox.Text = _config.Options.ProfileHotkey;
             ThemeButton.Content = ThemeLabel(_config.Options.Theme) + "  ▾";
             UpdateHotkeyStatus();
             RefreshLayouts();
@@ -298,7 +300,8 @@ namespace Pickets
             bool problem = _config.Options.GlobalHotkeys && _hotkeyProblems.Count > 0;
             HotkeyStatus.Text = string.Join("  ", _hotkeyProblems) + (problem ? " Pick a different shortcut." : "");
             HotkeyStatus.Visibility = problem ? Visibility.Visible : Visibility.Collapsed;
-            SearchHotkeyBox.IsEnabled = ToggleHotkeyBox.IsEnabled = FrontHotkeyBox.IsEnabled = _config.Options.GlobalHotkeys;
+            SearchHotkeyBox.IsEnabled = ToggleHotkeyBox.IsEnabled = FrontHotkeyBox.IsEnabled =
+                ProfileHotkeyBox.IsEnabled = _config.Options.GlobalHotkeys;
         }
 
         // Which option a shortcut box edits (its Tag).
@@ -306,6 +309,7 @@ namespace Pickets
         {
             "Search" => _config.Options.SearchHotkey,
             "Front" => _config.Options.FrontHotkey,
+            "Profile" => _config.Options.ProfileHotkey,
             _ => _config.Options.ToggleFencesHotkey,
         };
 
@@ -336,6 +340,7 @@ namespace Pickets
             {
                 case "Search": _config.Options.SearchHotkey = text; break;
                 case "Front": _config.Options.FrontHotkey = text; break;
+                case "Profile": _config.Options.ProfileHotkey = text; break;
                 default: _config.Options.ToggleFencesHotkey = text; break;
             }
 
@@ -380,6 +385,45 @@ namespace Pickets
             if (MessageBox.Show($"Delete the saved layout “{snap.Name}”?", "Layouts",
                                 MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
             LayoutSnapshots.Delete(snap);
+            RefreshLayouts();
+        }
+
+        private void ExportLayout_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export your Pickets layout",
+                FileName = $"Pickets layout {DateTime.Now:yyyy-MM-dd}",
+                DefaultExt = ".json",
+                Filter = "Pickets layout|*.json"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+            try { LayoutSnapshots.Export(dlg.FileName, _fences, _config.Rules); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("The layout couldn't be exported:\n" + ex.Message, "Pickets",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void ImportLayout_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Import a Pickets layout",
+                Filter = "Pickets layout|*.json|All files|*.*"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+
+            LayoutSnapshots.Snapshot snap;
+            try { snap = LayoutSnapshots.Import(dlg.FileName); }
+            catch (Exception ex)
+            {
+                MessageBox.Show("That file couldn't be imported:\n" + ex.Message, "Pickets",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            RestoreLayoutSnapshot(snap);
             RefreshLayouts();
         }
 

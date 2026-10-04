@@ -62,6 +62,8 @@ namespace Pickets
         // items changed in the last N days. Null = no filter (see Services/PortalFilter).
         public string? PortalFilter { get; set; }
         public int? PortalMaxAgeDays { get; set; }
+        // Show only this many items (after sorting), e.g. the 30 newest recent files.
+        public int? PortalMaxItems { get; set; }
 
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;

@@ -45,19 +45,13 @@ namespace Pickets.Services
         private bool _additive;
         private POINT _startPx, _lastPx;
 
-        private LassoOverlay? _overlay;
-        private readonly double _dpiScaleX, _dpiScaleY;
+        private ScreenOverlay? _overlay;
         private const int ThresholdPx = 4;
 
         private DesktopLeftDragLasso(Action<Rect, bool> onUpdate, Action onEnd)
         {
             _onUpdate = onUpdate;
             _onEnd = onEnd;
-
-            var visual = System.Windows.Application.Current?.MainWindow as Visual;
-            var dpi = (visual != null) ? VisualTreeHelper.GetDpi(visual) : new DpiScale(1.0, 1.0);
-            _dpiScaleX = dpi.DpiScaleX;
-            _dpiScaleY = dpi.DpiScaleY;
         }
 
         private void Hook()
@@ -146,7 +140,9 @@ namespace Pickets.Services
             System.Windows.Application.Current!.Dispatcher.BeginInvoke(() =>
             {
                 if (_overlay is not null) { try { _overlay.Close(); } catch { } _overlay = null; }
-                _overlay = new LassoOverlay(_dpiScaleX, _dpiScaleY);
+                _overlay = new ScreenOverlay(
+                    new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 127, 168, 224)), 1,
+                    new SolidColorBrush(System.Windows.Media.Color.FromArgb(60, 90, 143, 216)), 0, topmost: true);
                 _overlay.Show();
             });
         }
@@ -168,49 +164,6 @@ namespace Pickets.Services
                 _overlay?.UpdateRectPx(rectPx);
                 _onUpdate(rectPx, additive);
             });
-        }
-
-        // ---------- Overlay ----------
-        private sealed class LassoOverlay : Window
-        {
-            private readonly Canvas _canvas = new();
-            private readonly Rectangle _rect = new();
-            private readonly double _dpiX, _dpiY;
-
-            public LassoOverlay(double dpiScaleX, double dpiScaleY)
-            {
-                _dpiX = dpiScaleX; _dpiY = dpiScaleY;
-
-                WindowStyle = WindowStyle.None;
-                ResizeMode = ResizeMode.NoResize;
-                AllowsTransparency = true;
-                Background = System.Windows.Media.Brushes.Transparent;
-                ShowInTaskbar = false;
-                Topmost = true;
-                IsHitTestVisible = false;
-
-                Width = SystemParameters.VirtualScreenWidth / dpiScaleX;
-                Height = SystemParameters.VirtualScreenHeight / dpiScaleY;
-                Left = SystemParameters.VirtualScreenLeft / dpiScaleX;
-                Top = SystemParameters.VirtualScreenTop / dpiScaleY;
-
-                _rect.Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 127, 168, 224));
-                _rect.StrokeThickness = 1;
-                _rect.Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(60, 90, 143, 216));
-                _canvas.Children.Add(_rect);
-                Content = _canvas;
-            }
-
-            public void UpdateRectPx(Rect rPx)
-            {
-                // Convert physical px → this overlay's DIP-local coordinates.
-                double x = rPx.X / _dpiX - Left;
-                double y = rPx.Y / _dpiY - Top;
-                Canvas.SetLeft(_rect, x);
-                Canvas.SetTop(_rect, y);
-                _rect.Width = rPx.Width / _dpiX;
-                _rect.Height = rPx.Height / _dpiY;
-            }
         }
 
         // ---------- P/Invoke ----------
