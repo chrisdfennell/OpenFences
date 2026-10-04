@@ -462,6 +462,34 @@ namespace OpenFences
                 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
         }
 
+        /// <summary>
+        /// Puts <paramref name="hwnd"/> directly above the highest of <paramref name="others"/>
+        /// (the other fences), without lifting it over normal app windows. No-op if it's
+        /// already above all of them.
+        /// </summary>
+        public static void RaiseAbove(IntPtr hwnd, ICollection<IntPtr> others)
+        {
+            if (hwnd == IntPtr.Zero || others.Count == 0) return;
+
+            // Walk the z-order from the top; the first fence we meet is the highest one.
+            for (var h = GetTopWindow(IntPtr.Zero); h != IntPtr.Zero; h = GetWindow(h, GW_HWNDNEXT))
+            {
+                if (h == hwnd) return;
+                if (!others.Contains(h)) continue;
+
+                // Insert right below whatever sits above that fence, i.e. just above the fence.
+                var above = GetWindow(h, GW_HWNDPREV);
+                SetWindowPos(hwnd, above == IntPtr.Zero ? IntPtr.Zero /*HWND_TOP*/ : above, 0, 0, 0, 0,
+                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
+                return;
+            }
+        }
+
+        private const uint GW_HWNDNEXT = 2, GW_HWNDPREV = 3;
+
+        [DllImport("user32.dll")] private static extern IntPtr GetTopWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+
         // ---------- P/Invoke ----------
 
         internal delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);

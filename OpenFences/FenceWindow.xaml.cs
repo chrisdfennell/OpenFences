@@ -133,7 +133,8 @@ namespace OpenFences
             };
 
             Loaded += (_, __) => EnsureBottomZOrder();
-            Activated += (_, __) => EnsureBottomZOrder();
+            // Clicking a fence: back below app windows, but in front of the other fences.
+            Activated += (_, __) => { EnsureBottomZOrder(); BringToFrontOfFences(); };
 
             LocationChanged += SaveGeometry;
             SizeChanged += (_, __) => SaveGeometry(null, null);
@@ -276,6 +277,18 @@ namespace OpenFences
         public void EnsureBottomZOrder()
         {
             DesktopHelper.SendToDesktopLayer(new WindowInteropHelper(this).Handle);
+        }
+
+        /// <summary>Stack this fence above every other fence (still below normal app windows),
+        /// so an opened roll-up or a clicked fence isn't hidden behind its neighbours.</summary>
+        public void BringToFrontOfFences()
+        {
+            var others = AllFences
+                .Where(f => f != this && f.IsVisible)
+                .Select(f => new WindowInteropHelper(f).Handle)
+                .Where(h => h != IntPtr.Zero)
+                .ToHashSet();
+            DesktopHelper.RaiseAbove(new WindowInteropHelper(this).Handle, others);
         }
 
         private void SaveGeometry(object? sender, EventArgs? e)
@@ -807,6 +820,9 @@ namespace OpenFences
 
         private void FenceWindow_MouseEnter(object sender, MouseEventArgs e)
         {
+            // Pointing at a rolled-up fence brings it (title bar included) in front of others.
+            if (_model.Collapsed) BringToFrontOfFences();
+
             if (!_model.Collapsed || _tempExpanded || Options?.ExpandCollapsedOnHover != true) return;
             _hoverTimer ??= NewTimer(350, () =>
             {
@@ -832,7 +848,7 @@ namespace OpenFences
             {
                 if (!_model.Collapsed || _tempExpanded) return;
                 _tempExpanded = true;
-                EnsureBottomZOrder(); // in front of neighbouring fences
+                BringToFrontOfFences(); // in front of neighbouring fences
                 Scroller.Visibility = Visibility.Visible;
                 AnimateHeight(Math.Max(_model.Height, MinExpandedHeight), onCompleted: null);
 
@@ -882,6 +898,7 @@ namespace OpenFences
             Activate();
             Focus();
             EnsureBottomZOrder();
+            BringToFrontOfFences();
 
             // Opened by hover: collapsing again would feel like nothing happened, so keep it open.
             if (_tempExpanded)
