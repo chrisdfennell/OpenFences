@@ -38,6 +38,12 @@ jobs:
       - name: Restore
         run: dotnet restore OpenFences/OpenFences.csproj
 
+      # Unit tests (rules, repair, snapping, screen fitting, snapshots). Once per run is
+      # enough; a failure stops the build, so a broken release never gets published.
+      - name: Test
+        if: matrix.arch == 'x64'
+        run: dotnet test tests/OpenFences.Tests -c Release
+
       # Self-contained publish: the installer needs no .NET runtime on the user's PC.
       - name: Publish app (self-contained ${{ matrix.arch }})
         run: >

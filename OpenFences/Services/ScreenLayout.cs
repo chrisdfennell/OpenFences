@@ -58,9 +58,11 @@ namespace OpenFences.Services
         /// Returns <paramref name="r"/> unchanged if enough of its title bar is on a screen to
         /// grab it; otherwise moves (and if needed shrinks) it onto the nearest work area.
         /// </summary>
-        public static Rect FitOnScreen(Rect r)
+        public static Rect FitOnScreen(Rect r) => FitOnScreen(r, WorkAreas());
+
+        /// <summary>Same, against explicit work areas (WPF units); used by tests.</summary>
+        internal static Rect FitOnScreen(Rect r, IReadOnlyList<Rect> areas)
         {
-            var areas = WorkAreas();
             if (areas.Count == 0) return r;
 
             // The title bar is what you drag, so that's what has to be reachable.

@@ -59,6 +59,16 @@ namespace OpenFences.Services
                 }
             }
 
+            return SnapToLines(ref r, sizingEdge, xs, ys, threshold, toGrid ? grid : 0);
+        }
+
+        /// <summary>The snapping math, separate from the screen/window lookups so it can be
+        /// tested: moves edges of <paramref name="r"/> onto the nearest vertical (xs) and
+        /// horizontal (ys) lines within <paramref name="threshold"/>, or onto a grid of
+        /// <paramref name="grid"/> pixels (0 = no grid). Returns true if anything changed.</summary>
+        internal static bool SnapToLines(ref RECT r, int sizingEdge, List<int> xs, List<int> ys, int threshold, int grid)
+        {
+            bool toGrid = grid > 0;
             // Closest snap line within the threshold, or null if none.
             int? Find(int v, List<int> lines)
             {

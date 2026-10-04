@@ -852,37 +852,7 @@ namespace OpenFences
         // fence wins over the catch-all).
         private void RepairDuplicateFences()
         {
-            bool changed = false;
-
-            foreach (var group in _fences.Where(f => !f.IsPortal)
-                                         .GroupBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
-                                         .Where(g => g.Count() > 1)
-                                         .ToList())
-            {
-                // Keep the copy with the most items (and its position); fold the rest into it.
-                var keep = group.OrderByDescending(f => f.ItemPaths.Count).First();
-                foreach (var dup in group.Where(f => !ReferenceEquals(f, keep)))
-                {
-                    foreach (var p in dup.ItemPaths)
-                        if (!keep.ItemPaths.Contains(p, StringComparer.OrdinalIgnoreCase))
-                            keep.ItemPaths.Add(p);
-                    _fences.Remove(dup);
-                }
-                changed = true;
-            }
-
-            var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var order = _fences.Where(f => !f.IsPortal)
-                               .OrderBy(f => string.Equals(f.Name, CatchAllFenceName, StringComparison.OrdinalIgnoreCase) ? 1 : 0)
-                               .ToList();
-            foreach (var f in order)
-            {
-                int before = f.ItemPaths.Count;
-                f.ItemPaths = f.ItemPaths.Where(p => claimed.Add(p)).ToList();
-                if (f.ItemPaths.Count != before) changed = true;
-            }
-
-            if (changed) SaveConfig();
+            if (FenceRepair.Repair(_fences, CatchAllFenceName)) SaveConfig();
         }
 
         private IEnumerable<FenceWindow> RealFences => _openWindows.Where(w => !w.IsPortal);

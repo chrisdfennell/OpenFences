@@ -8,3 +8,6 @@ using System.Windows;
                                                 //(used if a resource is not found in the page,
                                                 // app, or any theme specific resource dictionaries)
 )]
+
+// Lets the test project reach internal helpers (rules parsing, snapping math, repair).
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("OpenFences.Tests")]
