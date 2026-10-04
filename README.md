@@ -11,10 +11,9 @@
 
 *Formerly **OpenFences**.* A free, open-source alternative to Stardock Fences.
 
-**Website:** [chrisdfennell.github.io/Pickets](https://chrisdfennell.github.io/Pickets/) · [Privacy policy](https://chrisdfennell.github.io/Pickets/privacy.html)
+**Website:** [chrisdfennell.github.io/Pickets](https://chrisdfennell.github.io/Pickets/) · [Privacy policy](https://chrisdfennell.github.io/Pickets/privacy.html) · [Download](https://github.com/chrisdfennell/Pickets/releases/latest)
 
-Pickets is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
-Your real desktop items are shown as tiles inside fences. Nothing is copied and no shortcuts are created; a fence just decides where each desktop item appears. Group items into fences, mirror any folder as a **Folder Portal**, lasso-select across fences, and use **Auto-Import** to sort your desktop into **Apps**, **Documents**, and **System** fences in one click.
+Pickets organizes your Windows desktop into movable, resizable **fences**. Your real desktop items show up as tiles inside fences. Nothing is copied or moved and no shortcuts are created: a fence only decides where each desktop item appears, and quitting Pickets brings your normal desktop back.
 
 ![Pickets in action: fences with a picture and a looping video background that fade with the fence's transparency](Pickets/Docs/backgrounds-demo.gif "Pickets in action")
 
@@ -22,83 +21,55 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ---
 
+## 📦 Install
+
+Requires Windows 10 or 11. No .NET installation is needed.
+
+- **Installer (recommended):** download `Pickets-x64.msi` (most PCs) or `Pickets-arm64.msi` (ARM devices such as Snapdragon laptops) from the [latest release](https://github.com/chrisdfennell/Pickets/releases/latest).
+- **Portable:** `Pickets-x64-portable.zip` or `Pickets-arm64-portable.zip`; unzip anywhere and run `Pickets.exe`.
+- **winget:** `winget install chrisdfennell.Pickets` (submitted to the Windows Package Manager; works once Microsoft approves it).
+
+After that, Pickets checks GitHub for new versions and installs them when you say so.
+
+**Upgrading from OpenFences?** Install Pickets over it (or accept the update OpenFences offers). Your fences, settings and saved layouts move over automatically the first time Pickets starts. Start it once from the Start menu after the update; older versions can't restart the app under its new name.
+
+---
+
 ## ✨ Features
 
-- **Fences on the desktop layer**  
-  Movable/resizable fence windows that sit above the wallpaper (nudged to the desktop Z-layer).
+### Organize
 
-- **Fences hold your real desktop items**  
-  While Pickets runs, the normal desktop icons are hidden and each desktop item is shown in exactly one fence. Anything not in another fence lives in the **Desktop** fence. Quitting Pickets shows the normal desktop icons again.
+- **Fences hold your real desktop items.** Each desktop item shows in exactly one fence; anything not in another fence lives in the **Desktop** fence.
+- **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
+- **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it.
+- **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
+- **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions, everything else), and the Desktop fence can be re-sorted on demand.
+- **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
+- **Select across fences.** Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
+- **Close or delete.** ✕ closes a fence and it stays closed (it keeps its items) until you reopen it from the Pickets window; **Delete Fence…** removes it and its items go back to the Desktop fence. Nothing on your disk is deleted either way.
 
-- **Drag in from anywhere**  
-  Drop files from outside the desktop onto a fence and choose whether to move them onto the desktop or create a desktop shortcut.
+### Find and open
 
-- **Folder Portals**  
-  A portal fence is a live view of any folder you choose; it updates as files change. Double-click a subfolder to browse into it (with a back button and breadcrumbs); Ctrl+double-click opens it in Explorer. Point a portal at a different folder with **Change folder…** or by dropping a folder onto it.
+- **Search every fence.** **Ctrl+Alt+F** searches every fence and tab: matches are listed (Enter opens one), fences come to the front and everything else fades out.
+- **Quick Look.** Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
+- **The real Windows right-click menu.** Open with, Send to, Properties and menu entries other apps add, plus **Remove from fence**. **Rename** (or F2) renames the actual file, and it stays in its fence, as do files renamed in Explorer or saved by apps such as Office.
+- **Keyboard friendly.** Arrow keys, Home/End and type-a-letter move through a fence; Space previews, Enter opens, Delete recycles, F2 renames, Esc clears the selection, Backspace goes up a folder in a portal.
 
-- **The real Windows right-click menu**  
-  Right-click a tile for Windows' own menu (Open with, Send to, Properties, menu entries other apps add…) plus **Remove from fence**, which moves it back to the Desktop fence (nothing is deleted). **Rename** (or F2) renames the actual file, and it stays in its fence. Renames made in Explorer or by other apps keep the item in its fence too.
+### Make it yours
 
-- **Drag tiles anywhere**  
-  Drag tiles to another fence to move them there, into Explorer, an email or any app as real files, or within a fence to arrange them in your own order.
+- **Style each fence.** Colors (presets or any custom color), title size, transparency, **frosted glass**, or a **picture or looping video background** (fill, fit or stretch, optional darkening, sound on or off per video).
+- **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden.
+- **Roll up and peek.** Double-click a title to roll a fence up; rest the mouse on it (or drag files over it) to open it until you move away.
+- **Snap and align.** Fences snap to screen edges and to each other while you move or resize them, with an optional grid. Hold **Alt** to move freely. Lock a fence to stop accidental moves.
 
-- **Thumbnails**  
-  Pictures and videos show a preview instead of a generic icon. **Settings** can turn this off, or hide file extensions on labels.
+### Stays out of your way
 
-- **Selection across fences**  
-  Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
-
-- **Quick create & peek**  
-  Right-drag on empty desktop to draw a new fence. Optionally double-click the desktop to hide/show all fences.
-
-- **Rename & style fences**  
-  Right-click a fence title bar to rename it, change sort order, icon size, transparency, a **picture or looping video background** (fill, fit or stretch, with optional darkening; videos pause while the fence is hidden or rolled up), **frosted glass**, **color** (preset swatches or any custom color) and **title size**, or **lock** it so it can't be moved or resized by accident.
-
-- **Roll up, peek on hover**  
-  Double-click a title bar to roll a fence up. Rest the mouse on a rolled-up fence (or drag files over it) and it opens until you move away.
-
-- **Snap & align**  
-  Fences snap to screen edges and to each other (aligned or side by side) while you move or resize them, with an optional grid. Hold **Alt** to move freely.
-
-- **Search every fence**  
-  **Ctrl+Alt+F** opens a quick search across every fence and tab: matching items are listed (Enter opens one), fences come to the front, and everything that doesn't match fades out.
-
-- **Global shortcuts**  
-  **Ctrl+Alt+H** hides or shows all fences from anywhere, even while Pickets is in the tray. Both shortcuts can be changed in **Settings**.
-
-- **Tabs inside fences**  
-  Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
-
-- **Quick Look**  
-  Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
-
-- **Keyboard friendly**  
-  Arrow keys, Home/End and type-a-letter move through a fence; Space previews, Enter opens, Delete recycles, F2 renames the selected item (or the fence, when nothing is selected), Esc clears the selection, Backspace goes up a folder in a portal.
-
-- **Multi-monitor aware**  
-  Each fence remembers where you put it for every monitor arrangement (docked, undocked, projector…) and returns there; fences that would land off-screen are pulled back onto a visible display.
-
-- **Layout snapshots**  
-  **Settings → Layouts** saves your whole fence layout and restores it later. A snapshot is also taken automatically before Auto-Import, rule sorting and restores, so big changes can be undone.
-
-- **Automatic update checks**  
-  Pickets checks GitHub for a new release at startup and once a day, shows what's new, and installs it on request (one Windows permission prompt), then restarts with your fences intact. Turn it off under **Settings → Check for updates automatically**, or check any time with **Check for updates now…**. Portable-zip copies get a link to the download instead.
-
-- **Safe, persisted layout**  
-  Positions and sizes are saved automatically to `%AppData%\\Pickets\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
-
-- **One home for everything**  
-  The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete each one, plus quick actions and a **Settings** page with simple on/off switches. It hides to the system tray; double-click the tray icon to bring it back.
-
-- **⚡ Auto-Import Desktop Icons**  
-  One click creates (or reuses) three fences and sorts your desktop items into them:
-  - **Apps**: shortcuts to apps, `.exe`, `.url`, `.bat/.cmd/.ps1/.msi`, etc.
-  - **Documents**: everything else (documents, images, folders, zips…)
-  - **System**: special items like *This PC*, *Network* and *Recycle Bin*.  
-  Your files stay where they are on the desktop; only which fence shows them changes.
-
-- **Auto-organize rules**  
-  Turn on **Settings → Auto-organize new desktop items** and new files go straight to the right fence. **Edit auto-organize rules…** lets you choose what goes where (apps, folders, specific file types, everything else), reorder the rules, and re-sort the Desktop fence on demand.
+- **One home for everything.** The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete it, plus quick actions, a **Settings** page with simple switches, and About. It hides to the system tray.
+- **Global shortcuts.** **Ctrl+Alt+H** hides or shows all fences from anywhere; both shortcuts can be changed in Settings.
+- **Multi-monitor aware.** Each fence remembers where you put it for every monitor setup (docked, undocked, projector) and is never left off-screen.
+- **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import.
+- **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
+- **Safe settings.** Saved continuously with a backup copy that's restored automatically if the file is ever damaged.
 
 ---
 
@@ -118,89 +89,91 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ---
 
-## 🧰 Tech
+## 🚀 Using Pickets
 
-- .NET 8, WPF + a tiny bit of WinForms (`NotifyIcon` for the tray)
-- Interop: `SHGetFileInfo` for icons, `WScript.Shell` COM to create/inspect `.lnk`
-- No external packages
-
----
-
-## 🔧 Build & Run
-
-### Prerequisites
-- Windows 10/11  
-- [.NET 8 SDK](https://dotnet.microsoft.com/download)  
-- (Optional) Visual Studio 2022 with “.NET desktop development” workload
-
-### Via Visual Studio
-1. Open the solution.  
-2. Set **Pickets** as the startup project.  
-3. Build & Run (F5).
-
-### Via CLI
-```bash
-dotnet build
-dotnet run --project Pickets/Pickets.csproj
-```
+- **Create a fence:** right-drag a rectangle on empty desktop, or **New fence** on the Pickets window's Home page.
+- **Fill it:** drag tiles in from other fences, drop files from Explorer, or use **Auto-import desktop** on the Home page.
+- **Fence options:** right-click a fence's title bar (or click ✎) to rename it, sort, change icon size, add a tab, set a color, background, transparency or title size, lock it, or delete it.
+- **Find something:** **Ctrl+Alt+F**, type, Enter. Or select a tile and press **Space** to preview it.
+- **Hide or show all fences:** **Ctrl+Alt+H**, or double-click empty desktop if that's turned on in Settings.
+- **Reopen a closed fence:** open the Pickets window; closed fences are listed on Home with an **Open** button.
+- **Save or restore a layout:** **Settings → Layouts**.
+- **Rules for new files:** **Settings → Organizing → Edit rules…**.
+- **Start over:** **Settings → Start over → Delete all fences…** (the current layout is saved first).
+- **Bring back the window:** double-click the tray icon, or start Pickets again.
 
 ---
 
 ## 📁 Where things go
 
-- **Your files:** they stay on your desktop. Fences don't copy or move them.  
-- **Config:** `%AppData%\\Pickets\\config.json` (previous version kept as `config.json.bak`)  
-- **Layout snapshots:** `%AppData%\\Pickets\\layouts\\`  
-- **Error log:** `%AppData%\\Pickets\\error.log`  
-- **Uninstall:** quit Pickets (your desktop icons reappear), uninstall it, and optionally delete `%AppData%\\Pickets`.
+- **Your files:** they stay where they are. Fences don't copy or move them.
+- **App:** `C:\Program Files\Pickets\` (installer) or wherever you unzipped the portable version.
+- **Settings and fences:** `%AppData%\Pickets\config.json` (previous version kept as `config.json.bak`).
+- **Saved layouts:** `%AppData%\Pickets\layouts\`
+- **Error log:** `%AppData%\Pickets\error.log`
+- **Coming from OpenFences:** `%AppData%\OpenFences` is moved to `%AppData%\Pickets` on first start.
+- **Uninstall:** quit Pickets (your desktop icons reappear), uninstall it from Windows Settings, and optionally delete `%AppData%\Pickets`.
+
+Pickets collects no personal data and has no telemetry; see the [privacy policy](https://chrisdfennell.github.io/Pickets/privacy.html).
 
 ---
 
-## 🚀 Usage
+## 🔧 Build and run
 
-- Create a fence: **File → New Fence**, or right-drag a rectangle on empty desktop.  
-- Add items: drop files from Explorer onto a fence, or use **⚡ Auto-Import**.  
-- Close vs. delete: **✕** closes a fence and it stays closed (its items stay in it); reopen it from **View → Closed fences**. To remove a fence for good, use **✎ → Delete Fence…**, or **File → Delete All Fences…** to start over.  
-- Find something: **Ctrl+Alt+F**, type, Enter.  
-- Hide/show all fences: **Ctrl+Alt+H** (or double-click empty desktop, if enabled in Settings).  
-- Style a fence: right-click its title bar → **Color** / **Title size** / **Transparency**.  
-- Save a layout: **File → Layouts → Save current layout…**; restore it from the same menu.  
-- Take an item out of a fence: right-click it → **Remove from fence**.  
-- Rename: right-click a fence title bar → **Rename…**.  
-- Auto-import: click **⚡ Auto-Import Desktop Icons** to populate *Apps*, *Documents*, *System* fences.  
-- Hide controller: minimize the main window; restore via tray icon (launching Pickets again also brings it back).
+You need Windows 10/11 and the [.NET 8 SDK](https://dotnet.microsoft.com/download) (Visual Studio 2022 with the ".NET desktop development" workload is optional).
+
+```bash
+dotnet build
+dotnet run --project Pickets/Pickets.csproj
+dotnet test tests/Pickets.Tests
+```
+
+In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and press F5. The MSI installer is built with WiX (`Pickets.Installer`); CI builds it for x64 and ARM64 on every tagged release.
+
+---
+
+## 🧰 Tech
+
+- .NET 8 and WPF, with a little WinForms for the tray icon.
+- Windows Shell integration: the real context menu (`IContextMenu`), thumbnails (`IShellItemImageFactory`), icons (`SHGetFileInfo`), shortcuts (`WScript.Shell`).
+- Win32: desktop-layer placement and stacking, `RegisterHotKey` for global shortcuts, accent-policy blur for frosted glass.
+- No third-party packages in the app; tests use xUnit.
 
 ---
 
 ## 🧭 Roadmap (ideas)
 
-- Acrylic/Mica effects for fences (Win11)  
-- Roll-up/peek animation (title-bar only)  
-- Snap-to-grid & alignment guides  
-- Pages / quick layouts  
-- Per-fence rules (e.g., only images/docs)  
-- Global hotkeys (show/hide all, new fence)  
-- Stronger desktop parenting (WorkerW reparent)
+- Compact list view for long fences
+- Smarter rules (by name pattern, age or size)
+- Light theme that follows Windows
+- Export and import layouts as a file
+- Different fences per virtual desktop
+- Sticky-note fences
+- Proper per-monitor DPI on mixed-scaling setups
+- Screen reader support and translations
+
+Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets/issues).
 
 ---
 
 ## ⚠️ Known limitations
 
-- Z-order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows (search brings them to the front while it's open).  
-- A Folder Portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart Pickets, or point it at another folder with **Change folder…**.  
-- Ctrl+Alt+F / Ctrl+Alt+H don't work if another app already uses them; change them (or turn them off) under **Settings → Keyboard shortcuts** if they conflict.  
-- Monitors with different scaling are handled with the system scale factor, so on mixed-DPI setups a fence can look slightly larger or smaller on one screen.
+- Z-order on the desktop can vary by Windows build; fences are kept in the desktop layer behind normal windows (search and Locate bring them to the front briefly).
+- A folder portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart Pickets, or point it at another folder with **Change folder…**.
+- A global shortcut that another app already uses can't be registered; Settings flags it so you can pick another.
+- Monitors with different scaling use the system scale factor, so on mixed-DPI setups a fence can look slightly larger or smaller on one screen.
+- Background videos need Windows' codecs: MP4 and WMV work out of the box; MKV and WebM may need the free extensions from the Microsoft Store. Animated GIFs show their first frame.
 
 ---
 
 ## 🤝 Contributing
 
-PRs and issues welcome! If you’re proposing a new feature, please include a quick mock or description of the UI/UX.
+PRs and issues welcome! If you're proposing a new feature, please include a quick mock or description of the UI.
 
-- Fork and create a feature branch  
-- `dotnet build` to ensure it compiles, and `dotnet test tests/Pickets.Tests` (CI runs the tests on every push)  
-- Maintainers: see [docs/RELEASING.md](docs/RELEASING.md) for releases, code signing and winget  
-- Open a PR with a clear summary and screenshots if there are UI changes
+- Fork and create a feature branch.
+- Make sure `dotnet build` and `dotnet test tests/Pickets.Tests` pass (CI runs the tests on every push).
+- Open a PR with a clear summary, and screenshots if the UI changes.
+- Maintainers: see [docs/RELEASING.md](docs/RELEASING.md) for releases, code signing and winget.
 
 ---
 
@@ -210,7 +183,7 @@ MIT © Christopher Fennell
 
 ---
 
-## 🙏 Credits & Trademarks
+## 🙏 Credits and trademarks
 
-- Built with .NET, WPF, and portions of the Windows Shell APIs.  
+- Built with .NET, WPF and the Windows Shell APIs.
 - Not affiliated with Stardock. “Fences” is a trademark of its respective owner.

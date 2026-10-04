@@ -5,8 +5,8 @@
 1. Bump `<Version>` in `Pickets/Pickets.csproj` and commit.
 2. Push `master`, then tag and push the tag:
    ```bash
-   git tag -a v1.4.0 -m "v1.4.0"
-   git push origin v1.4.0
+   git tag -a v1.7.0 -m "v1.7.0"
+   git push origin v1.7.0
    ```
 3. CI (`.github/workflows/build.yml`) runs the tests, builds x64 and ARM64, and publishes a GitHub Release with
    the MSIs and portable zips. Replace the auto-generated notes with a written summary.
@@ -45,7 +45,7 @@ package exists there. The first version has to be submitted once by hand:
    [wingetcreate](https://github.com/microsoft/winget-create):
    ```powershell
    winget install wingetcreate
-   wingetcreate new https://github.com/chrisdfennell/Pickets/releases/download/v1.4.0/Pickets-x64.msi https://github.com/chrisdfennell/Pickets/releases/download/v1.4.0/Pickets-arm64.msi
+   wingetcreate new https://github.com/chrisdfennell/Pickets/releases/download/v1.6.0/Pickets-x64.msi https://github.com/chrisdfennell/Pickets/releases/download/v1.6.0/Pickets-arm64.msi
    ```
    Use the package identifier `chrisdfennell.Pickets` (it must match the `identifier` in the
    workflow), fill in the prompts, and let it open the pull request. Microsoft reviews it, usually within a
