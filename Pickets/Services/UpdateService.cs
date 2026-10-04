@@ -58,7 +58,7 @@ namespace Pickets.Services
             RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
 
         /// <summary>True when running from an MSI install (Program Files), as opposed to the
-        /// portable zip, which can't be upgraded by the installer.</summary>
+        /// portable exe, which can't be upgraded by the installer.</summary>
         public static bool IsInstalledCopy
         {
             get

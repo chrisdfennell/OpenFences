@@ -9,7 +9,7 @@
    git push origin v1.7.0
    ```
 3. CI (`.github/workflows/build.yml`) runs the tests, builds x64 and ARM64, and publishes a GitHub Release with
-   the MSIs and portable zips. Replace the auto-generated notes with a written summary.
+   the MSIs and single-file portable exes. Replace the auto-generated notes with a written summary.
 
 Installed copies find the release through the GitHub API and offer it to the user.
 

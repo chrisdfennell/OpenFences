@@ -59,11 +59,26 @@ jobs:
           -p:Version=${{ steps.ver.outputs.version }}
           -o ${{ github.workspace }}\publish\${{ matrix.arch }}
 
+      # Portable: the same app as one self-contained exe (WPF's native parts unpack to a temp
+      # folder when it starts), so there's nothing to extract.
+      - name: Publish portable exe (single file ${{ matrix.arch }})
+        run: >
+          dotnet publish Pickets/Pickets.csproj
+          -c Release
+          -r win-${{ matrix.arch }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none
+          -p:Version=${{ steps.ver.outputs.version }}
+          -o ${{ github.workspace }}\portable\${{ matrix.arch }}
+
       - name: Sign app (if a certificate is configured)
         shell: pwsh
         run: >
           ./.github/scripts/sign.ps1 -Files
-          publish\${{ matrix.arch }}\Pickets.exe,publish\${{ matrix.arch }}\Pickets.dll
+          publish\${{ matrix.arch }}\Pickets.exe,publish\${{ matrix.arch }}\Pickets.dll,portable\${{ matrix.arch }}\Pickets.exe
 
       # WiX SDK builds the MSI; no Visual Studio / extension required.
       - name: Build MSI (WiX)
@@ -82,7 +97,7 @@ jobs:
           if (-not $msi) { throw 'No MSI produced.' }
           Copy-Item $msi.FullName "out\Pickets-${{ matrix.arch }}.msi" -Force
           ./.github/scripts/sign.ps1 -Files "out\Pickets-${{ matrix.arch }}.msi"
-          Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\Pickets-${{ matrix.arch }}-portable.zip" -Force
+          Copy-Item "portable\${{ matrix.arch }}\Pickets.exe" "out\Pickets-${{ matrix.arch }}-portable.exe" -Force
           Get-ChildItem out
 
       - name: Upload artifacts

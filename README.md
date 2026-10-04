@@ -26,7 +26,7 @@ Pickets organizes your Windows desktop into movable, resizable **fences**. Your 
 Requires Windows 10 or 11. No .NET installation is needed.
 
 - **Installer (recommended):** download `Pickets-x64.msi` (most PCs) or `Pickets-arm64.msi` (ARM devices such as Snapdragon laptops) from the [latest release](https://github.com/chrisdfennell/Pickets/releases/latest).
-- **Portable:** `Pickets-x64-portable.zip` or `Pickets-arm64-portable.zip`; unzip anywhere and run `Pickets.exe`.
+- **Portable:** `Pickets-x64-portable.exe` or `Pickets-arm64-portable.exe`, a single file: put it anywhere and run it.
 - **winget:** `winget install chrisdfennell.Pickets` (submitted to the Windows Package Manager; works once Microsoft approves it).
 
 After that, Pickets checks GitHub for new versions and installs them when you say so.
@@ -118,7 +118,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 ## 📁 Where things go
 
 - **Your files:** they stay where they are. Fences don't copy or move them.
-- **App:** `C:\Program Files\Pickets\` (installer) or wherever you unzipped the portable version.
+- **App:** `C:\Program Files\Pickets\` (installer) or wherever you put the portable exe.
 - **Settings and fences:** `%AppData%\Pickets\config.json` (previous version kept as `config.json.bak`).
 - **Saved layouts:** `%AppData%\Pickets\layouts\`
 - **Error log:** `%AppData%\Pickets\error.log`
