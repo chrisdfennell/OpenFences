@@ -12,7 +12,6 @@ namespace Pickets
         // ---- Messages / commands ----
         private const int WM_COMMAND = 0x0111;
         private const int CMD_TOGGLE_DESKTOP = 0x7402;     // "Show desktop icons" verb
-        private const int LVM_HITTEST = 0x1012;
 
         // SMTO flags
         private const uint SMTO_NORMAL = 0x0000;
@@ -190,10 +189,7 @@ namespace Pickets
 
             var ptClient = pt;
             ScreenToClient(_listView, ref ptClient);
-            var hti = new LVHITTESTINFO { pt = ptClient, iItem = -1 };
-            IntPtr ok = SendMessageTimeout(_listView, (uint)LVM_HITTEST, IntPtr.Zero,
-                                           ref hti, SMTO_ABORTIFHUNG, 50, out _);
-            return ok != IntPtr.Zero && hti.iItem == -1;
+            return Services.DesktopIconManager.HitTest(ptClient.X, ptClient.Y) == -1;
         }
 
         private static bool IsDesktopAt(POINT ptScreen)
@@ -213,84 +209,6 @@ namespace Pickets
             if (!IsClass(root, "Progman") && !IsClass(root, "WorkerW")) return false;
 
             return BelongsToExplorerProcess(root);
-        }
-
-        /// <summary>
-        /// Robust whitespace check (run on the UI thread): uses SendMessageTimeout to avoid Explorer stalls.
-        /// Returns true if the cursor is over desktop whitespace (not on an icon).
-        /// </summary>
-        public static bool CursorIsOverDesktopWhitespaceSafe()
-        {
-            EnsureHandles();
-            if (_listView == IntPtr.Zero || !IsWindow(_listView)) return false;
-            if (!GetCursorPos(out POINT ptScreen)) return false;
-
-            // Convert to listview client coords
-            var ptClient = ptScreen;
-            ScreenToClient(_listView, ref ptClient);
-
-            var hti = new LVHITTESTINFO
-            {
-                pt = ptClient,
-                flags = 0,
-                iItem = -1,
-                iSubItem = 0
-            };
-
-            const uint TIMEOUT_MS = 50;
-
-            // Timeout-protected hit-test into the desktop list view
-            IntPtr result;
-            IntPtr ok = SendMessageTimeout(_listView, (uint)LVM_HITTEST, IntPtr.Zero,
-                                           ref hti, SMTO_ABORTIFHUNG, TIMEOUT_MS, out result);
-
-            // If timeout or failure, be conservative (don’t toggle)
-            if (ok == IntPtr.Zero) return false;
-
-            // Not over any item => whitespace
-            return hti.iItem == -1;
-        }
-
-        /// <summary>
-        /// (Older, synchronous) Returns true when the cursor is over empty desktop using LVM_HITTEST directly.
-        /// Use CursorIsOverDesktopWhitespaceSafe() instead when calling from UI code.
-        /// </summary>
-        public static bool CursorIsOverEmptyDesktop()
-        {
-            EnsureHandles();
-
-            if (_defView == IntPtr.Zero || _listView == IntPtr.Zero) return false;
-            if (!GetCursorPos(out POINT ptScreen)) return false;
-
-            IntPtr hwndUnder = WindowFromPoint(ptScreen);
-            if (hwndUnder == IntPtr.Zero) return false;
-
-            // Don’t trigger when clicking any of OUR windows
-            if (BelongsToCurrentProcess(hwndUnder)) return false;
-
-            // Must belong to Explorer (the shell)
-            if (!BelongsToExplorerProcess(hwndUnder))
-            {
-                IntPtr cur = hwndUnder;
-                bool explorerAncestor = false;
-                while (cur != IntPtr.Zero)
-                {
-                    if (BelongsToExplorerProcess(cur)) { explorerAncestor = true; break; }
-                    cur = GetParent(cur);
-                }
-                if (!explorerAncestor) return false;
-            }
-
-            // Accept: direct WorkerW/Progman click, or anything hosted under SHELLDLL_DefView
-            bool onDesktopView =
-                IsClass(hwndUnder, "WorkerW") ||
-                IsClass(hwndUnder, "Progman") ||
-                AncestorHasClass(hwndUnder, "SHELLDLL_DefView");
-
-            if (!onDesktopView) return false;
-
-            // Finally, require WHITESPACE (not on any icon)
-            return IsDesktopWhiteSpaceAtScreenPoint(ptScreen);
         }
 
         // ---------- internals ----------
@@ -407,32 +325,6 @@ namespace Pickets
         }
 
         /// <summary>
-        /// Direct (blocking) LVM_HITTEST. Prefer CursorIsOverDesktopWhitespaceSafe() instead.
-        /// </summary>
-        private static bool IsDesktopWhiteSpaceAtScreenPoint(POINT ptScreen)
-        {
-            EnsureHandles();
-            if (_listView == IntPtr.Zero || !IsWindow(_listView))
-                return false;
-
-            // Convert to listview client coords
-            var ptClient = ptScreen;
-            ScreenToClient(_listView, ref ptClient);
-
-            var hti = new LVHITTESTINFO
-            {
-                pt = ptClient,
-                flags = 0,
-                iItem = -1,
-                iSubItem = 0
-            };
-
-            // LVM_HITTEST fills iItem with -1 if not over an item
-            int _ = (int)SendMessage(_listView, LVM_HITTEST, IntPtr.Zero, ref hti);
-            return hti.iItem == -1;
-        }
-
-        /// <summary>
         /// Push a window to the "desktop layer": above the wallpaper & icons (WorkerW/Progman), below normal apps.
         /// </summary>
         public static void SendToDesktopLayer(Window window)
@@ -530,21 +422,12 @@ namespace Pickets
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, ref LVHITTESTINFO lParam);
-
-        [DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
 
         // Timeout (IntPtr lParam overload)
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessageTimeout(
             IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam,
-            uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
-
-        // Timeout (ref LVHITTESTINFO overload)
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        private static extern IntPtr SendMessageTimeout(
-            IntPtr hWnd, uint Msg, IntPtr wParam, ref LVHITTESTINFO lParam,
             uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 
         [DllImport("user32.dll")]
@@ -593,14 +476,5 @@ namespace Pickets
         // structs
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X; public int Y; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct LVHITTESTINFO
-        {
-            public POINT pt;
-            public uint flags;
-            public int iItem;
-            public int iSubItem;
-        }
     }
 }

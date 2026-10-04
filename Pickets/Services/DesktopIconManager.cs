@@ -32,6 +32,7 @@ namespace Pickets.Services
         private const int LVM_GETITEMPOSITION = LVM_FIRST + 16;   // 0x1010 (lParam = POINT* in target)
         private const int LVM_REDRAWITEMS = LVM_FIRST + 21;   // 0x1015
         private const int LVM_GETITEMTEXTW = LVM_FIRST + 115;  // 0x1073 (lParam = LVITEM* in target)
+        private const int LVM_HITTEST = LVM_FIRST + 18;   // 0x1012 (lParam = LVHITTESTINFO* in target)
 
         private const uint LVIF_TEXT = 0x0001;
 
@@ -176,6 +177,44 @@ namespace Pickets.Services
             return new Point(p.X, p.Y);
         }
 
+        /// <summary>
+        /// The index of the desktop icon at a point in list-view client coordinates, -1 when the
+        /// point is over empty space, or null if the hit-test couldn't be done. Like the other
+        /// reads here, the LVHITTESTINFO must live inside explorer.exe: passing a pointer into
+        /// our own memory makes explorer dereference a bad address and crash.
+        /// </summary>
+        public static int? HitTest(int clientX, int clientY)
+        {
+            IntPtr lv = DesktopHelper.GetIconListView();
+            if (lv == IntPtr.Zero) return null;
+
+            GetWindowThreadProcessId(lv, out uint pid);
+            IntPtr hProc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, false, pid);
+            if (hProc == IntPtr.Zero) return null;
+
+            IntPtr remote = IntPtr.Zero;
+            try
+            {
+                var info = new LVHITTESTINFO { pt = new POINT { X = clientX, Y = clientY }, iItem = -1 };
+                byte[] bytes = StructToBytes(info);
+                remote = VirtualAllocEx(hProc, IntPtr.Zero, (uint)bytes.Length, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+                if (remote == IntPtr.Zero) return null;
+                if (!WriteProcessMemory(hProc, remote, bytes, (uint)bytes.Length, out _)) return null;
+
+                if (SendMessageTimeout(lv, LVM_HITTEST, IntPtr.Zero, remote, SMTO_ABORTIFHUNG, 100, out _) == IntPtr.Zero)
+                    return null;
+
+                if (!ReadProcessMemory(hProc, remote, bytes, (uint)bytes.Length, out _)) return null;
+                return BitConverter.ToInt32(bytes, 12); // iItem follows pt (8 bytes) and flags (4)
+            }
+            catch { return null; }
+            finally
+            {
+                if (remote != IntPtr.Zero) VirtualFreeEx(hProc, remote, 0, MEM_RELEASE);
+                CloseHandle(hProc);
+            }
+        }
+
         // ---------- internals ----------
 
         private static string ReadItemText(IntPtr hProc, IntPtr lv, int index,
@@ -235,6 +274,16 @@ namespace Pickets.Services
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT { public int X; public int Y; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct LVHITTESTINFO
+        {
+            public POINT pt;
+            public uint flags;
+            public int iItem;
+            public int iSubItem;
+            public int iGroup;
+        }
 
         // 64-bit-accurate LVITEMW layout (explorer is 64-bit on 64-bit Windows; this app
         // ships win-x64/arm64 so IntPtr widths match the target process).
