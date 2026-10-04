@@ -30,6 +30,9 @@ namespace OpenFences
         // View → Closed fences. It keeps owning its items, so nothing gets re-homed.
         public bool Closed { get; set; } = false;
 
+        // Locked fences can't be moved or resized (until unlocked from the fence menu).
+        public bool Locked { get; set; } = false;
+
         // 0.0 (fully transparent) … 1.0 (opaque)
         public double BackgroundOpacity { get; set; } = 0.92;
 

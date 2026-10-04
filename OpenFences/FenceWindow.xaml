@@ -112,12 +112,22 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock x:Name="TitleText"
-                           VerticalAlignment="Center"
-                           Margin="10,0,0,0"
-                           Foreground="#E0E0E0"
-                           FontWeight="SemiBold"
-                           TextTrimming="CharacterEllipsis"/>
+                <DockPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="LockGlyph"
+                               DockPanel.Dock="Right"
+                               Text="🔒"
+                               FontSize="10"
+                               Margin="6,0,0,0"
+                               Opacity="0.7"
+                               VerticalAlignment="Center"
+                               ToolTip="Locked: can't be moved or resized"
+                               Visibility="Collapsed"/>
+                    <TextBlock x:Name="TitleText"
+                               VerticalAlignment="Center"
+                               Foreground="#E0E0E0"
+                               FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
 
                 <StackPanel Orientation="Horizontal"
                             Grid.Column="1"
@@ -146,6 +156,7 @@
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
                         <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
+                        <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
                         <Separator/>
                         <MenuItem x:Name="SortMenu" Header="Sort by">
                             <MenuItem Header="Name"          Tag="Name"         IsCheckable="True" Click="Sort_Click"/>

@@ -98,6 +98,7 @@ namespace OpenFences
             FitToCurrentScreens();
 
             ApplyBackground();
+            ApplyLock();
 
             // Both portal and real fences render their items as tiles in the scrollable
             // content area, and both accept drops.
@@ -700,8 +701,29 @@ namespace OpenFences
         {
             if (e.ClickCount == 2)
                 ToggleCollapsed();
-            else if (e.LeftButton == MouseButtonState.Pressed)
+            else if (e.LeftButton == MouseButtonState.Pressed && !_model.Locked)
                 DragMove();
+        }
+
+        // ---------- Lock ----------
+        private void Lock_Click(object sender, RoutedEventArgs e)
+        {
+            _model.Locked = !_model.Locked;
+            ApplyLock();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Locked: no dragging (title bar) and no resize grips.
+        private void ApplyLock()
+        {
+            // Work on a copy: the chrome from XAML may be frozen.
+            if (System.Windows.Shell.WindowChrome.GetWindowChrome(this) is { } chrome)
+            {
+                var updated = (System.Windows.Shell.WindowChrome)chrome.Clone();
+                updated.ResizeBorderThickness = _model.Locked ? new Thickness(0) : new Thickness(6);
+                System.Windows.Shell.WindowChrome.SetWindowChrome(this, updated);
+            }
+            LockGlyph.Visibility = _model.Locked ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void SetCollapsed(bool collapsed, bool animate)
@@ -1626,6 +1648,7 @@ namespace OpenFences
             CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
             MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
+            MiLock.IsChecked = _model.Locked;
         }
 
         private void Color_Click(object sender, RoutedEventArgs e)
