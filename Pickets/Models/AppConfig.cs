@@ -30,6 +30,17 @@ namespace Pickets
         public string SearchHotkey { get; set; } = "Ctrl+Alt+F";
         public string ToggleFencesHotkey { get; set; } = "Ctrl+Alt+H";
 
+        // The "still running in the tray" notification is shown once, not on every minimize.
+        public bool TrayHintShown { get; set; }
+
+        // Where the Pickets window was and which page it showed, to reopen it the same way.
+        public double? MainLeft { get; set; }
+        public double? MainTop { get; set; }
+        public double? MainWidth { get; set; }
+        public double? MainHeight { get; set; }
+        public bool MainMaximized { get; set; }
+        public string? MainPage { get; set; }
+
         // Rolled-up (collapsed) fences open while the mouse rests on them.
         public bool ExpandCollapsedOnHover { get; set; } = true;
 

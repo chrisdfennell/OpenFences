@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -91,6 +91,7 @@ namespace Pickets
             FenceWindow.RequestDeleteSelected = DeleteAllSelected;
             FenceWindow.RequestOpenSelected = OpenAllSelected;
             FenceWindow.RequestRemoveSelected = RemoveSelectedFromFences;
+            FenceWindow.RequestNewFenceWithItems = CreateFenceWithItems;
 
             // Left-drag on the empty desktop = lasso that selects items across fences
             DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
@@ -418,11 +419,14 @@ namespace Pickets
             Hide();
             ShowInTaskbar = false;
 
-            if (_tray is { } ni)
+            // Explain it once; after that, minimizing to the tray is expected.
+            if (_tray is { } ni && !_config.Options.TrayHintShown)
             {
                 ni.BalloonTipTitle = "Pickets";
                 ni.BalloonTipText = "Still running. Double-click the tray icon to restore.";
                 ni.ShowBalloonTip(1200);
+                _config.Options.TrayHintShown = true;
+                SaveConfig();
             }
         }
 
@@ -641,6 +645,30 @@ namespace Pickets
             _openWindows.Add(win);
             win.Show();
             win.EnsureBottomZOrder();
+        }
+
+        // "Move to new fence": a new fence just right of the source fence holding the items,
+        // named right away.
+        private void CreateFenceWithItems(FenceWindow source, IReadOnlyList<string> paths)
+        {
+            if (paths.Count == 0) return;
+            var model = new FenceModel
+            {
+                Name = UniqueFenceName(),
+                Left = source.Left + source.ActualWidth + 16,
+                Top = source.Top,
+                Width = 380,
+                Height = 240
+            };
+            _fences.Add(model);
+
+            var win = new FenceWindow(model); // keeps itself on screen if there's no room
+            HookFenceWindow(win, model);
+            _openWindows.Add(win);
+            win.Show();
+            AssignItemsToFence(win, paths); // saves
+            win.Activate();
+            win.PromptRename();
         }
 
         private string UniqueFenceName()

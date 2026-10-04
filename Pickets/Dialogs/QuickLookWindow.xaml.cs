@@ -139,7 +139,7 @@ namespace Pickets
             InfoView.Visibility = Visibility.Visible;
         }
 
-        private static string Details(string path)
+        internal static string Details(string path)
         {
             try
             {

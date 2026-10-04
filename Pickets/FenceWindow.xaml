@@ -1,4 +1,4 @@
-﻿<Window x:Class="Pickets.FenceWindow"
+<Window x:Class="Pickets.FenceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -116,6 +116,14 @@
                 </Grid.ColumnDefinitions>
 
                 <DockPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="CountBadge"
+                               DockPanel.Dock="Right"
+                               FontSize="11"
+                               Margin="8,0,2,0"
+                               Opacity="0.65"
+                               Foreground="#E0E0E0"
+                               VerticalAlignment="Center"
+                               Visibility="Collapsed"/>
                     <TextBlock x:Name="LockGlyph"
                                DockPanel.Dock="Right"
                                Text="🔒"
@@ -161,6 +169,8 @@
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
                         <MenuItem x:Name="MiAddTab" Header="Add tab…" Click="AddTab_Click"/>
                         <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
+                        <MenuItem Header="Fit to contents" Click="FitToContents_Click"
+                                  ToolTip="Resize the fence so all its tiles fit without scrolling"/>
                         <Separator/>
                         <MenuItem x:Name="SortMenu" Header="Sort by">
                             <MenuItem Header="Name"          Tag="Name"         IsCheckable="True" Click="Sort_Click"/>
@@ -281,6 +291,15 @@
             <!-- Items area (with marquee selection overlay). Portal fences only —
                  real-icon fences collapse this to a click-through hole. -->
             <Grid x:Name="ContentArea">
+            <TextBlock x:Name="EmptyHint"
+                       Text="Drag items here"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="#9AA3B5"
+                       Opacity="0.7"
+                       FontSize="13"
+                       IsHitTestVisible="False"
+                       Visibility="Collapsed"/>
             <ScrollViewer x:Name="Scroller"
               Margin="6"
               Focusable="True"
@@ -310,6 +329,7 @@
                                     Padding="4,6,4,4"
                                     ToolTipService.ShowDuration="60000"
                                     ToolTip="{Binding DisplayName}"
+                                    ToolTipOpening="Item_ToolTipOpening"
                                     MouseLeftButtonDown="Item_MouseLeftButtonDown"
                                     MouseLeftButtonUp="Item_MouseLeftButtonUp"
                                     MouseMove="Item_MouseMove"
@@ -323,6 +343,8 @@
                                         <MenuItem Header="Quick Look" InputGestureText="Space" Click="Item_QuickLook_Click"/>
                                         <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
                                         <Separator/>
+                                        <MenuItem Header="Move to fence…" Tag="MoveToFence" Click="Item_MoveToFence_Click"/>
+                                        <MenuItem Header="Move to new fence" Tag="MoveToNewFence" Click="Item_MoveToNewFence_Click"/>
                                         <MenuItem Header="Remove from fence" Tag="RemoveFromFence" Click="Item_RemoveFromFence_Click"/>
                                         <MenuItem Header="Delete (Recycle Bin)" Click="Item_Delete_Click"/>
                                     </ContextMenu>

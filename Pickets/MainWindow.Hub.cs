@@ -63,8 +63,44 @@ namespace Pickets
                 MaxButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
             };
 
+            RestoreWindowPlacement();
+            Closing += (_, __) => RememberWindowPlacement();
+
             RefreshSettingsPage();
             RefreshHome();
+        }
+
+        // ---------- Window placement ----------
+        // Reopen where it was (if that's still on a screen), at the same size and page.
+        private void RestoreWindowPlacement()
+        {
+            var o = _config.Options;
+            if (o.MainWidth is double w && o.MainHeight is double h && o.MainLeft is double l && o.MainTop is double t)
+            {
+                var r = ScreenLayout.FitOnScreen(new Rect(l, t, Math.Max(MinWidth, w), Math.Max(MinHeight, h)));
+                WindowStartupLocation = WindowStartupLocation.Manual;
+                Left = r.Left; Top = r.Top; Width = r.Width; Height = r.Height;
+            }
+            else
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
+            if (o.MainMaximized) WindowState = WindowState.Maximized;
+
+            switch (o.MainPage)
+            {
+                case "Settings": NavSettings.IsChecked = true; break;
+                case "About": NavAbout.IsChecked = true; break;
+            }
+        }
+
+        private void RememberWindowPlacement()
+        {
+            var o = _config.Options;
+            var r = RestoreBounds.IsEmpty ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+            o.MainLeft = r.Left; o.MainTop = r.Top; o.MainWidth = r.Width; o.MainHeight = r.Height;
+            o.MainMaximized = WindowState == WindowState.Maximized;
+            o.MainPage = NavSettings.IsChecked == true ? "Settings" : NavAbout.IsChecked == true ? "About" : "Home";
         }
 
         // ---------- Window buttons ----------

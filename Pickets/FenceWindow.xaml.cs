@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -106,6 +106,8 @@ namespace Pickets
             DragEnter += FenceWindow_DragEnter;
             DragOver += FenceWindow_DragOver;
             MouseEnter += FenceWindow_MouseEnter;
+            PreviewMouseWheel += FenceWindow_PreviewMouseWheel;
+            ItemsSource.CollectionChanged += (_, __) => { UpdateEmptyHint(); UpdateCountBadge(); };
             IsVisibleChanged += (_, __) => UpdateBackgroundPlayback();
             MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
@@ -988,6 +990,7 @@ namespace Pickets
         {
             _model.Collapsed = collapsed;
             UpdateBackgroundPlayback();
+            UpdateCountBadge();
 
             // Target height: collapsed -> stub; expanded -> remembered height (model.Height
             // is preserved because SaveGeometry skips writes while collapsed/animating).
@@ -1074,6 +1077,7 @@ namespace Pickets
                 if (!_model.Collapsed || _tempExpanded) return;
                 _tempExpanded = true;
                 UpdateBackgroundPlayback();
+                UpdateCountBadge();
                 BringToFrontOfFences(); // in front of neighbouring fences
                 Scroller.Visibility = Visibility.Visible;
                 AnimateHeight(Math.Max(_model.Height, MinExpandedHeight), onCompleted: null);
@@ -1090,6 +1094,7 @@ namespace Pickets
                 if (!_tempExpanded) return;
                 _tempExpanded = false;
                 UpdateBackgroundPlayback();
+                UpdateCountBadge();
                 _rollTimer?.Stop();
                 if (_model.Collapsed)
                     AnimateHeight(CollapsedHeight, onCompleted: () => Scroller.Visibility = Visibility.Collapsed);
@@ -1133,6 +1138,7 @@ namespace Pickets
                 _tempExpanded = false;
                 _rollTimer?.Stop();
                 _model.Collapsed = false;
+                UpdateCountBadge();
                 ScheduleSave();
                 return;
             }
@@ -1269,6 +1275,12 @@ namespace Pickets
                 {
                     new("Quick Look\tSpace", () => QuickLookSelected(item))
                 };
+                if (IsRealIcon)
+                {
+                    var moving = paths.ToList();
+                    extras.Add(new("Move to fence…", () => ShowMoveToMenu(moving)));
+                    extras.Add(new("Move to new fence", () => RequestNewFenceWithItems?.Invoke(this, moving)));
+                }
                 if (CanRemoveSelected)
                     extras.Add(new("Remove from fence", () => RequestRemoveSelected?.Invoke()));
 
@@ -1417,6 +1429,159 @@ namespace Pickets
                 if (tab == _model.ActiveTab) continue;
                 yield return (new FenceItem { Path = p, DisplayName = LabelFor(p) }, $"{FenceName} › {_model.Tabs[tab].Name}");
             }
+        }
+
+        // ---------- Moving items to another fence ----------
+        /// <summary>Wired by MainWindow: create a new fence next to this one holding these items.</summary>
+        public static Action<FenceWindow, IReadOnlyList<string>>? RequestNewFenceWithItems;
+
+        /// <summary>Names of this fence's tabs (empty when it has none).</summary>
+        public IReadOnlyList<string> TabNames => HasTabs ? _model.Tabs.Select(t => t.Name).ToList() : new List<string>();
+
+        /// <summary>Take these desktop items into this fence (off any other), optionally onto a tab.</summary>
+        public void TakeItems(IReadOnlyList<string> paths, int tab = -1)
+        {
+            if (IsPortal || paths.Count == 0) return;
+            AssignToThisFence(paths);
+            if (tab >= 0 && HasTabs)
+            {
+                MoveToTab(paths, tab);
+            }
+        }
+
+        private void MoveToTab(IReadOnlyList<string> paths, int tab)
+        {
+            Pickets.Services.FenceTabs.MoveTo(_model, paths, tab);
+            ReloadRealItems();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>"Move to fence…": a menu of the other fences (and this fence's other tabs).</summary>
+        private void ShowMoveToMenu(List<string> paths)
+        {
+            var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint };
+
+            if (HasTabs)
+            {
+                for (int i = 0; i < _model.Tabs.Count; i++)
+                {
+                    if (i == _model.ActiveTab) continue;
+                    int tab = i;
+                    var mi = new MenuItem { Header = $"This fence › {_model.Tabs[i].Name}" };
+                    mi.Click += (_, __) => TakeItems(paths, tab);
+                    menu.Items.Add(mi);
+                }
+            }
+
+            var others = AllFences.Where(f => f != this && !f.IsPortal)
+                                  .OrderBy(f => f.FenceName, StringComparer.CurrentCultureIgnoreCase).ToList();
+            if (menu.Items.Count > 0 && others.Count > 0) menu.Items.Add(new Separator());
+            foreach (var f in others)
+            {
+                var target = f;
+                var tabs = target.TabNames;
+                var mi = new MenuItem { Header = target.FenceName + (target.IsClosedByUser ? " (closed)" : "") };
+                if (tabs.Count > 0)
+                {
+                    for (int i = 0; i < tabs.Count; i++)
+                    {
+                        int tab = i;
+                        var sub = new MenuItem { Header = tabs[i] };
+                        sub.Click += (_, __) => target.TakeItems(paths, tab);
+                        mi.Items.Add(sub);
+                    }
+                }
+                else
+                {
+                    mi.Click += (_, __) => target.TakeItems(paths);
+                }
+                menu.Items.Add(mi);
+            }
+
+            if (menu.Items.Count > 0) menu.Items.Add(new Separator());
+            var create = new MenuItem { Header = "New fence…" };
+            create.Click += (_, __) => RequestNewFenceWithItems?.Invoke(this, paths);
+            menu.Items.Add(create);
+            menu.IsOpen = true;
+        }
+
+        private List<string> SelectedOrClicked(object sender)
+        {
+            if (MenuSenderToItem(sender) is FenceItem item && !item.IsSelected) SelectOnly(item);
+            return ItemsSource.Where(i => i.IsSelected).Select(i => i.Path).ToList();
+        }
+
+        private void Item_MoveToFence_Click(object sender, RoutedEventArgs e) => ShowMoveToMenu(SelectedOrClicked(sender));
+
+        private void Item_MoveToNewFence_Click(object sender, RoutedEventArgs e) =>
+            RequestNewFenceWithItems?.Invoke(this, SelectedOrClicked(sender));
+
+        /// <summary>Ask for a new name right away (used for a freshly created fence).</summary>
+        public void PromptRename() => Rename_Click(this, new RoutedEventArgs());
+
+        // ---------- Small conveniences ----------
+
+        // Rolled up: show how many items are inside ("12 items") at the right of the title.
+        private void UpdateCountBadge()
+        {
+            bool rolledUp = _model.Collapsed && !_tempExpanded;
+            int n = ItemCount;
+            CountBadge.Text = n == 1 ? "1 item" : $"{n} items";
+            CountBadge.Visibility = rolledUp ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // An empty fence says what to do instead of being a blank box.
+        private void UpdateEmptyHint()
+        {
+            EmptyHint.Text = IsPortal ? "This folder is empty" : "Drag items here";
+            EmptyHint.Visibility = ItemsSource.Count == 0 && !TitleText.Text.EndsWith("(unavailable)", StringComparison.Ordinal)
+                ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // Tooltip with the full name plus type, size, date and folder.
+        private void Item_ToolTipOpening(object sender, ToolTipEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
+            var details = item.Path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)
+                ? "Windows item"
+                : QuickLookWindow.Details(item.Path).Replace(" · ", "\n");
+            fe.ToolTip = item.DisplayName + "\n" + details;
+        }
+
+        // Ctrl + mouse wheel: bigger or smaller icons, like Explorer.
+        private void FenceWindow_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+            e.Handled = true;
+            var next = e.Delta > 0
+                ? (FenceIconSize)Math.Min((int)FenceIconSize.Large, (int)_model.IconSize + 1)
+                : (FenceIconSize)Math.Max((int)FenceIconSize.Small, (int)_model.IconSize - 1);
+            if (next == _model.IconSize) return;
+            _model.IconSize = next;
+            RaiseLayoutMetricsChanged();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Fit to contents: narrow the fence if it has room to spare, then make it exactly as tall
+        // as its tiles (no scrollbar), within the screen.
+        private void FitToContents_Click(object sender, RoutedEventArgs e)
+        {
+            if (_model.Collapsed) SetCollapsed(false, animate: false);
+            int n = ItemsSource.Count;
+            if (n == 0) return;
+
+            int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
+            if (n < cols)
+                Width = Math.Max(200, Width - Scroller.ViewportWidth + n * TileWidth + 4);
+            UpdateLayout();
+
+            double chrome = ActualHeight - Scroller.ViewportHeight;
+            double wanted = chrome + Items.ActualHeight + 4;
+            double maxHeight = Pickets.Services.ScreenLayout.WorkAreas()
+                .Where(a => a.Contains(new Point(Left + 10, Top + 10)))
+                .Select(a => a.Bottom - Top).DefaultIfEmpty(wanted).First();
+            Height = Math.Max(MinExpandedHeight, Math.Min(wanted, maxHeight));
+            ScheduleSave();
         }
 
         // ---------- Quick Look ----------
@@ -1620,8 +1785,13 @@ namespace Pickets
         {
             if (sender is not ContextMenu menu) return;
             foreach (var obj in menu.Items)
-                if (obj is MenuItem mi && Equals(mi.Tag, "RemoveFromFence"))
-                    mi.Visibility = IsRealIcon && !IsCatchAllFence ? Visibility.Visible : Visibility.Collapsed;
+                if (obj is MenuItem mi)
+                {
+                    if (Equals(mi.Tag, "RemoveFromFence"))
+                        mi.Visibility = IsRealIcon && !IsCatchAllFence ? Visibility.Visible : Visibility.Collapsed;
+                    else if (Equals(mi.Tag, "MoveToFence") || Equals(mi.Tag, "MoveToNewFence"))
+                        mi.Visibility = IsRealIcon ? Visibility.Visible : Visibility.Collapsed;
+                }
         }
 
         private void Item_RemoveFromFence_Click(object sender, RoutedEventArgs e)
