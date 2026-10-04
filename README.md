@@ -14,6 +14,8 @@
 OpenFences is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
 Your real desktop items are shown as tiles inside fences. Nothing is copied and no shortcuts are created; a fence just decides where each desktop item appears. Group items into fences, mirror any folder as a **Folder Portal**, lasso-select across fences, and use **Auto-Import** to sort your desktop into **Apps**, **Documents**, and **System** fences in one click.
 
+![OpenFences in action: fences with a picture and a looping video background that fade with the fence's transparency](OpenFences/Docs/backgrounds-demo.gif "OpenFences in action")
+
 > Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner. This project is an educational/utility clone built from scratch in C#.
 
 ---
@@ -57,19 +59,25 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   Fences snap to screen edges and to each other (aligned or side by side) while you move or resize them, with an optional grid. Hold **Alt** to move freely.
 
 - **Search every fence**  
-  **Ctrl+Alt+F** opens a quick search: matching items are listed (Enter opens one), fences come to the front, and everything that doesn't match fades out.
+  **Ctrl+Alt+F** opens a quick search across every fence and tab: matching items are listed (Enter opens one), fences come to the front, and everything that doesn't match fades out.
 
 - **Global shortcuts**  
-  **Ctrl+Alt+H** hides or shows all fences from anywhere, even while OpenFences is in the tray.
+  **Ctrl+Alt+H** hides or shows all fences from anywhere, even while OpenFences is in the tray. Both shortcuts can be changed in **Settings**.
+
+- **Tabs inside fences**  
+  Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
+
+- **Quick Look**  
+  Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
 
 - **Keyboard friendly**  
-  Arrow keys, Home/End and type-a-letter move through a fence; Enter opens, Delete recycles, F2 renames the selected item (or the fence, when nothing is selected), Esc clears the selection, Backspace goes up a folder in a portal.
+  Arrow keys, Home/End and type-a-letter move through a fence; Space previews, Enter opens, Delete recycles, F2 renames the selected item (or the fence, when nothing is selected), Esc clears the selection, Backspace goes up a folder in a portal.
 
 - **Multi-monitor aware**  
   Each fence remembers where you put it for every monitor arrangement (docked, undocked, projector…) and returns there; fences that would land off-screen are pulled back onto a visible display.
 
 - **Layout snapshots**  
-  **File → Layouts** saves your whole fence layout and restores it later. A snapshot is also taken automatically before Auto-Import, rule sorting and restores, so big changes can be undone.
+  **Settings → Layouts** saves your whole fence layout and restores it later. A snapshot is also taken automatically before Auto-Import, rule sorting and restores, so big changes can be undone.
 
 - **Automatic update checks**  
   OpenFences checks GitHub for a new release at startup and once a day, shows what's new, and installs it on request (one Windows permission prompt), then restarts with your fences intact. Turn it off under **Settings → Check for updates automatically**, or check any time with **Check for updates now…**. Portable-zip copies get a link to the download instead.
@@ -77,11 +85,8 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 - **Safe, persisted layout**  
   Positions and sizes are saved automatically to `%AppData%\\OpenFences\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
 
-- **Minimize to tray**  
-  The main controller window hides to the system tray; double-click the tray icon to restore.
-
-- **Dark UI**  
-  Modern, semi-transparent main window + dark menus with slim scrollbars.
+- **One home for everything**  
+  The OpenFences window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete each one, plus quick actions and a **Settings** page with simple on/off switches. It hides to the system tray; double-click the tray icon to bring it back.
 
 - **⚡ Auto-Import Desktop Icons**  
   One click creates (or reuses) three fences and sorts your desktop items into them:
@@ -97,9 +102,11 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ## 📷 Screenshots
 
-![Fence backgrounds: a picture and a looping video behind the tiles, fading with the fence's transparency, with darkening and fit options](OpenFences/Docs/backgrounds-demo.gif "Picture and video backgrounds")
+![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal and a rolled-up Archive fence](OpenFences/Docs/screenshot-desktop.png "Fences on the desktop")
 
-![Fences on the desktop: Apps, Documents, System, a Projects folder portal and a rolled-up Archive fence](OpenFences/Docs/screenshot-desktop.png "Fences on the desktop")
+![The OpenFences window: quick actions and every fence with its state](OpenFences/Docs/screenshot-app.png "The OpenFences window")
+
+![Quick Look previewing a picture from a fence](OpenFences/Docs/screenshot-quicklook.png "Quick Look")
 
 ![Ctrl+Alt+F search: matching items are listed and everything else fades out](OpenFences/Docs/screenshot-search.png "Search every fence")
 
@@ -179,7 +186,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 
 - Z-order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows (search brings them to the front while it's open).  
 - A Folder Portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart OpenFences, or point it at another folder with **Change folder…**.  
-- Ctrl+Alt+F / Ctrl+Alt+H don't work if another app already uses them; turn them off under **Settings → Global shortcuts** if they conflict.  
+- Ctrl+Alt+F / Ctrl+Alt+H don't work if another app already uses them; change them (or turn them off) under **Settings → Keyboard shortcuts** if they conflict.  
 - Monitors with different scaling are handled with the system scale factor, so on mixed-DPI setups a fence can look slightly larger or smaller on one screen.
 
 ---

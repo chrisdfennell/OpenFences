@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Markup;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -46,6 +48,8 @@ internal static class Program
                 SaveDesktop(fences, "screenshot-desktop.png", search: null);
                 SaveDesktop(fences, "screenshot-search.png", search: "no");
                 SaveWelcome("screenshot-welcome.png");
+                SaveAppWindow(fences, "screenshot-app.png");
+                SaveQuickLook(fences, "screenshot-quicklook.png");
                 foreach (var f in fences) f.Close();
                 Console.WriteLine("Saved screenshots to " + _outDir);
                 System.Windows.Application.Current.Shutdown();
@@ -72,6 +76,8 @@ internal static class Program
                      "Invoice-1042.pdf", "Team Photo.jpg", "Design Assets.zip"
                  })
             File.WriteAllText(Path.Combine(root, name), "");
+
+        DrawLandscape(Path.Combine(root, "Mountains.png"));
 
         var projects = Directory.CreateDirectory(Path.Combine(root, "Projects")).FullName;
         foreach (var dir in new[] { "Website Redesign", "Mobile App", "Annual Review" })
@@ -114,7 +120,13 @@ internal static class Program
             {
                 Name = "Documents", AccentColor = "#3B82F6", Left = 530, Top = 60, Width = 520, Height = 290,
                 ItemPaths = new[] { "Quarterly Report.docx", "Budget 2026.xlsx", "Roadmap.pptx", "Meeting Notes.txt",
-                                    "Invoice-1042.pdf", "Team Photo.jpg", "Design Assets.zip" }.Select(D).ToList()
+                                    "Invoice-1042.pdf", "Design Assets.zip", "Team Photo.jpg", "Mountains.png" }.Select(D).ToList(),
+                // Tabs: work files on the first tab, personal ones on the second.
+                Tabs = new List<FenceTab>
+                {
+                    new() { Name = "Work" },
+                    new() { Name = "Personal", ItemPaths = new[] { "Team Photo.jpg", "Mountains.png" }.Select(D).ToList() }
+                }
             },
             new FenceModel
             {
@@ -200,6 +212,129 @@ internal static class Program
 
         Save(scene, file);
         foreach (var f in fences) f.ApplySearch(null);
+    }
+
+    // The main window (Home page), loaded from its XAML with these demo fences listed. The
+    // real window can't be created here: its constructor takes over the desktop.
+    private static void SaveAppWindow(List<FenceWindow> fences, string file)
+    {
+        var xamlPath = FindRepoFile(Path.Combine("OpenFences", "MainWindow.xaml"));
+        var xaml = File.ReadAllText(xamlPath).Replace("x:Class=\"OpenFences.MainWindow\"", "");
+        xaml = Regex.Replace(xaml, @"\s(Click|Checked|PreviewKeyDown|GotKeyboardFocus|LostKeyboardFocus)=""[^""]*""", "");
+        xaml = xaml.Replace("Source=\"Themes/HubStyles.xaml\"", "Source=\"pack://application:,,,/OpenFences;component/Themes/HubStyles.xaml\"");
+        var w = (Window)XamlReader.Parse(xaml);
+        w.Width = 1080; w.Height = 720;
+        w.Left = -40000; w.Top = -40000;
+        w.Show();
+
+        T Find<T>(string name) where T : class => (w.FindName(name) as T)!;
+        Brush B(string c) => (Brush)new BrushConverter().ConvertFromString(c)!;
+        Find<TextBlock>("SidebarVersion").Text = ""; // would go stale with every release
+        Find<Button>("ToggleAllButton").Content = "Hide all fences";
+        Find<TextBlock>("SearchTileHint").Text = "Find any item (Ctrl+Alt+F)";
+
+        var rows = fences.Select(f => new MainWindow.FenceRow(f)
+        {
+            Name = f.FenceName,
+            Details = f.IsPortal ? $"Folder portal · {f.ItemCount} items"
+                                 : f.TabCount > 0 ? $"{f.ItemCount} items · {f.TabCount} tabs" : $"{f.ItemCount} items",
+            Swatch = string.IsNullOrEmpty(f.AccentColor) ? B("#4A5366") : B(f.AccentColor!),
+            State = f.IsCollapsed ? "Rolled up" : "Shown",
+            StateBrush = f.IsCollapsed ? B("#1B2A4A") : B("#14532D"),
+            ShowLabel = "Close"
+        }).ToList();
+        Find<ItemsControl>("FenceList").ItemsSource = rows;
+        Find<TextBlock>("SummaryText").Text =
+            $"{rows.Count} fences · {fences.Where(f => !f.IsPortal).Sum(f => f.ItemCount)} desktop items";
+        Flush();
+
+        var root = (FrameworkElement)w.Content;
+        Save(root, file);
+        w.Close();
+    }
+
+    // Quick Look previewing the landscape, over the desktop scene.
+    private static void SaveQuickLook(List<FenceWindow> fences, string file)
+    {
+        var docs = fences.First(f => f.FenceName == "Documents");
+        var items = docs.SearchableItems().Select(x => x.Item).ToList();
+        foreach (var i in items) i.Icon ??= OpenFences.Services.IconHelper.GetImageSourceForPath(i.Path);
+        int index = items.FindIndex(i => i.Path.EndsWith("Mountains.png", StringComparison.OrdinalIgnoreCase));
+
+        var ql = new QuickLookWindow(items, index) { Width = 860, Height = 560 };
+        ql.Show();
+        ql.Left = -50000; ql.Top = -50000;
+        // The real header shows the file's folder; here that's a temp path with the user's name.
+        if (ql.FindName("DetailsText") is TextBlock details)
+            details.Text = Regex.Replace(details.Text, @" · [A-Za-z]:\\.*$", " · Pictures");
+        Flush();
+
+        var scene = Scene();
+        foreach (var f in fences)
+            Place(scene, Snapshot(f), (Point)f.Tag, f.ActualWidth, f.ActualHeight);
+        var dim = new System.Windows.Shapes.Rectangle { Width = SceneW, Height = SceneH, Fill = new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)) };
+        scene.Children.Add(dim);
+        var card = (FrameworkElement)ql.Content;
+        ql.Content = null;
+        Place(scene, card, new Point((SceneW - 860) / 2, (SceneH - 560) / 2 + 10), 860, 560);
+        Save(scene, file);
+        ql.Close();
+    }
+
+    private static string FindRepoFile(string relative)
+    {
+        for (var dir = new DirectoryInfo(Directory.GetCurrentDirectory()); dir != null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, relative);
+            if (File.Exists(candidate)) return candidate;
+        }
+        throw new FileNotFoundException("Run this from the repository: couldn't find " + relative);
+    }
+
+    private static void Save(FrameworkElement element, string file)
+    {
+        var bmp = new RenderTargetBitmap((int)(element.ActualWidth * Dpi / 96), (int)(element.ActualHeight * Dpi / 96), Dpi, Dpi, PixelFormats.Pbgra32);
+        bmp.Render(element);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(Path.Combine(_outDir, file));
+        enc.Save(fs);
+    }
+
+    // A simple sunset landscape, drawn here so the demo has a real picture that's free to publish.
+    private static void DrawLandscape(string path)
+    {
+        const int w = 1600, h = 1000;
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(new GradientStopCollection
+            {
+                new(Color.FromRgb(0x1E, 0x1B, 0x4B), 0.0), new(Color.FromRgb(0x7C, 0x3A, 0xED), 0.45),
+                new(Color.FromRgb(0xF9, 0x73, 0x16), 0.8), new(Color.FromRgb(0xFD, 0xE0, 0x47), 1.0),
+            }, 90), null, new Rect(0, 0, w, h));
+            dc.DrawEllipse(new RadialGradientBrush(Color.FromRgb(0xFF, 0xF7, 0xC2), Color.FromArgb(0, 0xFD, 0xBA, 0x74)),
+                           null, new Point(w * 0.62, h * 0.66), 280, 280);
+            var rnd = new Random(7);
+            foreach (var (baseline, color) in new[] { (0.62, "#4C1D95"), (0.72, "#312E81"), (0.82, "#1E1B4B"), (0.9, "#0F0A2E") })
+            {
+                var g = new StreamGeometry();
+                using (var ctx = g.Open())
+                {
+                    ctx.BeginFigure(new Point(0, h), true, true);
+                    for (int x = 0; x <= w; x += 80)
+                        ctx.LineTo(new Point(x, h * baseline - 60 * Math.Sin(x / 260.0 + baseline * 9) - rnd.Next(0, 30)), true, true);
+                    ctx.LineTo(new Point(w, h), true, true);
+                }
+                dc.DrawGeometry((Brush)new BrushConverter().ConvertFromString(color)!, null, g);
+            }
+        }
+        var bmp = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(dv);
+        var enc = new PngBitmapEncoder();
+        enc.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(path);
+        enc.Save(fs);
     }
 
     private static void SaveWelcome(string file)
