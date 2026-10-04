@@ -94,6 +94,9 @@
             <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.40" Color="#000000"/>
         </Border.Effect>
 
+        <!-- Darkening/tint layer over a background picture or video (transparent otherwise) -->
+        <Border x:Name="MediaLayer" CornerRadius="9" Background="Transparent">
+        <Border x:Name="TintLayer" CornerRadius="9" Background="Transparent">
         <DockPanel>
 
             <!-- Title bar -->
@@ -205,6 +208,22 @@
                             <MenuItem Header="Normal"      Tag="12" IsCheckable="True" Click="TitleSize_Click"/>
                             <MenuItem Header="Large"       Tag="14" IsCheckable="True" Click="TitleSize_Click"/>
                             <MenuItem Header="Extra large" Tag="16" IsCheckable="True" Click="TitleSize_Click"/>
+                        </MenuItem>
+                        <MenuItem x:Name="BackgroundMenu" Header="Background">
+                            <MenuItem Header="Choose image or video…" Click="ChooseBackground_Click"/>
+                            <MenuItem x:Name="MiRemoveBackground" Header="Remove background" Click="RemoveBackground_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="BgFitMenu" Header="Fit">
+                                <MenuItem Header="Fill (crop to cover)" Tag="Fill"    IsCheckable="True" Click="BackgroundFit_Click"/>
+                                <MenuItem Header="Fit (show all)"       Tag="Fit"     IsCheckable="True" Click="BackgroundFit_Click"/>
+                                <MenuItem Header="Stretch"              Tag="Stretch" IsCheckable="True" Click="BackgroundFit_Click"/>
+                            </MenuItem>
+                            <MenuItem x:Name="BgDimMenu" Header="Darken">
+                                <MenuItem Header="None"   Tag="0.00" IsCheckable="True" Click="BackgroundDim_Click"/>
+                                <MenuItem Header="Light"  Tag="0.20" IsCheckable="True" Click="BackgroundDim_Click"/>
+                                <MenuItem Header="Medium" Tag="0.35" IsCheckable="True" Click="BackgroundDim_Click"/>
+                                <MenuItem Header="Strong" Tag="0.55" IsCheckable="True" Click="BackgroundDim_Click"/>
+                            </MenuItem>
                         </MenuItem>
                         <MenuItem x:Name="TransparencyMenu" Header="Transparency">
                             <MenuItem Header="Opaque"             Tag="1.00" IsCheckable="True" Click="Transparency_Click"/>
@@ -323,5 +342,7 @@
                 </Canvas>
             </Grid>
         </DockPanel>
+        </Border>
+        </Border>
     </Border>
 </Window>

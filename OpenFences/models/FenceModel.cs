@@ -3,6 +3,9 @@ namespace OpenFences
     public enum FenceSort { Name, Type, DateModified, Size, Manual }
     public enum FenceIconSize { Small, Medium, Large }
 
+    // How a background image/video fills the fence: crop to cover, show all, or stretch.
+    public enum FenceBackgroundFit { Fill, Fit, Stretch }
+
     public class FenceModel
     {
         public string Name { get; set; } = "Fence";
@@ -35,6 +38,13 @@ namespace OpenFences
 
         // Frosted glass: whatever is behind the fence shows through, blurred.
         public bool Glass { get; set; } = false;
+
+        // Optional picture or video shown behind the tiles (path on disk; null = none).
+        // It fades with BackgroundOpacity like the solid background does.
+        public string? BackgroundMedia { get; set; }
+        public FenceBackgroundFit BackgroundFit { get; set; } = FenceBackgroundFit.Fill;
+        // Darkening layer over the picture so labels stay readable (0 = none … 1 = black).
+        public double BackgroundDim { get; set; } = 0.35;
 
         // 0.0 (fully transparent) … 1.0 (opaque)
         public double BackgroundOpacity { get; set; } = 0.92;

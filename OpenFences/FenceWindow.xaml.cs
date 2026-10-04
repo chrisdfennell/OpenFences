@@ -106,6 +106,7 @@ namespace OpenFences
             DragEnter += FenceWindow_DragEnter;
             DragOver += FenceWindow_DragOver;
             MouseEnter += FenceWindow_MouseEnter;
+            IsVisibleChanged += (_, __) => UpdateBackgroundPlayback();
             MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
             Items.ItemsSource = ItemsSource;
@@ -145,6 +146,7 @@ namespace OpenFences
             {
                 _hoverTimer?.Stop();
                 _rollTimer?.Stop();
+                ReleaseMedia();
                 try { _watcher?.Dispose(); } catch { /* ignore */ }
             };
         }
@@ -165,10 +167,176 @@ namespace OpenFences
                 title = Mix(accent, DefaultTitle, 0.55);
             }
 
-            byte a = (byte)Math.Round(255 * Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0));
-            RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, body.R, body.G, body.B));
+            double opacity = Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0);
+            var media = MediaBrush();
+            if (media != null)
+            {
+                // Picture/video background: it fades with the fence's transparency, and a
+                // darkening layer in the fence's body color keeps the labels readable.
+                media.Opacity = opacity;
+                MediaLayer.Background = media;
+                // In Fit mode the picture doesn't cover the whole fence; the bands around it show
+                // the fence's normal color. Fill/Stretch cover everything, so nothing goes under.
+                RootBorder.Background = _model.BackgroundFit == FenceBackgroundFit.Fit
+                    ? new SolidColorBrush(MediaColor.FromArgb((byte)Math.Round(255 * opacity), body.R, body.G, body.B))
+                    : System.Windows.Media.Brushes.Transparent;
+                byte dim = (byte)Math.Round(255 * Math.Clamp(_model.BackgroundDim, 0.0, 1.0) * opacity);
+                TintLayer.Background = new SolidColorBrush(MediaColor.FromArgb(dim, body.R, body.G, body.B));
+            }
+            else
+            {
+                byte a = (byte)Math.Round(255 * opacity);
+                RootBorder.Background = new SolidColorBrush(MediaColor.FromArgb(a, body.R, body.G, body.B));
+                MediaLayer.Background = System.Windows.Media.Brushes.Transparent;
+                TintLayer.Background = System.Windows.Media.Brushes.Transparent;
+            }
             TitleBar.Background = new SolidColorBrush(title);
             TitleText.FontSize = _model.TitleFontSize > 0 ? _model.TitleFontSize : 12;
+        }
+
+        // ---------- Background picture / video ----------
+        private static readonly string[] VideoExtensions = { ".mp4", ".m4v", ".mov", ".wmv", ".avi", ".mkv", ".webm" };
+        private System.Windows.Media.Brush? _mediaBrush;
+        private string? _mediaBrushKey;   // path + fit the brush was built for
+        private MediaPlayer? _bgPlayer;
+
+        private static bool IsVideo(string path) =>
+            Array.IndexOf(VideoExtensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
+
+        /// <summary>The brush for the fence's background picture/video, or null when it has
+        /// none (or the file is gone). Built once per path/fit and reused.</summary>
+        private System.Windows.Media.Brush? MediaBrush()
+        {
+            var path = _model.BackgroundMedia;
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                ReleaseMedia();
+                return null;
+            }
+
+            var key = path + "|" + _model.BackgroundFit;
+            if (_mediaBrush != null && _mediaBrushKey == key) return _mediaBrush;
+            ReleaseMedia();
+
+            var stretch = _model.BackgroundFit switch
+            {
+                FenceBackgroundFit.Fit => Stretch.Uniform,
+                FenceBackgroundFit.Stretch => Stretch.Fill,
+                _ => Stretch.UniformToFill
+            };
+
+            try
+            {
+                if (IsVideo(path))
+                {
+                    // MediaPlayer + VideoDrawing plays without being in the visual tree; muted, looping.
+                    var player = new MediaPlayer { IsMuted = true, Volume = 0 };
+                    var drawing = new VideoDrawing { Player = player, Rect = new Rect(0, 0, 16, 9) };
+                    player.MediaOpened += (_, __) =>
+                    {
+                        if (player.NaturalVideoWidth > 0 && player.NaturalVideoHeight > 0)
+                            drawing.Rect = new Rect(0, 0, player.NaturalVideoWidth, player.NaturalVideoHeight);
+                    };
+                    player.MediaEnded += (_, __) => { player.Position = TimeSpan.Zero; player.Play(); };
+                    player.MediaFailed += (_, e) =>
+                        (System.Windows.Application.Current as App)?.SafeLog("Background video", e.ErrorException);
+                    player.Open(new Uri(path));
+                    _bgPlayer = player;
+                    _mediaBrush = new DrawingBrush(drawing) { Stretch = stretch };
+                    UpdateBackgroundPlayback();
+                }
+                else
+                {
+                    // Decode at a sensible size: big photos would otherwise sit in memory at full size.
+                    var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                    bmp.BeginInit();
+                    bmp.UriSource = new Uri(path);
+                    bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bmp.DecodePixelWidth = (int)Math.Min(2560, 1600 * OpenFences.Services.ScreenLayout.Scale);
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    _mediaBrush = new ImageBrush(bmp) { Stretch = stretch };
+                }
+                _mediaBrushKey = key;
+                return _mediaBrush;
+            }
+            catch (Exception ex)
+            {
+                (System.Windows.Application.Current as App)?.SafeLog("Fence background", ex);
+                ReleaseMedia();
+                return null;
+            }
+        }
+
+        private void ReleaseMedia()
+        {
+            try { _bgPlayer?.Close(); } catch { /* ignore */ }
+            _bgPlayer = null;
+            _mediaBrush = null;
+            _mediaBrushKey = null;
+        }
+
+        /// <summary>Videos only play while the fence's body can be seen: not while the fence is
+        /// hidden or rolled up (unless it's peeking open).</summary>
+        private void UpdateBackgroundPlayback()
+        {
+            if (_bgPlayer == null) return;
+            bool showing = IsVisible && (!_model.Collapsed || _tempExpanded);
+            if (showing) _bgPlayer.Play();
+            else _bgPlayer.Pause();
+        }
+
+        private void ChooseBackground_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Choose a background picture or video",
+                Filter = "Pictures and videos|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.tif;*.tiff;*.mp4;*.m4v;*.mov;*.wmv;*.avi;*.mkv;*.webm" +
+                         "|Pictures|*.jpg;*.jpeg;*.png;*.bmp;*.gif;*.webp;*.tif;*.tiff" +
+                         "|Videos|*.mp4;*.m4v;*.mov;*.wmv;*.avi;*.mkv;*.webm"
+            };
+            if (dlg.ShowDialog(this) != true) return;
+
+            _model.BackgroundMedia = dlg.FileName;
+            ApplyBackground();
+            if (_mediaBrush == null)
+            {
+                _model.BackgroundMedia = null;
+                MessageBox.Show("That file couldn't be used as a background.", "OpenFences",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                ApplyBackground();
+                return;
+            }
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void RemoveBackground_Click(object sender, RoutedEventArgs e)
+        {
+            _model.BackgroundMedia = null;
+            ApplyBackground();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void BackgroundFit_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && Enum.TryParse<FenceBackgroundFit>(Convert.ToString(mi.Tag), out var fit))
+            {
+                _model.BackgroundFit = fit;
+                ApplyBackground();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        private void BackgroundDim_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi &&
+                double.TryParse(Convert.ToString(mi.Tag), System.Globalization.NumberStyles.Float,
+                                System.Globalization.CultureInfo.InvariantCulture, out var dim))
+            {
+                _model.BackgroundDim = dim;
+                ApplyBackground();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
         }
 
         private static MediaColor Mix(MediaColor c, MediaColor baseColor, double amount) => MediaColor.FromRgb(
@@ -791,6 +959,7 @@ namespace OpenFences
         private void SetCollapsed(bool collapsed, bool animate)
         {
             _model.Collapsed = collapsed;
+            UpdateBackgroundPlayback();
 
             // Target height: collapsed -> stub; expanded -> remembered height (model.Height
             // is preserved because SaveGeometry skips writes while collapsed/animating).
@@ -876,6 +1045,7 @@ namespace OpenFences
             {
                 if (!_model.Collapsed || _tempExpanded) return;
                 _tempExpanded = true;
+                UpdateBackgroundPlayback();
                 BringToFrontOfFences(); // in front of neighbouring fences
                 Scroller.Visibility = Visibility.Visible;
                 AnimateHeight(Math.Max(_model.Height, MinExpandedHeight), onCompleted: null);
@@ -891,6 +1061,7 @@ namespace OpenFences
             {
                 if (!_tempExpanded) return;
                 _tempExpanded = false;
+                UpdateBackgroundPlayback();
                 _rollTimer?.Stop();
                 if (_model.Collapsed)
                     AnimateHeight(CollapsedHeight, onCompleted: () => Scroller.Visibility = Visibility.Collapsed);
@@ -1715,6 +1886,10 @@ namespace OpenFences
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
             MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
             MiLock.IsChecked = _model.Locked;
+            bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
+            MiRemoveBackground.IsEnabled = BgFitMenu.IsEnabled = BgDimMenu.IsEnabled = hasMedia;
+            CheckByTag(BgFitMenu, _model.BackgroundFit.ToString());
+            CheckByTag(BgDimMenu, _model.BackgroundDim.ToString("0.00", inv));
             MiGlass.IsChecked = _model.Glass;
         }
 

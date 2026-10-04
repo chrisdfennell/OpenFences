@@ -48,7 +48,7 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   Right-drag on empty desktop to draw a new fence. Optionally double-click the desktop to hide/show all fences.
 
 - **Rename & style fences**  
-  Right-click a fence title bar to rename it, change sort order, icon size, transparency, **frosted glass**, **color** (preset swatches or any custom color) and **title size**, or **lock** it so it can't be moved or resized by accident.
+  Right-click a fence title bar to rename it, change sort order, icon size, transparency, a **picture or looping video background** (fill, fit or stretch, with optional darkening; videos pause while the fence is hidden or rolled up), **frosted glass**, **color** (preset swatches or any custom color) and **title size**, or **lock** it so it can't be moved or resized by accident.
 
 - **Roll up, peek on hover**  
   Double-click a title bar to roll a fence up. Rest the mouse on a rolled-up fence (or drag files over it) and it opens until you move away.
