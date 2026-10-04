@@ -45,6 +45,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
 - **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions, everything else), and the Desktop fence can be re-sorted on demand.
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
+- **Move to fence.** Right-click tiles → **Move to fence…** (another fence, or one of its tabs) or **Move to new fence**, which creates a fence right beside the current one holding the selection.
 - **Select across fences.** Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
 - **Close or delete.** ✕ closes a fence and it stays closed (it keeps its items) until you reopen it from the Pickets window; **Delete Fence…** removes it and its items go back to the Desktop fence. Nothing on your disk is deleted either way.
 
@@ -58,13 +59,14 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 ### Make it yours
 
 - **Style each fence.** Colors (presets or any custom color), title size, transparency, **frosted glass**, or a **picture or looping video background** (fill, fit or stretch, optional darkening, sound on or off per video).
-- **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden.
+- **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden. Hover a tile for its full name, type, size, date and folder.
+- **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles. Rolled-up fences show how many items they hold.
 - **Roll up and peek.** Double-click a title to roll a fence up; rest the mouse on it (or drag files over it) to open it until you move away.
 - **Snap and align.** Fences snap to screen edges and to each other while you move or resize them, with an optional grid. Hold **Alt** to move freely. Lock a fence to stop accidental moves.
 
 ### Stays out of your way
 
-- **One home for everything.** The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete it, plus quick actions, a **Settings** page with simple switches, and About. It hides to the system tray.
+- **One home for everything.** The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete it, plus quick actions, a **Settings** page with simple switches, and About. It hides to the system tray and reopens where you left it.
 - **Global shortcuts.** **Ctrl+Alt+H** hides or shows all fences from anywhere; both shortcuts can be changed in Settings.
 - **Multi-monitor aware.** Each fence remembers where you put it for every monitor setup (docked, undocked, projector) and is never left off-screen.
 - **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import.
