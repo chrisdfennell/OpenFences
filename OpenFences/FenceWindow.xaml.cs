@@ -119,8 +119,15 @@ namespace OpenFences
             else
             {
                 // ----- Real fence: renders the desktop items it owns (by path) as tiles -----
+                OpenFences.Services.FenceTabs.Normalize(_model);
                 ReloadRealItems();
             }
+            RebuildTabs();
+            // Follow the body's Visibility itself (IsVisibleChanged doesn't fire before the
+            // window is shown, e.g. for a fence that starts rolled up).
+            System.ComponentModel.DependencyPropertyDescriptor
+                .FromProperty(VisibilityProperty, typeof(ScrollViewer))
+                .AddValueChanged(Scroller, (_, __) => UpdateTabStripVisibility());
 
             if (_model.Collapsed) SetCollapsed(true, animate: false);
 
@@ -386,6 +393,8 @@ namespace OpenFences
                 if (!_model.ItemPaths.Contains(p, StringComparer.OrdinalIgnoreCase))
                 {
                     _model.ItemPaths.Add(p);
+                    // New items land on the tab that's showing.
+                    if (HasTabs) OpenFences.Services.FenceTabs.MoveTo(_model, new[] { p }, _model.ActiveTab);
                     any = true;
                 }
             }
@@ -399,6 +408,11 @@ namespace OpenFences
             int i = _model.ItemPaths.FindIndex(p => string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase));
             if (i < 0) return false;
             _model.ItemPaths[i] = newPath;
+            foreach (var tab in _model.Tabs)
+            {
+                int t = tab.ItemPaths.FindIndex(p => string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase));
+                if (t >= 0) tab.ItemPaths[t] = newPath;
+            }
             Changed?.Invoke(this, EventArgs.Empty);
             ReloadRealItems();
             return true;
@@ -409,6 +423,8 @@ namespace OpenFences
         {
             int removed = _model.ItemPaths.RemoveAll(
                 p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            foreach (var tab in _model.Tabs)
+                tab.ItemPaths.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
             if (removed > 0) { Changed?.Invoke(this, EventArgs.Empty); ReloadRealItems(); return true; }
             return false;
         }
@@ -418,8 +434,11 @@ namespace OpenFences
         {
             if (IsPortal) return;
 
+            // With tabs, show only the active tab's items.
             var paths = SortEntries(_model.ItemPaths
-                .Where(p => !string.IsNullOrWhiteSpace(p)).ToList());
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Where(p => !HasTabs || OpenFences.Services.FenceTabs.TabOf(_model, p) == _model.ActiveTab)
+                .ToList());
 
             ItemsSource.Clear();
             foreach (var path in paths)
@@ -1266,6 +1285,140 @@ namespace OpenFences
             }
         }
 
+        // ---------- Tabs ----------
+        private bool HasTabs => OpenFences.Services.FenceTabs.HasTabs(_model);
+        public int TabCount => HasTabs ? _model.Tabs.Count : 0;
+
+        /// <summary>Rebuild the tab headers (or hide the strip when there are no tabs).</summary>
+        private void RebuildTabs()
+        {
+            TabHeaders.Children.Clear();
+            UpdateTabStripVisibility();
+            if (!HasTabs) return;
+
+            for (int i = 0; i < _model.Tabs.Count; i++)
+            {
+                int index = i;
+                bool active = i == _model.ActiveTab;
+                var label = new TextBlock
+                {
+                    Text = _model.Tabs[i].Name,
+                    Foreground = new SolidColorBrush(active ? MediaColor.FromRgb(0xFF, 0xFF, 0xFF) : MediaColor.FromRgb(0xB8, 0xBF, 0xCC)),
+                    FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal,
+                    FontSize = 12
+                };
+                var header = new Border
+                {
+                    Child = label,
+                    Padding = new Thickness(10, 3, 10, 4),
+                    Margin = new Thickness(0, 0, 4, 2),
+                    CornerRadius = new CornerRadius(6),
+                    Background = new SolidColorBrush(active ? MediaColor.FromArgb(0x55, 0x5A, 0x8F, 0xD8) : MediaColor.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                    AllowDrop = true,
+                    ToolTip = "Click to show · drop tiles here to move them to this tab · right-click for options"
+                };
+                header.MouseLeftButtonUp += (_, __) => SwitchTab(index);
+                header.DragOver += (_, e) =>
+                {
+                    e.Effects = e.Data.GetDataPresent(ItemPathsFormat) ? System.Windows.DragDropEffects.Move : System.Windows.DragDropEffects.None;
+                    e.Handled = true;
+                };
+                header.Drop += (_, e) => DropOnTab(e, index);
+
+                var menu = new ContextMenu();
+                var rename = new MenuItem { Header = "Rename tab…" };
+                rename.Click += (_, __) => RenameTab(index);
+                menu.Items.Add(rename);
+                if (index > 0)
+                {
+                    var remove = new MenuItem { Header = "Delete tab (items move to the first tab)" };
+                    remove.Click += (_, __) => DeleteTab(index);
+                    menu.Items.Add(remove);
+                }
+                header.ContextMenu = menu;
+
+                TabHeaders.Children.Add(header);
+            }
+        }
+
+        // Tabs and breadcrumbs belong to the body, so they hide while the fence is rolled up.
+        private void UpdateTabStripVisibility()
+        {
+            bool bodyShown = Scroller.Visibility == Visibility.Visible;
+            TabStrip.Visibility = HasTabs && bodyShown ? Visibility.Visible : Visibility.Collapsed;
+            if (!bodyShown) BreadcrumbBar.Visibility = Visibility.Collapsed;
+            else if (IsInSubfolder) BreadcrumbBar.Visibility = Visibility.Visible;
+        }
+
+        private void SwitchTab(int index)
+        {
+            if (!HasTabs || index < 0 || index >= _model.Tabs.Count || index == _model.ActiveTab) return;
+            _model.ActiveTab = index;
+            _cursorIndex = -1;
+            ReloadRealItems();
+            RebuildTabs();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void AddTab_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsPortal) return;
+            var prompt = new InputDialog("Add Tab", "Name for the new tab:", $"Tab {Math.Max(2, _model.Tabs.Count + 1)}") { Owner = this };
+            if (prompt.ShowDialog() != true || string.IsNullOrWhiteSpace(prompt.Value)) return;
+
+            _model.ActiveTab = OpenFences.Services.FenceTabs.Add(_model, prompt.Value.Trim());
+            ReloadRealItems();
+            RebuildTabs();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void RenameTab(int index)
+        {
+            var prompt = new InputDialog("Rename Tab", "New name for this tab:", _model.Tabs[index].Name) { Owner = this };
+            if (prompt.ShowDialog() != true || string.IsNullOrWhiteSpace(prompt.Value)) return;
+            _model.Tabs[index].Name = prompt.Value.Trim();
+            RebuildTabs();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void DeleteTab(int index)
+        {
+            var name = _model.Tabs[index].Name;
+            if (MessageBox.Show($"Delete the tab “{name}”?\n\nIts items move to the “{_model.Tabs[0].Name}” tab. Nothing is deleted from your desktop.",
+                                "Delete Tab", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            OpenFences.Services.FenceTabs.Remove(_model, index);
+            ReloadRealItems();
+            RebuildTabs();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Tiles dropped on a tab header move to that tab (from this fence, or from another).
+        private void DropOnTab(System.Windows.DragEventArgs e, int index)
+        {
+            if (e.Data.GetData(ItemPathsFormat) is not string[] paths || paths.Length == 0 || _dragSource is not { IsPortal: false } source) return;
+            e.Handled = true;
+
+            if (!ReferenceEquals(source, this)) AssignToThisFence(paths);
+            OpenFences.Services.FenceTabs.MoveTo(_model, paths, index);
+            ReloadRealItems();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>Every item for search, including ones on tabs that aren't showing (those
+        /// come without an icon), with where to find it.</summary>
+        public IEnumerable<(FenceItem Item, string Where)> SearchableItems()
+        {
+            foreach (var i in ItemsSource) yield return (i, HasTabs ? $"{FenceName} › {_model.Tabs[_model.ActiveTab].Name}" : FenceName);
+            if (!HasTabs) yield break;
+            foreach (var p in _model.ItemPaths)
+            {
+                int tab = OpenFences.Services.FenceTabs.TabOf(_model, p);
+                if (tab == _model.ActiveTab) continue;
+                yield return (new FenceItem { Path = p, DisplayName = LabelFor(p) }, $"{FenceName} › {_model.Tabs[tab].Name}");
+            }
+        }
+
         // ---------- Quick Look ----------
         /// <summary>Preview the selected item (or the one under the keyboard cursor) in a large
         /// window; ←/→ there step through this fence's items.</summary>
@@ -1509,6 +1662,11 @@ namespace OpenFences
                     return;
                 case Key.Escape:
                     SelectOnly(null);
+                    e.Handled = true;
+                    return;
+                case Key.Tab when (mods & ModifierKeys.Control) != 0 && HasTabs:
+                    int dir = (mods & ModifierKeys.Shift) != 0 ? -1 : 1;
+                    SwitchTab((_model.ActiveTab + dir + _model.Tabs.Count) % _model.Tabs.Count);
                     e.Handled = true;
                     return;
                 case Key.Space when mods == ModifierKeys.None:
@@ -1920,6 +2078,7 @@ namespace OpenFences
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
             MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
             MiLock.IsChecked = _model.Locked;
+            MiAddTab.Visibility = _model.IsPortal ? Visibility.Collapsed : Visibility.Visible;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
             MiRemoveBackground.IsEnabled = BgFitMenu.IsEnabled = BgDimMenu.IsEnabled = hasMedia;
             MiMuteBackground.IsEnabled = hasMedia && IsVideo(_model.BackgroundMedia!);

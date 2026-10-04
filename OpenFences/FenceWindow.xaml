@@ -159,6 +159,7 @@
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
                         <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
+                        <MenuItem x:Name="MiAddTab" Header="Add tab…" Click="AddTab_Click"/>
                         <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
                         <Separator/>
                         <MenuItem x:Name="SortMenu" Header="Sort by">
@@ -245,6 +246,21 @@
                 </Grid.ContextMenu>
             </Grid>
             </Border>
+
+            <!-- Tabs: shown when the fence has two or more (built in code) -->
+            <DockPanel x:Name="TabStrip"
+                       DockPanel.Dock="Top"
+                       Margin="8,6,6,0"
+                       Visibility="Collapsed">
+                <Button DockPanel.Dock="Right"
+                        Style="{StaticResource FenceTitleButton}"
+                        Width="26" Height="24"
+                        Content="+"
+                        FontSize="15"
+                        ToolTip="Add tab"
+                        Click="AddTab_Click"/>
+                <WrapPanel x:Name="TabHeaders" VerticalAlignment="Center"/>
+            </DockPanel>
 
             <!-- Portal breadcrumbs: shown only after opening a subfolder -->
             <DockPanel x:Name="BreadcrumbBar"

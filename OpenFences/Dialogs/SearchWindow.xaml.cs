@@ -66,9 +66,9 @@ namespace OpenFences
                 // Hidden fences still show up in the list; only visible ones get highlighted.
                 if (f.IsVisible) f.ApplySearch(q.Length == 0 ? null : q);
                 if (q.Length == 0) continue;
-                foreach (var item in f.ItemsSource)
+                foreach (var (item, where) in f.SearchableItems())
                     if (item.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase))
-                        results.Add(new Result(item, f.FenceName));
+                        results.Add(new Result(item, where));
             }
 
             // Names that start with the query first, then alphabetical.

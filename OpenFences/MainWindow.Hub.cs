@@ -143,7 +143,8 @@ namespace OpenFences
                     return new FenceRow(w)
                     {
                         Name = w.FenceName,
-                        Details = w.IsPortal ? $"Folder portal · {items} · {w.FolderPath}" : items,
+                        Details = w.IsPortal ? $"Folder portal · {items} · {w.FolderPath}"
+                                             : w.TabCount > 0 ? $"{items} · {w.TabCount} tabs" : items,
                         Swatch = swatch,
                         State = state,
                         StateBrush = stateBrush,

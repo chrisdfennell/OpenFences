@@ -63,9 +63,21 @@ namespace OpenFences
 
         public double TitleFontSize { get; set; } = 12;
 
+        // Tabs (none, or two or more). Items not listed in a later tab show on the first one;
+        // see Services/FenceTabs.
+        public System.Collections.Generic.List<FenceTab> Tabs { get; set; } = new();
+        public int ActiveTab { get; set; }
+
         // Where the user last placed this fence for each monitor arrangement
         // (key: ScreenLayout.CurrentKey()), so docking/undocking puts it back.
         public System.Collections.Generic.Dictionary<string, FenceRect> Layouts { get; set; } = new();
+    }
+
+    public class FenceTab
+    {
+        public string Name { get; set; } = "Tab";
+        // Items shown on this tab (tab 0 shows everything not listed in another tab).
+        public System.Collections.Generic.List<string> ItemPaths { get; set; } = new();
     }
 
     public class FenceRect
