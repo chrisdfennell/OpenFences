@@ -15,6 +15,7 @@
     <SolidColorBrush x:Key="Hub.Text"         Color="#E8EBF2"/>
     <SolidColorBrush x:Key="Hub.Muted"        Color="#9AA3B5"/>
     <SolidColorBrush x:Key="Hub.Accent"       Color="#3B82F6"/>
+    <SolidColorBrush x:Key="Hub.OnAccent"     Color="#FFFFFF"/>
     <SolidColorBrush x:Key="Hub.AccentHover"  Color="#2F6FE0"/>
     <SolidColorBrush x:Key="Hub.AccentSoft"   Color="#1B2A4A"/>
     <SolidColorBrush x:Key="Hub.Danger"       Color="#F87171"/>
@@ -46,6 +47,8 @@
     <SolidColorBrush x:Key="Dlg.InputBg"   Color="#202533"/>
     <SolidColorBrush x:Key="Dlg.InputEdge" Color="#3A4453"/>
     <SolidColorBrush x:Key="Dlg.InputFg"   Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Dlg.Primary"     Color="#2563EB"/>
+    <SolidColorBrush x:Key="Dlg.PrimaryEdge" Color="#3B82F6"/>
     <SolidColorBrush x:Key="Dlg.Accent"    Color="#3B82F6"/>
 
     <!-- Menus, scroll bars and menu check boxes (Themes/DarkMenu.xaml) -->

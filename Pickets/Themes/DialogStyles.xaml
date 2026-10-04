@@ -42,9 +42,9 @@
 
     <!-- Primary action (blue) -->
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-        <Setter Property="Background" Value="#2563EB"/>
-        <Setter Property="BorderBrush" Value="#3B82F6"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="{DynamicResource Dlg.Primary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Dlg.PrimaryEdge}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.OnAccent}"/>
     </Style>
 
     <!-- Small square icon button (↑ ↓ ✕ ▾) -->

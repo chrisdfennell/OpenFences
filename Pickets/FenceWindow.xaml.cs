@@ -85,6 +85,7 @@ namespace Pickets
             OnPropertyChanged(nameof(TileWidth));
             OnPropertyChanged(nameof(TileHeight));
             OnPropertyChanged(nameof(TileContentWidth));
+            QueueAutoFit();
         }
 
 
@@ -116,7 +117,7 @@ namespace Pickets
             DragOver += FenceWindow_DragOver;
             MouseEnter += FenceWindow_MouseEnter;
             PreviewMouseWheel += FenceWindow_PreviewMouseWheel;
-            ItemsSource.CollectionChanged += (_, __) => { UpdateEmptyHint(); UpdateCountBadge(); };
+            ItemsSource.CollectionChanged += (_, __) => { UpdateEmptyHint(); UpdateCountBadge(); QueueAutoFit(); };
             IsVisibleChanged += (_, __) => UpdateBackgroundPlayback();
             MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
@@ -158,12 +159,18 @@ namespace Pickets
             DesktopHelper.PlaceWindow(this, new Rect(Left, Top, Width, Height));
             SourceInitialized += (_, __) => _suppressGeometrySave = false;
 
-            Loaded += (_, __) => EnsureBottomZOrder();
+            Loaded += (_, __) => { EnsureBottomZOrder(); QueueAutoFit(); };
             // Clicking a fence: back below app windows, but in front of the other fences.
             Activated += (_, __) => { EnsureBottomZOrder(); BringToFrontOfFences(); };
 
             LocationChanged += SaveGeometry;
-            SizeChanged += (_, __) => { SaveGeometry(null, null); if (_model.Glass) UpdateGlassRegion(); };
+            SizeChanged += (_, e) =>
+            {
+                SaveGeometry(null, null);
+                if (_model.Glass && !Pickets.Services.Theme.IsHighContrast) UpdateGlassRegion();
+                PushFollowers();
+                if (e.WidthChanged) QueueAutoFit(); // narrower means more rows
+            };
 
             // Stop watching the backing folder once this fence is gone.
             Closed += (_, __) =>
@@ -185,6 +192,8 @@ namespace Pickets
 
         private void ApplyBackground()
         {
+            if (Pickets.Services.Theme.IsHighContrast) { ApplyContrastColors(); return; }
+
             // An accent tints the base (strongly on the title bar, lightly on the body). The base
             // follows the app theme, except under a picture/video, where the darkening layer keeps
             // the dark base so "Darken" still darkens.
@@ -223,6 +232,34 @@ namespace Pickets
             }
             TitleBar.Background = new SolidColorBrush(title);
             TitleText.FontSize = _model.TitleFontSize > 0 ? _model.TitleFontSize : 12;
+        }
+
+        // High contrast: Windows' own colors, opaque, with no accent, picture, video or glass.
+        private void ApplyContrastColors()
+        {
+            static SolidColorBrush C(Pickets.Services.ContrastRole r) => Pickets.Services.Theme.ContrastBrush(r);
+            const Pickets.Services.ContrastRole Window = Pickets.Services.ContrastRole.Window,
+                                                Text = Pickets.Services.ContrastRole.WindowText,
+                                                Highlight = Pickets.Services.ContrastRole.Highlight,
+                                                HighlightText = Pickets.Services.ContrastRole.HighlightText;
+            ReleaseMedia();
+            RootBorder.Background = C(Window);
+            TitleBar.Background = C(Window);
+            MediaLayer.Background = System.Windows.Media.Brushes.Transparent;
+            TintLayer.Background = System.Windows.Media.Brushes.Transparent;
+            TitleText.FontSize = _model.TitleFontSize > 0 ? _model.TitleFontSize : 12;
+
+            Resources["Fence.TitleFg"] = C(Text);
+            Resources["Fence.ButtonFg"] = C(Text);
+            Resources["Fence.ButtonHoverFg"] = C(HighlightText);
+            Resources["Fence.ButtonHover"] = C(Highlight);
+            Resources["Fence.ButtonPress"] = C(Highlight);
+            Resources["Fence.LabelFg"] = C(Text);
+            Resources["Fence.Hint"] = C(Text);
+            Resources["Fence.ItemHover"] = C(Window);
+            Resources["Fence.Edge"] = C(Text);
+            Resources["Fence.Selected"] = C(Highlight);
+            Resources["Fence.SelectedEdge"] = C(Text);
         }
 
         // ---------- Background picture / video ----------
@@ -401,12 +438,15 @@ namespace Pickets
             Resources["Fence.Hint"] = Frozen(bodyIsLight ? MediaColor.FromRgb(0x5C, 0x65, 0x77) : MediaColor.FromRgb(0x9A, 0xA3, 0xB5));
             Resources["Fence.ItemHover"] = Frozen(bodyIsLight ? MediaColor.FromArgb(0x16, 0, 0, 0) : MediaColor.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
             Resources["Fence.Edge"] = Frozen(Pickets.Services.Theme.IsLight ? MediaColor.FromRgb(0xC9, 0xCF, 0xD9) : MediaColor.FromRgb(0x3A, 0x3A, 0x3A));
+            Resources["Fence.Selected"] = Frozen(MediaColor.FromArgb(0x33, 0x54, 0x70, 0x8F));
+            Resources["Fence.SelectedEdge"] = Frozen(MediaColor.FromRgb(0x5A, 0x8F, 0xD8));
         }
 
         /// <summary>The app switched between light and dark.</summary>
         public void ApplyTheme()
         {
             ApplyBackground();
+            ApplyGlass(); // off under high contrast
             RebuildTabs();
         }
 
@@ -426,6 +466,31 @@ namespace Pickets
         // ---------- Real fence: owned desktop items (by path) ----------
 
         public string FenceName => _model.Name;
+
+        /// <summary>The fence's saved settings (MainWindow matches windows to models with it).</summary>
+        internal FenceModel Model => _model;
+
+        /// <summary>Wired by MainWindow: record an undo step, then run the action (see Services/UndoHistory).</summary>
+        public static Action<string, Action>? RequestUndoable;
+        /// <summary>Wired by MainWindow: Ctrl+Z.</summary>
+        public static Action? RequestUndo;
+        /// <summary>Wired by MainWindow: F1 shows the keyboard shortcuts.</summary>
+        public static Action? RequestKeyboardHelp;
+
+        private static void Undoable(string description, Action action)
+        {
+            if (RequestUndoable != null) RequestUndoable(description, action);
+            else action();
+        }
+
+        /// <summary>Undo put this fence's items (and tabs) back: show them again.</summary>
+        internal void ReloadAfterUndo()
+        {
+            if (IsPortal) return;
+            _cursorIndex = -1;
+            ReloadRealItems();
+            RebuildTabs();
+        }
 
         /// <summary>The launchable paths of the desktop items this real fence owns.</summary>
         public IReadOnlyList<string> OwnedItemPaths => _model.ItemPaths;
@@ -570,7 +635,15 @@ namespace Pickets
         }
 
         // ---------- Monitor arrangements ----------
+        private const int WM_ENTERSIZEMOVE = 0x0231;
         private const int WM_EXITSIZEMOVE = 0x0232;
+
+        // The move/resize loop in progress: where the fence started and whether it's a move
+        // (1) or a resize (2), known from the first WM_MOVING or WM_SIZING.
+        private Rect _sizeMoveStartPx;
+        private int _sizeMoveKind;
+        private int _sizingEdge;
+        private bool _inSizeMove;
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
@@ -583,15 +656,44 @@ namespace Pickets
 
             switch (msg)
             {
+                case WM_ENTERSIZEMOVE:
+                    _sizeMoveStartPx = DesktopHelper.WindowRectPx(hwnd);
+                    _sizeMoveKind = 0;
+                    _inSizeMove = true;
+                    break;
+
                 case Pickets.Services.FenceSnapper.WM_MOVING:
+                    if (_sizeMoveKind == 0) { _sizeMoveKind = 1; BeginStackDrag(); }
+                    SnapProposedRect(hwnd, 0, lParam);
+                    MoveStackWith(lParam);
+                    break;
+
                 case Pickets.Services.FenceSnapper.WM_SIZING:
-                    SnapProposedRect(hwnd, msg == Pickets.Services.FenceSnapper.WM_SIZING ? wParam.ToInt32() : 0, lParam);
+                    // Dragging the bottom edge pushes (or pulls) the fences stacked below.
+                    if (_sizeMoveKind == 0)
+                    {
+                        _sizeMoveKind = 2;
+                        _sizingEdge = wParam.ToInt32();
+                        if (wParam.ToInt32() is WMSZ_BOTTOM or WMSZ_BOTTOMLEFT or WMSZ_BOTTOMRIGHT) BeginPushFollowers();
+                    }
+                    SnapProposedRect(hwnd, wParam.ToInt32(), lParam);
                     break;
 
                 // Only a user move/resize is remembered for this monitor arrangement. Windows
                 // also moves fences itself when a monitor disappears; that must not overwrite
                 // the spot the user chose for the arrangement it came from.
                 case WM_EXITSIZEMOVE:
+                    _inSizeMove = false;
+                    EndStackDrag();
+                    EndPushFollowers();
+                    // Choosing a height by hand ends "Keep fitted to contents".
+                    if (_sizeMoveKind == 2 && _model.AutoHeight && _sizingEdge >= WMSZ_TOP &&
+                        Math.Abs(DesktopHelper.WindowRectPx(hwnd).Height - _sizeMoveStartPx.Height) >= 1)
+                    {
+                        _model.AutoHeight = false;
+                        Changed?.Invoke(this, EventArgs.Empty);
+                    }
+                    QueueAutoFit();
                     RememberPlacementForScreens();
                     break;
             }
@@ -604,14 +706,127 @@ namespace Pickets
             if (opts == null || lParam == IntPtr.Zero) return;
 
             var r = System.Runtime.InteropServices.Marshal.PtrToStructure<Pickets.Services.FenceSnapper.RECT>(lParam);
+            // Fences moving along with this one (its stack) aren't something to snap to.
             var others = AllFences
-                .Where(f => f != this && f.IsVisible)
+                .Where(f => f != this && f.IsVisible && _stackDrag?.Any(m => m.Fence == f) != true)
                 .Select(f => new WindowInteropHelper(f).Handle)
                 .Where(h => h != IntPtr.Zero && h != self)
                 .ToList();
 
             if (Pickets.Services.FenceSnapper.Snap(ref r, sizingEdge, others, opts.SnapToEdges, opts.SnapToGrid))
                 System.Runtime.InteropServices.Marshal.StructureToPtr(r, lParam, false);
+        }
+
+        // ---------- Stacks (Services/FenceStacks) ----------
+        private const int WMSZ_TOP = 3, WMSZ_BOTTOM = 6, WMSZ_BOTTOMLEFT = 7, WMSZ_BOTTOMRIGHT = 8;
+
+        private IntPtr Hwnd => new WindowInteropHelper(this).Handle;
+        private bool StacksOn => Options?.MoveStacksTogether == true;
+
+        /// <summary>Where this fence sits in a stack, in screen pixels. A rolled-up fence that's
+        /// only peeking open still takes up just its title bar.</summary>
+        private Rect StackRectPx
+        {
+            get
+            {
+                var r = DesktopHelper.WindowRectPx(Hwnd);
+                if (_tempExpanded && !r.IsEmpty) r.Height = Math.Round(CollapsedHeight * VisualTreeHelper.GetDpi(this).DpiScaleY);
+                return r;
+            }
+        }
+
+        private List<FenceWindow> StackNeighbours(bool belowOnly)
+        {
+            var candidates = AllFences
+                .Where(f => f != this && f.IsVisible && !f._model.Locked && f.Hwnd != IntPtr.Zero)
+                .ToList();
+            var rects = candidates.Select(f => f.StackRectPx).ToList();
+            double gap = Pickets.Services.FenceSnapper.GapDip * VisualTreeHelper.GetDpi(this).DpiScaleY;
+            var found = belowOnly ? Pickets.Services.FenceStacks.Below(rects, StackRectPx, gap)
+                                  : Pickets.Services.FenceStacks.Column(rects, StackRectPx, gap);
+            return found.Select(i => candidates[i]).ToList();
+        }
+
+        // Title-bar drag: the rest of the stack follows (Alt drags this fence alone).
+        private List<(FenceWindow Fence, Rect Start)>? _stackDrag;
+
+        private void BeginStackDrag()
+        {
+            _stackDrag = null;
+            if (!StacksOn || (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Alt) != 0) return;
+            var column = StackNeighbours(belowOnly: false);
+            if (column.Count > 0)
+                _stackDrag = column.Select(f => (f, DesktopHelper.WindowRectPx(f.Hwnd))).ToList();
+        }
+
+        private void MoveStackWith(IntPtr proposedRect)
+        {
+            if (_stackDrag == null || proposedRect == IntPtr.Zero) return;
+            var r = System.Runtime.InteropServices.Marshal.PtrToStructure<Pickets.Services.FenceSnapper.RECT>(proposedRect);
+            int dx = r.Left - (int)_sizeMoveStartPx.Left, dy = r.Top - (int)_sizeMoveStartPx.Top;
+            foreach (var (f, start) in _stackDrag)
+                DesktopHelper.MoveWindowPx(f.Hwnd, (int)start.Left + dx, (int)start.Top + dy);
+        }
+
+        private void EndStackDrag()
+        {
+            if (_stackDrag == null) return;
+            foreach (var (f, _) in _stackDrag) f.RememberPlacementForScreens();
+            _stackDrag = null;
+        }
+
+        // Height changes (rolling up, opening, resizing the bottom edge, fitting) move the fences
+        // stacked below by the same amount. They're found before the change, and moved by the
+        // difference from the starting height, so several fences changing at once add up.
+        private List<FenceWindow>? _followers;
+        private double _followStartHeight;
+        private int _followMovedPx;
+
+        private void BeginPushFollowers()
+        {
+            _followers = StacksOn ? StackNeighbours(belowOnly: true) : null;
+            _followStartHeight = _tempExpanded ? CollapsedHeight : ActualHeight;
+            _followMovedPx = 0;
+        }
+
+        private void PushFollowers()
+        {
+            if (_followers == null || _followers.Count == 0) return;
+            int want = (int)Math.Round((ActualHeight - _followStartHeight) * VisualTreeHelper.GetDpi(this).DpiScaleY);
+            int d = want - _followMovedPx;
+            if (d == 0) return;
+            foreach (var f in _followers)
+            {
+                var r = DesktopHelper.WindowRectPx(f.Hwnd);
+                if (!r.IsEmpty) DesktopHelper.MoveWindowPx(f.Hwnd, (int)r.Left, (int)r.Top + d);
+            }
+            _followMovedPx = want;
+        }
+
+        private void EndPushFollowers()
+        {
+            if (_followers == null) return;
+            PushFollowers();
+            foreach (var f in _followers) f.RememberPlacementForScreens();
+            _followers = null;
+        }
+
+        /// <summary>Change the height in code (fit to contents), taking the stack below along.</summary>
+        private void SetHeightWithStack(double height)
+        {
+            BeginPushFollowers();
+            Height = height;
+            UpdateLayout();
+            EndPushFollowers();
+        }
+
+        /// <summary>"One open fence per stack": another fence in the stack opened.</summary>
+        private void RollUpInStack()
+        {
+            if (_model.Collapsed) return;
+            BeginPushFollowers();
+            SetCollapsed(true, animate: true, done: EndPushFollowers);
+            ScheduleSave();
         }
 
         private void RememberPlacementForScreens()
@@ -983,6 +1198,7 @@ namespace Pickets
         {
             Items.ItemsPanel = (ItemsPanelTemplate)FindResource(IsListView ? "RowPanel" : "TilePanel");
             Items.ItemTemplate = (DataTemplate)FindResource(IsListView ? "RowTemplate" : "TileTemplate");
+            QueueAutoFit();
         }
 
         private void IconSize_Click(object sender, RoutedEventArgs e)
@@ -1099,8 +1315,9 @@ namespace Pickets
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
-            Pickets.Services.WindowBlur.Set(hwnd, _model.Glass);
-            if (_model.Glass) UpdateGlassRegion();
+            bool glass = _model.Glass && !Pickets.Services.Theme.IsHighContrast;
+            Pickets.Services.WindowBlur.Set(hwnd, glass);
+            if (glass) UpdateGlassRegion();
         }
 
         // The blur covers the whole window rectangle; clip it to the card's rounded corners.
@@ -1132,7 +1349,7 @@ namespace Pickets
             LockGlyph.Visibility = _model.Locked ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private void SetCollapsed(bool collapsed, bool animate)
+        private void SetCollapsed(bool collapsed, bool animate, Action? done = null)
         {
             _model.Collapsed = collapsed;
             UpdateBackgroundPlayback();
@@ -1148,19 +1365,20 @@ namespace Pickets
                 _suppressGeometrySave = true;
                 Height = target;
                 _suppressGeometrySave = false;
+                done?.Invoke();
                 return;
             }
 
             if (collapsed)
             {
                 // Animate down, then hide the content so it doesn't overflow the stub.
-                AnimateHeight(target, onCompleted: () => Scroller.Visibility = Visibility.Collapsed);
+                AnimateHeight(target, onCompleted: () => { Scroller.Visibility = Visibility.Collapsed; done?.Invoke(); });
             }
             else
             {
                 // Show content first, then animate open.
                 Scroller.Visibility = Visibility.Visible;
-                AnimateHeight(target, onCompleted: null);
+                AnimateHeight(target, onCompleted: done);
             }
         }
 
@@ -1276,18 +1494,27 @@ namespace Pickets
             EnsureBottomZOrder();
             BringToFrontOfFences();
 
+            // "One open fence per stack": the others in the stack roll up as this one opens.
+            if (_model.Collapsed && StacksOn && Options?.StackOneOpen == true)
+                foreach (var f in StackNeighbours(belowOnly: false))
+                    f.RollUpInStack();
+
             // Opened by hover: collapsing again would feel like nothing happened, so keep it open.
+            // The fences stacked below were under its title bar; they move down now.
             if (_tempExpanded)
             {
+                BeginPushFollowers();
                 _tempExpanded = false;
                 _rollTimer?.Stop();
                 _model.Collapsed = false;
                 UpdateCountBadge();
+                EndPushFollowers();
                 ScheduleSave();
                 return;
             }
 
-            SetCollapsed(!_model.Collapsed, animate: true);
+            BeginPushFollowers();
+            SetCollapsed(!_model.Collapsed, animate: true, done: () => { EndPushFollowers(); QueueAutoFit(); });
             ScheduleSave();
         }
 
@@ -1388,11 +1615,14 @@ namespace Pickets
                                     : Math.Max(0, order.FindIndex(p => string.Equals(p, target.Path, StringComparison.OrdinalIgnoreCase)));
             order.InsertRange(at, moved);
 
-            _model.ItemPaths = order;
-            _model.Sort = FenceSort.Manual;
-            ReloadRealItems();
-            foreach (var i in ItemsSource) i.IsSelected = set.Contains(i.Path);
-            Changed?.Invoke(this, EventArgs.Empty);
+            Undoable("Rearrange items", () =>
+            {
+                _model.ItemPaths = order;
+                _model.Sort = FenceSort.Manual;
+                ReloadRealItems();
+                foreach (var i in ItemsSource) i.IsSelected = set.Contains(i.Path);
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         // Right-clicking an unselected item selects just it (so the menu acts on it).
@@ -1450,6 +1680,7 @@ namespace Pickets
         {
             TabHeaders.Children.Clear();
             UpdateTabStripVisibility();
+            QueueAutoFit(); // the tab strip takes room
             if (!HasTabs) return;
 
             for (int i = 0; i < _model.Tabs.Count; i++)
@@ -1473,7 +1704,9 @@ namespace Pickets
                     AllowDrop = true,
                     ToolTip = "Click to show · drop tiles here to move them to this tab · right-click for options"
                 };
-                if (active) header.Background = new SolidColorBrush(MediaColor.FromArgb(0x55, 0x5A, 0x8F, 0xD8));
+                if (active) header.Background = Pickets.Services.Theme.IsHighContrast
+                    ? Pickets.Services.Theme.ContrastBrush(Pickets.Services.ContrastRole.Highlight)
+                    : new SolidColorBrush(MediaColor.FromArgb(0x55, 0x5A, 0x8F, 0xD8));
                 else header.SetResourceReference(Border.BackgroundProperty, "Fence.ItemHover");
                 header.MouseLeftButtonUp += (_, __) => SwitchTab(index);
                 header.DragOver += (_, e) =>
@@ -1524,19 +1757,25 @@ namespace Pickets
             var prompt = new InputDialog("Add Tab", "Name for the new tab:", $"Tab {Math.Max(2, _model.Tabs.Count + 1)}") { Owner = this };
             if (prompt.ShowDialog() != true || string.IsNullOrWhiteSpace(prompt.Value)) return;
 
-            _model.ActiveTab = Pickets.Services.FenceTabs.Add(_model, prompt.Value.Trim());
-            ReloadRealItems();
-            RebuildTabs();
-            Changed?.Invoke(this, EventArgs.Empty);
+            Undoable("Add tab", () =>
+            {
+                _model.ActiveTab = Pickets.Services.FenceTabs.Add(_model, prompt.Value.Trim());
+                ReloadRealItems();
+                RebuildTabs();
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         private void RenameTab(int index)
         {
             var prompt = new InputDialog("Rename Tab", "New name for this tab:", _model.Tabs[index].Name) { Owner = this };
             if (prompt.ShowDialog() != true || string.IsNullOrWhiteSpace(prompt.Value)) return;
-            _model.Tabs[index].Name = prompt.Value.Trim();
-            RebuildTabs();
-            Changed?.Invoke(this, EventArgs.Empty);
+            Undoable("Rename tab", () =>
+            {
+                _model.Tabs[index].Name = prompt.Value.Trim();
+                RebuildTabs();
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         private void DeleteTab(int index)
@@ -1544,10 +1783,13 @@ namespace Pickets
             var name = _model.Tabs[index].Name;
             if (MessageBox.Show($"Delete the tab “{name}”?\n\nIts items move to the “{_model.Tabs[0].Name}” tab. Nothing is deleted from your desktop.",
                                 "Delete Tab", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-            Pickets.Services.FenceTabs.Remove(_model, index);
-            ReloadRealItems();
-            RebuildTabs();
-            Changed?.Invoke(this, EventArgs.Empty);
+            Undoable($"Delete tab “{name}”", () =>
+            {
+                Pickets.Services.FenceTabs.Remove(_model, index);
+                ReloadRealItems();
+                RebuildTabs();
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         // Tiles dropped on a tab header move to that tab (from this fence, or from another).
@@ -1556,10 +1798,13 @@ namespace Pickets
             if (e.Data.GetData(ItemPathsFormat) is not string[] paths || paths.Length == 0 || _dragSource is not { IsPortal: false } source) return;
             e.Handled = true;
 
-            if (!ReferenceEquals(source, this)) AssignToThisFence(paths);
-            Pickets.Services.FenceTabs.MoveTo(_model, paths, index);
-            ReloadRealItems();
-            Changed?.Invoke(this, EventArgs.Empty);
+            Undoable(MoveDescription(paths.Length, $"“{_model.Tabs[index].Name}”"), () =>
+            {
+                if (!ReferenceEquals(source, this)) AssignToThisFence(paths);
+                Pickets.Services.FenceTabs.MoveTo(_model, paths, index);
+                ReloadRealItems();
+                Changed?.Invoke(this, EventArgs.Empty);
+            });
         }
 
         /// <summary>Every item for search, including ones on tabs that aren't showing (those
@@ -1587,12 +1832,17 @@ namespace Pickets
         public void TakeItems(IReadOnlyList<string> paths, int tab = -1)
         {
             if (IsPortal || paths.Count == 0) return;
-            AssignToThisFence(paths);
-            if (tab >= 0 && HasTabs)
+            string where = tab >= 0 && HasTabs ? $"“{_model.Tabs[tab].Name}”" : $"“{FenceName}”";
+            Undoable(MoveDescription(paths.Count, where), () =>
             {
-                MoveToTab(paths, tab);
-            }
+                AssignToThisFence(paths);
+                if (tab >= 0 && HasTabs) MoveToTab(paths, tab);
+            });
         }
+
+        /// <summary>"Move 3 items to “Apps”" (undo step names).</summary>
+        internal static string MoveDescription(int count, string where) =>
+            (count == 1 ? "Move 1 item" : $"Move {count} items") + " to " + where;
 
         private void MoveToTab(IReadOnlyList<string> paths, int tab)
         {
@@ -1755,15 +2005,48 @@ namespace Pickets
                 if (n < cols)
                     Width = Math.Max(200, Width - Scroller.ViewportWidth + n * TileWidth + 4);
             }
-            UpdateLayout();
+            SetHeightWithStack(FittedHeight());
+            ScheduleSave();
+        }
 
+        /// <summary>The height that shows every tile without a scrollbar, within the screen.</summary>
+        private double FittedHeight()
+        {
+            UpdateLayout();
             double chrome = ActualHeight - Scroller.ViewportHeight;
-            double wanted = chrome + Items.ActualHeight + 4;
+            double wanted = chrome + (ItemsSource.Count > 0 ? Items.ActualHeight : 0) + 4;
             double maxHeight = Pickets.Services.ScreenLayout.WorkAreas()
                 .Where(a => a.Contains(new Point(Left + 10, Top + 10)))
                 .Select(a => a.Bottom - Top).DefaultIfEmpty(wanted).First();
-            Height = Math.Max(MinExpandedHeight, Math.Min(wanted, maxHeight));
-            ScheduleSave();
+            return Math.Max(MinExpandedHeight, Math.Min(wanted, maxHeight));
+        }
+
+        // "Keep fitted to contents": the fence grows and shrinks with its items. Changes come in
+        // bursts (a reload adds tiles one by one), so fit once things settle.
+        private bool _autoFitQueued;
+
+        private void QueueAutoFit()
+        {
+            if (!_model.AutoHeight || _autoFitQueued) return;
+            _autoFitQueued = true;
+            Dispatcher.BeginInvoke(() =>
+            {
+                _autoFitQueued = false;
+                if (!_model.AutoHeight || !IsLoaded || _model.Collapsed || _inSizeMove ||
+                    Scroller.Visibility != Visibility.Visible) return;
+                double h = FittedHeight();
+                if (Math.Abs(h - ActualHeight) < 1) return;
+                SetHeightWithStack(h);
+                ScheduleSave();
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void AutoHeight_Click(object sender, RoutedEventArgs e)
+        {
+            _model.AutoHeight = !_model.AutoHeight;
+            if (_model.AutoHeight && _model.Collapsed) ToggleCollapsed(); // fitting needs it open
+            QueueAutoFit();
+            Changed?.Invoke(this, EventArgs.Empty);
         }
 
         // ---------- Quick Look ----------
@@ -1991,6 +2274,11 @@ namespace Pickets
                 foreach (var i in ItemsSource) i.IsSelected = true;
                 e.Handled = true;
             }
+            else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                RequestUndo?.Invoke();
+                e.Handled = true;
+            }
         }
 
         // ---------- Keyboard navigation ----------
@@ -2005,6 +2293,10 @@ namespace Pickets
 
             switch (key)
             {
+                case Key.F1:
+                    RequestKeyboardHelp?.Invoke();
+                    e.Handled = true;
+                    return;
                 case Key.F2:
                     // F2 renames the selected item; with nothing (or several) selected, the fence.
                     var sel = ItemsSource.Where(i => i.IsSelected).ToList();
@@ -2437,6 +2729,7 @@ namespace Pickets
             MiCloseAll.Visibility = MiOpenAll.Visibility;
             MiCloseAll.Header = HasTabs ? $"Close all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Close all";
             MiLock.IsChecked = _model.Locked;
+            MiAutoHeight.IsChecked = _model.AutoHeight;
             MiAddTab.Visibility = _model.IsPortal ? Visibility.Collapsed : Visibility.Visible;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
             MiRemoveBackground.IsEnabled = BgFitMenu.IsEnabled = BgDimMenu.IsEnabled = hasMedia;

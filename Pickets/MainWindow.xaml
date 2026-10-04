@@ -253,6 +253,18 @@
                             </DockPanel>
                             <Border Style="{StaticResource Hub.RowDivider}"/>
                             <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding MoveStacksTogether}" Click="Setting_Changed"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Keep stacked fences together"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Fences snapped one under another move as a stack, and rolling one up pulls the ones below it up. Hold Alt to drag a fence out of its stack."/></StackPanel>
+                            </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding StackOneOpen}" Click="Setting_Changed"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="One open fence per stack"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Opening a fence in a stack rolls the others up. Works with Keep stacked fences together."/></StackPanel>
+                            </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
                                 <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding ExpandCollapsedOnHover}" Click="Setting_Changed"/>
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Open rolled-up fences on hover"/>
                                     <TextBlock Style="{StaticResource Hub.RowText}" Text="Rest the mouse on a rolled-up fence to peek inside."/></StackPanel>
@@ -418,6 +430,9 @@
                                 <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Report a problem" Tag="https://github.com/chrisdfennell/Pickets/issues" Click="Link_Click"/>
                                 <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Privacy policy" Tag="https://chrisdfennell.github.io/Pickets/privacy.html" Click="Link_Click"/>
                                 <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Welcome tour" Click="Welcome_Click"/>
+                                <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Keyboard shortcuts" Click="KeyboardHelp_Click"/>
+                                <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Copy diagnostics" Click="CopyDiagnostics_Click"
+                                        ToolTip="Copy a summary for a bug report: version, Windows, monitors, settings and recent errors. Your name and fence names are left out."/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>
