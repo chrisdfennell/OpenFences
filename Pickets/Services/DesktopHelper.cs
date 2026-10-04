@@ -171,31 +171,48 @@ namespace Pickets
         /// </summary>
         public static bool IsLikelyDesktopUnderCursor()
         {
+            if (!GetCursorPos(out POINT ptScreen)) return false;
+            return IsDesktopAt(ptScreen);
+        }
+
+        /// <summary>
+        /// True only when (x, y) is over EMPTY desktop: the desktop window itself, and not
+        /// on one of its icons. Used by the double-click toggle so double-clicking an icon
+        /// (to open it) or anything in another window doesn't show/hide the desktop.
+        /// </summary>
+        public static bool IsEmptyDesktopAt(int x, int y)
+        {
+            var pt = new POINT { X = x, Y = y };
+            if (!IsDesktopAt(pt)) return false;
+
+            // With icons hidden there's nothing to hit; otherwise require whitespace.
+            if (_listView == IntPtr.Zero || !IsWindowVisible(_listView)) return true;
+
+            var ptClient = pt;
+            ScreenToClient(_listView, ref ptClient);
+            var hti = new LVHITTESTINFO { pt = ptClient, iItem = -1 };
+            IntPtr ok = SendMessageTimeout(_listView, (uint)LVM_HITTEST, IntPtr.Zero,
+                                           ref hti, SMTO_ABORTIFHUNG, 50, out _);
+            return ok != IntPtr.Zero && hti.iItem == -1;
+        }
+
+        private static bool IsDesktopAt(POINT ptScreen)
+        {
             EnsureHandles();
             if (_defView == IntPtr.Zero) return false;
-            if (!GetCursorPos(out POINT ptScreen)) return false;
 
             IntPtr hwndUnder = WindowFromPoint(ptScreen);
             if (hwndUnder == IntPtr.Zero) return false;
             if (BelongsToCurrentProcess(hwndUnder)) return false;
 
-            // Must be explorer (walk up if needed)
-            if (!BelongsToExplorerProcess(hwndUnder))
-            {
-                IntPtr cur = hwndUnder;
-                bool explorerAncestor = false;
-                while (cur != IntPtr.Zero)
-                {
-                    if (BelongsToExplorerProcess(cur)) { explorerAncestor = true; break; }
-                    cur = GetParent(cur);
-                }
-                if (!explorerAncestor) return false;
-            }
+            // The desktop's top-level window is Progman or WorkerW. File Explorer windows
+            // (CabinetWClass) also host a SHELLDLL_DefView, so checking for that ancestor
+            // alone wrongly treats clicks inside any folder window as desktop clicks.
+            IntPtr root = GetAncestor(hwndUnder, GA_ROOT);
+            if (root == IntPtr.Zero) return false;
+            if (!IsClass(root, "Progman") && !IsClass(root, "WorkerW")) return false;
 
-            // Hosted under desktop view classes?
-            return IsClass(hwndUnder, "WorkerW") ||
-                   IsClass(hwndUnder, "Progman") ||
-                   AncestorHasClass(hwndUnder, "SHELLDLL_DefView");
+            return BelongsToExplorerProcess(root);
         }
 
         /// <summary>
@@ -564,6 +581,11 @@ namespace Pickets
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetParent(IntPtr hWnd);
+
+        private const uint GA_ROOT = 2;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
 
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);

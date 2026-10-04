@@ -105,11 +105,14 @@ namespace Pickets
                         }
                         else
                         {
+                            // Hit-test where the click actually happened, not wherever the
+                            // cursor is by the time the dispatcher gets to it.
+                            var pt = ms.pt;
                             disp.BeginInvoke(new Action(() =>
                             {
                                 try
                                 {
-                                    if (DesktopHelper.IsLikelyDesktopUnderCursor())
+                                    if (DesktopHelper.IsEmptyDesktopAt(pt.X, pt.Y))
                                         _onDoubleClick?.Invoke();
                                 }
                                 catch { /* ignore */ }
