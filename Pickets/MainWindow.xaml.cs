@@ -369,6 +369,9 @@ namespace Pickets
         private void InitTrayIcon()
         {
             _trayMenu = new WinForms.ContextMenuStrip();
+            // Follows the app theme (dark/light), including later switches.
+            TrayMenuTheme.Apply(_trayMenu, Theme.IsLight);
+            Theme.Changed += () => { if (_trayMenu != null) TrayMenuTheme.Apply(_trayMenu, Theme.IsLight); };
 
             var restore = new WinForms.ToolStripMenuItem("Restore Pickets", null, (_, __) => RestoreFromTray());
             var newFence = new WinForms.ToolStripMenuItem("New Fence", null, (_, __) => NewFence_Click(null!, null!));
