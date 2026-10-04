@@ -248,11 +248,29 @@ namespace OpenFences
                 ItemsSource.Add(new FenceItem
                 {
                     Path = path,
-                    DisplayName = OpenFences.Services.DesktopItems.LabelFor(path)
+                    DisplayName = LabelFor(path)
                 });
             }
 
             LoadIconsAsync();
+        }
+
+        /// <summary>Tile label: desktop-style name (shortcut extensions hidden), and without any
+        /// file extension when Settings → Hide file extensions is on.</summary>
+        private static string LabelFor(string path)
+        {
+            var label = OpenFences.Services.DesktopItems.LabelFor(path);
+            if (Options?.HideFileExtensions == true && !path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) &&
+                !Directory.Exists(path))
+                label = Path.GetFileNameWithoutExtension(label);
+            return label;
+        }
+
+        /// <summary>Re-read labels and icons (after a display setting changes).</summary>
+        public void RefreshItems()
+        {
+            if (IsPortal) ReloadItems();
+            else ReloadRealItems();
         }
 
         public void EnsureBottomZOrder()
@@ -529,9 +547,7 @@ namespace OpenFences
                 ItemsSource.Add(new FenceItem
                 {
                     Path = path,
-                    DisplayName = Directory.Exists(path)
-                        ? Path.GetFileName(path)
-                        : Path.GetFileNameWithoutExtension(path)
+                    DisplayName = LabelFor(path)
                 });
             }
 
@@ -545,11 +561,16 @@ namespace OpenFences
         private void LoadIconsAsync()
         {
             var snapshot = ItemsSource.ToList();
+            bool thumbnails = Options?.ShowThumbnails ?? true;
+            int thumbPx = (int)Math.Round(IconPx * OpenFences.Services.ScreenLayout.Scale * 2); // room for crisp scaling
             var loader = new System.Threading.Thread(() =>
             {
                 foreach (var item in snapshot)
                 {
-                    var icon = OpenFences.Services.IconHelper.GetImageSourceForPath(item.Path);
+                    var icon = (thumbnails && OpenFences.Services.ShellThumbnail.HasPreview(item.Path)
+                                   ? OpenFences.Services.ShellThumbnail.Get(item.Path, thumbPx)
+                                   : null)
+                               ?? OpenFences.Services.IconHelper.GetImageSourceForPath(item.Path);
                     if (icon == null) continue;
                     Dispatcher.BeginInvoke(() => item.Icon = icon);
                 }

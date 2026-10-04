@@ -92,6 +92,14 @@
                                   IsCheckable="True"
                                   Click="MiSnap_Click"/>
                         <Separator/>
+                        <MenuItem x:Name="MiShowThumbnails"
+                                  Header="Show picture and video thumbnails"
+                                  IsCheckable="True"
+                                  Click="MiItemDisplay_Click"/>
+                        <MenuItem x:Name="MiHideExtensions"
+                                  Header="Hide file extensions"
+                                  IsCheckable="True"
+                                  Click="MiItemDisplay_Click"/>
                         <MenuItem x:Name="MiExpandOnHover"
                                   Header="Open rolled-up fences on hover"
                                   IsCheckable="True"

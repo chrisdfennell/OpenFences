@@ -329,6 +329,17 @@ namespace OpenFences
             MiSnapToGrid.IsChecked = _config.Options.SnapToGrid;
             MiGlobalHotkeys.IsChecked = _config.Options.GlobalHotkeys;
             MiExpandOnHover.IsChecked = _config.Options.ExpandCollapsedOnHover;
+            MiShowThumbnails.IsChecked = _config.Options.ShowThumbnails;
+            MiHideExtensions.IsChecked = _config.Options.HideFileExtensions;
+        }
+
+        // Settings → thumbnails / file extensions: re-render every fence's tiles
+        private void MiItemDisplay_Click(object sender, RoutedEventArgs e)
+        {
+            _config.Options.ShowThumbnails = MiShowThumbnails.IsChecked;
+            _config.Options.HideFileExtensions = MiHideExtensions.IsChecked;
+            SaveConfig();
+            foreach (var w in _openWindows) w.RefreshItems();
         }
 
         // Settings → Open rolled-up fences on hover (fences read it live)

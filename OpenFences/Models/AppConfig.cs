@@ -30,6 +30,12 @@ namespace OpenFences
 
         // Rolled-up (collapsed) fences open while the mouse rests on them.
         public bool ExpandCollapsedOnHover { get; set; } = true;
+
+        // Pictures and videos show a preview instead of a generic file icon.
+        public bool ShowThumbnails { get; set; } = true;
+
+        // Tile labels leave out file extensions ("Budget" instead of "Budget.xlsx").
+        public bool HideFileExtensions { get; set; } = false;
     }
 
     // How a desktop item is matched to a target fence by the rules engine.
