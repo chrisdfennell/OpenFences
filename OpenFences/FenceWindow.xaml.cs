@@ -229,8 +229,9 @@ namespace OpenFences
             {
                 if (IsVideo(path))
                 {
-                    // MediaPlayer + VideoDrawing plays without being in the visual tree; muted, looping.
-                    var player = new MediaPlayer { IsMuted = true, Volume = 0 };
+                    // MediaPlayer + VideoDrawing plays without being in the visual tree; looping,
+                    // muted unless sound was turned on for this fence.
+                    var player = new MediaPlayer { IsMuted = _model.BackgroundMuted, Volume = 0.5 };
                     var drawing = new VideoDrawing { Player = player, Rect = new Rect(0, 0, 16, 9) };
                     player.MediaOpened += (_, __) =>
                     {
@@ -307,6 +308,14 @@ namespace OpenFences
                 ApplyBackground();
                 return;
             }
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        // Per-fence: turn a background video's sound on or off.
+        private void MuteBackground_Click(object sender, RoutedEventArgs e)
+        {
+            _model.BackgroundMuted = !_model.BackgroundMuted;
+            if (_bgPlayer != null) _bgPlayer.IsMuted = _model.BackgroundMuted;
             Changed?.Invoke(this, EventArgs.Empty);
         }
 
@@ -1888,6 +1897,8 @@ namespace OpenFences
             MiLock.IsChecked = _model.Locked;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
             MiRemoveBackground.IsEnabled = BgFitMenu.IsEnabled = BgDimMenu.IsEnabled = hasMedia;
+            MiMuteBackground.IsEnabled = hasMedia && IsVideo(_model.BackgroundMedia!);
+            MiMuteBackground.IsChecked = _model.BackgroundMuted;
             CheckByTag(BgFitMenu, _model.BackgroundFit.ToString());
             CheckByTag(BgDimMenu, _model.BackgroundDim.ToString("0.00", inv));
             MiGlass.IsChecked = _model.Glass;

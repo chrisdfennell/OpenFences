@@ -140,7 +140,7 @@ namespace OpenFences.Tests
                 {
                     Name = "Apps", ItemPaths = { "a" }, AccentColor = "#3B82F6", Closed = true, Locked = true,
                     Glass = true, Sort = FenceSort.Manual, IconSize = FenceIconSize.Large,
-                    BackgroundMedia = @"C:\Pictures\beach.jpg", BackgroundFit = FenceBackgroundFit.Fit, BackgroundDim = 0.2,
+                    BackgroundMedia = @"C:\Pictures\beach.jpg", BackgroundFit = FenceBackgroundFit.Fit, BackgroundDim = 0.2, BackgroundMuted = false,
                     Layouts = { ["0,0,1920,1080"] = new FenceRect { Left = 1, Top = 2, Width = 3, Height = 4 } }
                 }
             };
@@ -154,6 +154,7 @@ namespace OpenFences.Tests
             Assert.Equal(@"C:\Pictures\beach.jpg", copy.BackgroundMedia);
             Assert.Equal(FenceBackgroundFit.Fit, copy.BackgroundFit);
             Assert.Equal(0.2, copy.BackgroundDim);
+            Assert.False(copy.BackgroundMuted);
             Assert.Equal(3, copy.Layouts["0,0,1920,1080"].Width);
 
             copy.ItemPaths.Add("b");

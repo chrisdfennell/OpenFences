@@ -45,6 +45,8 @@ namespace OpenFences
         public FenceBackgroundFit BackgroundFit { get; set; } = FenceBackgroundFit.Fill;
         // Darkening layer over the picture so labels stay readable (0 = none … 1 = black).
         public double BackgroundDim { get; set; } = 0.35;
+        // Background videos play muted unless the user turns sound on for that fence.
+        public bool BackgroundMuted { get; set; } = true;
 
         // 0.0 (fully transparent) … 1.0 (opaque)
         public double BackgroundOpacity { get; set; } = 0.92;

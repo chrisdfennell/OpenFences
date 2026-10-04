@@ -212,6 +212,7 @@
                         <MenuItem x:Name="BackgroundMenu" Header="Background">
                             <MenuItem Header="Choose image or video…" Click="ChooseBackground_Click"/>
                             <MenuItem x:Name="MiRemoveBackground" Header="Remove background" Click="RemoveBackground_Click"/>
+                            <MenuItem x:Name="MiMuteBackground" Header="Mute video sound" IsCheckable="True" Click="MuteBackground_Click"/>
                             <Separator/>
                             <MenuItem x:Name="BgFitMenu" Header="Fit">
                                 <MenuItem Header="Fill (crop to cover)" Tag="Fill"    IsCheckable="True" Click="BackgroundFit_Click"/>
