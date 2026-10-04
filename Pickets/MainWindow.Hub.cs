@@ -141,21 +141,15 @@ namespace Pickets
                                    System.Windows.Threading.DispatcherPriority.Background);
         }
 
-        private static readonly Brush DefaultSwatch = Frozen(Color.FromRgb(0x4A, 0x53, 0x66));
-        private static readonly Brush ShownBrush = Frozen(Color.FromRgb(0x14, 0x53, 0x2D));
-        private static readonly Brush ClosedBrush = Frozen(Color.FromRgb(0x2A, 0x30, 0x3C));
-        private static readonly Brush RolledBrush = Frozen(Color.FromRgb(0x1B, 0x2A, 0x4A));
-
-        private static Brush Frozen(Color c)
-        {
-            var b = new SolidColorBrush(c);
-            b.Freeze();
-            return b;
-        }
-
         private void RefreshHome()
         {
             if (FenceList == null) return;
+
+            // From the current palette (light or dark); the list is rebuilt when the theme changes.
+            var defaultSwatch = (Brush)FindResource("Hub.Swatch");
+            var shownBrush = (Brush)FindResource("Hub.StateShown");
+            var closedBrush = (Brush)FindResource("Hub.StateClosed");
+            var rolledBrush = (Brush)FindResource("Hub.StateRolled");
 
             var rows = _openWindows
                 .OrderBy(w => w.IsClosedByUser)
@@ -163,12 +157,12 @@ namespace Pickets
                 .Select(w =>
                 {
                     string state; Brush stateBrush;
-                    if (w.IsClosedByUser) { state = "Closed"; stateBrush = ClosedBrush; }
-                    else if (_peeked) { state = "Hidden"; stateBrush = ClosedBrush; }
-                    else if (w.IsCollapsed) { state = "Rolled up"; stateBrush = RolledBrush; }
-                    else { state = "Shown"; stateBrush = ShownBrush; }
+                    if (w.IsClosedByUser) { state = "Closed"; stateBrush = closedBrush; }
+                    else if (_peeked) { state = "Hidden"; stateBrush = closedBrush; }
+                    else if (w.IsCollapsed) { state = "Rolled up"; stateBrush = rolledBrush; }
+                    else { state = "Shown"; stateBrush = shownBrush; }
 
-                    Brush swatch = DefaultSwatch;
+                    Brush swatch = defaultSwatch;
                     if (!string.IsNullOrEmpty(w.AccentColor))
                     {
                         try { swatch = (Brush)new BrushConverter().ConvertFromString(w.AccentColor)!; } catch { /* keep default */ }
@@ -246,8 +240,35 @@ namespace Pickets
 
             SearchHotkeyBox.Text = _config.Options.SearchHotkey;
             ToggleHotkeyBox.Text = _config.Options.ToggleFencesHotkey;
+            FrontHotkeyBox.Text = _config.Options.FrontHotkey;
+            ThemeButton.Content = ThemeLabel(_config.Options.Theme) + "  ▾";
             UpdateHotkeyStatus();
             RefreshLayouts();
+        }
+
+        private static string ThemeLabel(AppTheme t) => t switch
+        {
+            AppTheme.Light => "Light",
+            AppTheme.Dark => "Dark",
+            _ => "System",
+        };
+
+        private void ThemeButton_Click(object sender, RoutedEventArgs e)
+        {
+            var menu = new ContextMenu { PlacementTarget = ThemeButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            foreach (var t in new[] { AppTheme.System, AppTheme.Light, AppTheme.Dark })
+            {
+                var item = new MenuItem { Header = ThemeLabel(t), IsCheckable = true, IsChecked = t == _config.Options.Theme };
+                item.Click += (_, __) =>
+                {
+                    _config.Options.Theme = t;
+                    Theme.Apply(t);
+                    ThemeButton.Content = ThemeLabel(t) + "  ▾";
+                    SaveConfig();
+                };
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
         }
 
         // Every switch on the Settings page: the binding has already updated the option.
@@ -277,8 +298,16 @@ namespace Pickets
             bool problem = _config.Options.GlobalHotkeys && _hotkeyProblems.Count > 0;
             HotkeyStatus.Text = string.Join("  ", _hotkeyProblems) + (problem ? " Pick a different shortcut." : "");
             HotkeyStatus.Visibility = problem ? Visibility.Visible : Visibility.Collapsed;
-            SearchHotkeyBox.IsEnabled = ToggleHotkeyBox.IsEnabled = _config.Options.GlobalHotkeys;
+            SearchHotkeyBox.IsEnabled = ToggleHotkeyBox.IsEnabled = FrontHotkeyBox.IsEnabled = _config.Options.GlobalHotkeys;
         }
+
+        // Which option a shortcut box edits (its Tag).
+        private string HotkeyFor(TextBox box) => box.Tag switch
+        {
+            "Search" => _config.Options.SearchHotkey,
+            "Front" => _config.Options.FrontHotkey,
+            _ => _config.Options.ToggleFencesHotkey,
+        };
 
         // ---- Shortcut recorder: click the box, press the new combination (Esc cancels) ----
         private void HotkeyBox_GotFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -289,7 +318,7 @@ namespace Pickets
         private void HotkeyBox_LostFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
             if (sender is not TextBox box) return;
-            box.Text = Equals(box.Tag, "Search") ? _config.Options.SearchHotkey : _config.Options.ToggleFencesHotkey;
+            box.Text = HotkeyFor(box);
         }
 
         private void HotkeyBox_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -303,8 +332,12 @@ namespace Pickets
             var text = HotkeyText.Format(Keyboard.Modifiers, key);
             if (text == null) return; // still holding modifiers, or no modifier yet
 
-            if (Equals(box.Tag, "Search")) _config.Options.SearchHotkey = text;
-            else _config.Options.ToggleFencesHotkey = text;
+            switch (box.Tag)
+            {
+                case "Search": _config.Options.SearchHotkey = text; break;
+                case "Front": _config.Options.FrontHotkey = text; break;
+                default: _config.Options.ToggleFencesHotkey = text; break;
+            }
 
             ApplyHotkeySetting();
             UpdateHotkeyStatus();

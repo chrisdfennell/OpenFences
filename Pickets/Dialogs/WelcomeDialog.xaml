@@ -6,7 +6,7 @@
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Background="#1B1B20"
+        Background="{DynamicResource Dlg.Bg}"
         ShowInTaskbar="True"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
@@ -21,12 +21,12 @@
             <Style x:Key="TipGlyph" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="18"/>
                 <Setter Property="Width" Value="34"/>
-                <Setter Property="Foreground" Value="{StaticResource Dlg.Accent}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Dlg.Accent}"/>
                 <Setter Property="VerticalAlignment" Value="Top"/>
             </Style>
             <Style x:Key="TipText" TargetType="TextBlock">
                 <Setter Property="TextWrapping" Value="Wrap"/>
-                <Setter Property="Foreground" Value="#C9CFDA"/>
+                <Setter Property="Foreground" Value="{DynamicResource Dlg.Body}"/>
                 <Setter Property="LineHeight" Value="19"/>
             </Style>
         </ResourceDictionary>
@@ -38,47 +38,47 @@
                    Width="40" Height="40" Margin="0,0,14,0"/>
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="Welcome to Pickets" FontSize="22" FontWeight="SemiBold"/>
-                <TextBlock Text="Your desktop, sorted into fences." Foreground="{StaticResource Dlg.Subtle}"/>
+                <TextBlock Text="Your desktop, sorted into fences." Foreground="{DynamicResource Dlg.Subtle}"/>
             </StackPanel>
         </StackPanel>
 
         <Border Margin="0,18,0,0" Padding="16,14" CornerRadius="10"
-                Background="{StaticResource Dlg.Card}" BorderBrush="{StaticResource Dlg.CardEdge}" BorderThickness="1">
+                Background="{DynamicResource Dlg.Card}" BorderBrush="{DynamicResource Dlg.CardEdge}" BorderThickness="1">
             <StackPanel>
                 <DockPanel Margin="0,0,0,12">
                     <TextBlock Style="{StaticResource TipGlyph}" Text="▦"/>
                     <TextBlock Style="{StaticResource TipText}">
-                        <Run FontWeight="SemiBold" Foreground="#FFFFFF" Text="Your desktop items now live in fences."/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Your desktop items now live in fences."/>
                         <Run Text="Nothing is moved or copied. Anything not in another fence shows in the Desktop fence, and your normal desktop icons come back when you quit."/>
                     </TextBlock>
                 </DockPanel>
                 <DockPanel Margin="0,0,0,12">
                     <TextBlock Style="{StaticResource TipGlyph}" Text="⬚"/>
                     <TextBlock Style="{StaticResource TipText}">
-                        <Run FontWeight="SemiBold" Foreground="#FFFFFF" Text="Right-drag on empty desktop"/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Right-drag on empty desktop"/>
                         <Run Text="to draw a new fence, then drag items into it. Left-drag selects items across fences."/>
                     </TextBlock>
                 </DockPanel>
                 <DockPanel Margin="0,0,0,12">
                     <TextBlock Style="{StaticResource TipGlyph}" Text="⇕"/>
                     <TextBlock Style="{StaticResource TipText}">
-                        <Run FontWeight="SemiBold" Foreground="#FFFFFF" Text="Double-click a fence's title"/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Double-click a fence's title"/>
                         <Run Text="to roll it up; hover over it to peek inside. Right-click the title for color, sorting and more."/>
                     </TextBlock>
                 </DockPanel>
                 <DockPanel>
                     <TextBlock Style="{StaticResource TipGlyph}" Text="⌨"/>
                     <TextBlock Style="{StaticResource TipText}">
-                        <Run FontWeight="SemiBold" Foreground="#FFFFFF" Text="Ctrl+Alt+F"/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Ctrl+Alt+F"/>
                         <Run Text="searches every fence. "/>
-                        <Run FontWeight="SemiBold" Foreground="#FFFFFF" Text="Ctrl+Alt+H"/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Ctrl+Alt+H"/>
                         <Run Text="hides or shows all fences."/>
                     </TextBlock>
                 </DockPanel>
             </StackPanel>
         </Border>
 
-        <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="{StaticResource Dlg.Subtle}"
+        <TextBlock Margin="0,16,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Dlg.Subtle}"
                    Text="Want a head start? Pickets can sort your desktop into Apps, Documents and System fences. You can rearrange everything afterwards."/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">

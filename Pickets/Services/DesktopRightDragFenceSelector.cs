@@ -11,7 +11,7 @@ namespace Pickets.Services
 {
     /// <summary>
     /// Global right-button "rubber-band" selection on the empty desktop.
-    /// Shows a context menu with "Create fence here" or "Cancel".
+    /// Shows a context menu with "Create fence here", "Create folder portal here…" or "Cancel".
     /// Multi-monitor & DPI aware.
     /// </summary>
     public sealed class DesktopRightDragFenceSelector : IDisposable
@@ -19,13 +19,13 @@ namespace Pickets.Services
         // ---------- Public static API ----------
         private static DesktopRightDragFenceSelector? _instance;
 
-        public static void Start(Action<Rect> onConfirm)
+        public static void Start(Action<Rect> onConfirm, Action<Rect> onPortal)
         {
             // Ensure WPF Application exists
             if (System.Windows.Application.Current == null)
                 _ = new System.Windows.Application();
 
-            _instance ??= new DesktopRightDragFenceSelector(onConfirm);
+            _instance ??= new DesktopRightDragFenceSelector(onConfirm, onPortal);
             _instance.Hook();
         }
 
@@ -39,6 +39,7 @@ namespace Pickets.Services
 
         // ---------- Instance ----------
         private readonly Action<Rect> _onConfirm;
+        private readonly Action<Rect> _onPortal;
         private IntPtr _hook = IntPtr.Zero;
         private LowLevelMouseProc? _proc;
 
@@ -60,9 +61,10 @@ namespace Pickets.Services
         private readonly double _dpiScaleX;
         private readonly double _dpiScaleY;
 
-        private DesktopRightDragFenceSelector(Action<Rect> onConfirm)
+        private DesktopRightDragFenceSelector(Action<Rect> onConfirm, Action<Rect> onPortal)
         {
             _onConfirm = onConfirm;
+            _onPortal = onPortal;
 
             var visual = System.Windows.Application.Current?.MainWindow as Visual;
             var dpi = (visual != null)
@@ -241,16 +243,29 @@ namespace Pickets.Services
                     if (System.Windows.Application.Current?.TryFindResource("DarkContextMenuStyle") is Style dark)
                         cm.Style = dark;
 
+                    // Run the choice only after the menu and its owner window are gone: a dialog
+                    // opened from the click (the portal's folder picker) would otherwise belong to
+                    // the owner window and close with it.
+                    Action<Rect>? chosen = null;
                     var miCreate = new System.Windows.Controls.MenuItem { Header = "Create fence here" };
-                    miCreate.Click += (_, __) => _onConfirm(rectDip);
+                    miCreate.Click += (_, __) => chosen = _onConfirm;
+
+                    var miPortal = new System.Windows.Controls.MenuItem { Header = "Create folder portal here…" };
+                    miPortal.Click += (_, __) => chosen = _onPortal;
 
                     var miCancel = new System.Windows.Controls.MenuItem { Header = "Cancel" };
 
                     cm.Items.Add(miCreate);
+                    cm.Items.Add(miPortal);
                     cm.Items.Add(new System.Windows.Controls.Separator());
                     cm.Items.Add(miCancel);
 
-                    cm.Closed += (_, __) => { try { owner.Close(); } catch { } };
+                    cm.Closed += (_, __) =>
+                    {
+                        try { owner.Close(); } catch { }
+                        if (chosen is { } action)
+                            System.Windows.Application.Current!.Dispatcher.BeginInvoke(() => action(rectDip));
+                    };
                     cm.IsOpen = true;
                 }),
                 System.Windows.Threading.DispatcherPriority.Background);

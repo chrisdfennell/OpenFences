@@ -5,7 +5,7 @@
         Width="680" Height="560"
         MinWidth="560" MinHeight="380"
         WindowStartupLocation="CenterOwner"
-        Background="#1B1B20"
+        Background="{DynamicResource Dlg.Bg}"
         ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
@@ -28,13 +28,13 @@
 
         <StackPanel>
             <TextBlock Text="Auto-organize rules" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{StaticResource Dlg.Subtle}"
+            <TextBlock Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource Dlg.Subtle}"
                        Text="When something new appears on your desktop, these rules decide which fence it goes into. They're checked top to bottom and the first match wins; anything no rule matches goes to the Desktop fence. A fence that doesn't exist yet is created."/>
             <CheckBox x:Name="ChkAutoOrganize" Margin="0,0,0,12"
                       Content="Auto-organize new desktop items using these rules"/>
         </StackPanel>
 
-        <Border Grid.Row="1" Background="{StaticResource Dlg.Card}" BorderBrush="{StaticResource Dlg.CardEdge}"
+        <Border Grid.Row="1" Background="{DynamicResource Dlg.Card}" BorderBrush="{DynamicResource Dlg.CardEdge}"
                 BorderThickness="1" CornerRadius="10" Padding="8">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="RuleList">
@@ -50,14 +50,14 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
-                                <TextBlock Text="{Binding Number}" Foreground="{StaticResource Dlg.Subtle}"
+                                <TextBlock Text="{Binding Number}" Foreground="{DynamicResource Dlg.Subtle}"
                                            VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
                                 <!-- What the rule matches (dropdown menu) -->
                                 <Button Grid.Column="1" HorizontalContentAlignment="Stretch" Padding="10,6"
                                         FontWeight="Normal" Click="Kind_Click" ToolTip="What this rule matches">
                                     <DockPanel Width="160">
-                                        <TextBlock DockPanel.Dock="Right" Text="▾" Foreground="{StaticResource Dlg.Subtle}"/>
+                                        <TextBlock DockPanel.Dock="Right" Text="▾" Foreground="{DynamicResource Dlg.Subtle}"/>
                                         <TextBlock Text="{Binding KindLabel}"/>
                                     </DockPanel>
                                 </Button>
@@ -69,7 +69,7 @@
                                          ToolTip="File types, e.g. .png .jpg .gif"/>
 
                                 <TextBlock Grid.Column="3" Text="→" Margin="10,0" VerticalAlignment="Center"
-                                           Foreground="{StaticResource Dlg.Subtle}"/>
+                                           Foreground="{DynamicResource Dlg.Subtle}"/>
 
                                 <!-- Target fence: type a name or pick an existing fence -->
                                 <Grid Grid.Column="4">

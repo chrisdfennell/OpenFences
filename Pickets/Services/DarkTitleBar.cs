@@ -5,23 +5,29 @@ using System.Windows.Interop;
 
 namespace Pickets.Services
 {
-    /// <summary>Gives a standard-framed dialog a dark Windows title bar to match its content.</summary>
+    /// <summary>Gives a standard-framed dialog a Windows title bar that matches the app's light or
+    /// dark theme, and keeps it matching if the theme changes while the dialog is open.</summary>
     internal static class DarkTitleBar
     {
         private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
 
         public static void Apply(Window window)
         {
-            window.SourceInitialized += (_, __) =>
+            void Update()
             {
                 try
                 {
                     var hwnd = new WindowInteropHelper(window).Handle;
-                    int on = 1;
-                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int));
+                    if (hwnd == IntPtr.Zero) return;
+                    int dark = Theme.IsLight ? 0 : 1;
+                    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
                 }
                 catch { /* older Windows: keep the default frame */ }
-            };
+            }
+
+            window.SourceInitialized += (_, __) => Update();
+            Theme.Changed += Update;
+            window.Closed += (_, __) => Theme.Changed -= Update;
         }
 
         [DllImport("dwmapi.dll")]

@@ -25,7 +25,7 @@
     <Window.Resources>
         <!-- Flat, hover-aware title-bar button (replaces default gray 3D chrome) -->
         <Style x:Key="FenceTitleButton" TargetType="Button">
-            <Setter Property="Foreground" Value="#C7CBD1"/>
+            <Setter Property="Foreground" Value="{DynamicResource Fence.ButtonFg}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="14"/>
@@ -42,11 +42,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#3A3D44"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource Fence.ButtonHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Fence.ButtonHoverFg}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#4A4E57"/>
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource Fence.ButtonPress}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -78,7 +78,7 @@
                     <Setter Property="BorderBrush" Value="#5A8FD8"/>
                 </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#22FFFFFF"/>
+                    <Setter Property="Background" Value="{DynamicResource Fence.ItemHover}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -88,7 +88,7 @@
     <Border x:Name="RootBorder"
             Background="#1E1E1E"
             CornerRadius="10"
-            BorderBrush="#3A3A3A"
+            BorderBrush="{DynamicResource Fence.Edge}"
             BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.40" Color="#000000"/>
@@ -121,7 +121,7 @@
                                FontSize="11"
                                Margin="8,0,2,0"
                                Opacity="0.65"
-                               Foreground="#E0E0E0"
+                               Foreground="{DynamicResource Fence.TitleFg}"
                                VerticalAlignment="Center"
                                Visibility="Collapsed"/>
                     <TextBlock x:Name="LockGlyph"
@@ -135,7 +135,7 @@
                                Visibility="Collapsed"/>
                     <TextBlock x:Name="TitleText"
                                VerticalAlignment="Center"
-                               Foreground="#E0E0E0"
+                               Foreground="{DynamicResource Fence.TitleFg}"
                                FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
@@ -167,6 +167,9 @@
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
                         <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
+                        <MenuItem x:Name="MiPortalFilter" Header="Filter…" Click="PortalFilter_Click"/>
+                        <MenuItem x:Name="MiOpenAll" Header="Open all" Click="OpenAll_Click"
+                                  ToolTip="Open every item in this fence (or this tab) at once"/>
                         <MenuItem x:Name="MiAddTab" Header="Add tab…" Click="AddTab_Click"/>
                         <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
                         <MenuItem Header="Fit to contents" Click="FitToContents_Click"
@@ -188,7 +191,7 @@
                         <MenuItem Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
                         <MenuItem x:Name="ColorMenu" Header="Color">
                             <MenuItem Header="Default" Tag="" IsCheckable="True" Click="Color_Click">
-                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#2B2B2B" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
+                                <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="{DynamicResource Fence.DefaultSwatch}" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
                             </MenuItem>
                             <MenuItem Header="Blue" Tag="#3B82F6" IsCheckable="True" Click="Color_Click">
                                 <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="#3B82F6" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
@@ -249,7 +252,7 @@
                             <MenuItem x:Name="MiGlass" Header="Frosted glass" IsCheckable="True" Click="Glass_Click"/>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem Header="Delete Fence…" Foreground="#FFEF4444" Click="DeleteFence_Click"/>
+                        <MenuItem Header="Delete Fence…" Foreground="{DynamicResource Menu.Danger}" Click="DeleteFence_Click"/>
                         <Separator/>
                         <MenuItem Header="Close Fence" Click="Close_Click"/>
                     </ContextMenu>
@@ -295,7 +298,7 @@
                        Text="Drag items here"
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
-                       Foreground="#9AA3B5"
+                       Foreground="{DynamicResource Fence.Hint}"
                        Opacity="0.7"
                        FontSize="13"
                        IsHitTestVisible="False"
@@ -358,7 +361,7 @@
                      UseLayoutRounding="True"/>
                                     <!-- Two-line label, like Fences -->
                                     <TextBlock Text="{Binding DisplayName}"
-                     Foreground="#EAEAEA"
+                     Foreground="{DynamicResource Fence.LabelFg}"
                      FontSize="11"
                      Margin="0,5,0,0"
                      TextAlignment="Center"

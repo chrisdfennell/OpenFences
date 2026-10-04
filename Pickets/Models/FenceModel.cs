@@ -55,6 +55,11 @@ namespace Pickets
         // its own shortcuts. FolderPath then points at the mirrored folder.
         public bool IsPortal { get; set; } = false;
 
+        // Portals only: show just files matching these name patterns ("*.pdf; *.docx"), and/or
+        // items changed in the last N days. Null = no filter (see Services/PortalFilter).
+        public string? PortalFilter { get; set; }
+        public int? PortalMaxAgeDays { get; set; }
+
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;
 

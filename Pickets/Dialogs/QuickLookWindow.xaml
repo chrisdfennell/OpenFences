@@ -20,7 +20,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Border Margin="18" CornerRadius="14" Background="#F2101319" BorderBrush="{StaticResource Hub.BorderStrong}" BorderThickness="1">
+    <Border Margin="18" CornerRadius="14" Background="{DynamicResource QuickLook.Bg}" BorderBrush="{DynamicResource Hub.BorderStrong}" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.55" Color="#000000"/>
         </Border.Effect>
@@ -35,12 +35,12 @@
                 </StackPanel>
                 <Image x:Name="HeaderIcon" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Center"/>
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock x:Name="NameText" Foreground="#E8EBF2" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="DetailsText" Foreground="#9AA3B5" FontSize="12.5" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                    <TextBlock x:Name="NameText" Foreground="{DynamicResource Hub.Text}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="DetailsText" Foreground="{DynamicResource Hub.Muted}" FontSize="12.5" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                 </StackPanel>
             </DockPanel>
 
-            <Border DockPanel.Dock="Top" Height="1" Background="{StaticResource Hub.Border}"/>
+            <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Hub.Border}"/>
 
             <!-- Body: one of these is visible depending on the file -->
             <Grid x:Name="Body" Margin="16">
@@ -50,18 +50,18 @@
                     <MediaElement x:Name="Player" LoadedBehavior="Manual" UnloadedBehavior="Close" Stretch="Uniform"
                                   MediaOpened="Player_MediaOpened" MediaEnded="Player_MediaEnded"/>
                     <TextBlock x:Name="AudioGlyph" Style="{StaticResource Hub.Glyph}" Text="&#xE8D6;" FontSize="96"
-                               Foreground="#3B82F6" HorizontalAlignment="Center" Visibility="Collapsed"/>
+                               Foreground="{DynamicResource Hub.Accent}" HorizontalAlignment="Center" Visibility="Collapsed"/>
                     <Button x:Name="PlayPause" Style="{StaticResource Hub.SecondaryButton}" HorizontalAlignment="Center" VerticalAlignment="Bottom"
                             Margin="0,0,0,8" Click="PlayPause_Click" FontFamily="{StaticResource Hub.IconFont}" Content="&#xE769;" ToolTip="Play / pause"/>
                 </Grid>
 
                 <TextBox x:Name="TextView" Visibility="Collapsed" IsReadOnly="True" BorderThickness="0" Background="Transparent"
-                         Foreground="#D6DCE6" FontFamily="Cascadia Code, Consolas" FontSize="13" TextWrapping="NoWrap"
+                         Foreground="{DynamicResource QuickLook.Code}" FontFamily="Cascadia Code, Consolas" FontSize="13" TextWrapping="NoWrap"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
 
                 <StackPanel x:Name="InfoView" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <Image x:Name="InfoImage" Width="256" Height="256" Stretch="Uniform"/>
-                    <TextBlock x:Name="InfoText" Foreground="#9AA3B5" Margin="0,18,0,0" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="520"/>
+                    <TextBlock x:Name="InfoText" Foreground="{DynamicResource Hub.Muted}" Margin="0,18,0,0" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="520"/>
                 </StackPanel>
             </Grid>
         </DockPanel>

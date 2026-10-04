@@ -2,20 +2,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <SolidColorBrush x:Key="Hub.Bg"           Color="#0E1117"/>
-    <SolidColorBrush x:Key="Hub.Sidebar"      Color="#12151C"/>
-    <SolidColorBrush x:Key="Hub.Surface"      Color="#161A22"/>
-    <SolidColorBrush x:Key="Hub.SurfaceHover" Color="#1D222D"/>
-    <SolidColorBrush x:Key="Hub.Control"      Color="#1C212B"/>
-    <SolidColorBrush x:Key="Hub.Border"       Color="#262C38"/>
-    <SolidColorBrush x:Key="Hub.BorderStrong" Color="#353D4D"/>
-    <SolidColorBrush x:Key="Hub.Text"         Color="#E8EBF2"/>
-    <SolidColorBrush x:Key="Hub.Muted"        Color="#9AA3B5"/>
-    <SolidColorBrush x:Key="Hub.Accent"       Color="#3B82F6"/>
-    <SolidColorBrush x:Key="Hub.AccentHover"  Color="#2F6FE0"/>
-    <SolidColorBrush x:Key="Hub.AccentSoft"   Color="#1B2A4A"/>
-    <SolidColorBrush x:Key="Hub.Danger"       Color="#F87171"/>
-
     <FontFamily x:Key="Hub.IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
     <!-- ===== Text ===== -->
@@ -30,7 +16,7 @@
         <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
     </Style>
     <Style x:Key="Hub.PageSubtitle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="Margin" Value="0,4,0,0"/>
     </Style>
     <Style x:Key="Hub.SectionTitle" TargetType="TextBlock">
@@ -43,13 +29,13 @@
     </Style>
     <Style x:Key="Hub.RowText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12.5"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="Margin" Value="0,2,0,0"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style x:Key="Hub.TileGlyph" TargetType="TextBlock" BasedOn="{StaticResource Hub.Glyph}">
         <Setter Property="FontSize" Value="22"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Accent}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Accent}"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Margin" Value="0,0,0,12"/>
     </Style>
@@ -60,15 +46,15 @@
     </Style>
     <Style x:Key="Hub.TileText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12.5"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="Margin" Value="0,4,0,0"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <!-- ===== Containers ===== -->
     <Style x:Key="Hub.Card" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource Hub.Surface}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Hub.Border}"/>
+        <Setter Property="Background" Value="{DynamicResource Hub.Surface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Hub.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
     </Style>
@@ -88,15 +74,15 @@
     </Style>
     <Style x:Key="Hub.RowDivider" TargetType="Border">
         <Setter Property="Height" Value="1"/>
-        <Setter Property="Background" Value="{StaticResource Hub.Border}"/>
+        <Setter Property="Background" Value="{DynamicResource Hub.Border}"/>
         <Setter Property="Margin" Value="16,0"/>
     </Style>
 
     <!-- ===== Buttons ===== -->
     <Style x:Key="Hub.ButtonBase" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
-        <Setter Property="Background" Value="{StaticResource Hub.Control}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Hub.BorderStrong}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
+        <Setter Property="Background" Value="{DynamicResource Hub.Control}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Hub.BorderStrong}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="14,7"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -110,7 +96,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.SurfaceHover}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.SurfaceHover}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
@@ -131,8 +117,8 @@
         <Setter Property="MinWidth" Value="72"/>
     </Style>
     <Style x:Key="Hub.PrimaryButton" TargetType="Button" BasedOn="{StaticResource Hub.ButtonBase}">
-        <Setter Property="Background" Value="{StaticResource Hub.Accent}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource Hub.Accent}"/>
+        <Setter Property="Background" Value="{DynamicResource Hub.Accent}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
         <Setter Property="Foreground" Value="White"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -142,7 +128,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.AccentHover}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.AccentHover}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -151,15 +137,15 @@
     </Style>
     <Style x:Key="Hub.DangerButton" TargetType="Button" BasedOn="{StaticResource Hub.ButtonBase}">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="#7F1D1D"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Danger}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Hub.DangerEdge}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Danger}"/>
     </Style>
     <Style x:Key="Hub.IconButton" TargetType="Button">
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="32"/>
         <Setter Property="FontFamily" Value="{StaticResource Hub.IconFont}"/>
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -169,8 +155,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.SurfaceHover}"/>
-                            <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.SurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -180,7 +166,7 @@
     <Style x:Key="Hub.IconDangerButton" TargetType="Button" BasedOn="{StaticResource Hub.IconButton}">
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Foreground" Value="{StaticResource Hub.Danger}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Hub.Danger}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -191,7 +177,7 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="FontFamily" Value="{StaticResource Hub.IconFont}"/>
         <Setter Property="FontSize" Value="10"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -200,8 +186,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="#222833"/>
-                            <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.CaptionHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -228,20 +214,20 @@
 
     <!-- Quick-action tile on the Home page -->
     <Style x:Key="Hub.ActionTile" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
         <Setter Property="Margin" Value="6"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="bd" Background="{StaticResource Hub.Surface}" BorderBrush="{StaticResource Hub.Border}"
+                    <Border x:Name="bd" Background="{DynamicResource Hub.Surface}" BorderBrush="{DynamicResource Hub.Border}"
                             BorderThickness="1" CornerRadius="12" Padding="16,16,16,18">
                         <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Top"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.SurfaceHover}"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Hub.Accent}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.SurfaceHover}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
@@ -254,7 +240,7 @@
 
     <!-- Sidebar navigation item -->
     <Style x:Key="Hub.NavItem" TargetType="RadioButton">
-        <Setter Property="Foreground" Value="{StaticResource Hub.Muted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Muted}"/>
         <Setter Property="FontSize" Value="14.5"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Margin" Value="0,0,0,4"/>
@@ -265,18 +251,18 @@
                         <Border x:Name="bd" Background="Transparent" CornerRadius="8" Padding="14,10">
                             <ContentPresenter VerticalAlignment="Center"/>
                         </Border>
-                        <Border x:Name="bar" Width="3" Height="18" CornerRadius="2" Background="{StaticResource Hub.Accent}"
+                        <Border x:Name="bar" Width="3" Height="18" CornerRadius="2" Background="{DynamicResource Hub.Accent}"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" Visibility="Collapsed"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.SurfaceHover}"/>
-                            <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.SurfaceHover}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{StaticResource Hub.AccentSoft}"/>
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Hub.AccentSoft}"/>
                             <Setter TargetName="bar" Property="Visibility" Value="Visible"/>
-                            <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -293,13 +279,13 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <Grid Width="44" Height="24" Background="Transparent">
-                        <Border x:Name="track" CornerRadius="12" Background="#2A303C" BorderBrush="#4A5366" BorderThickness="1"/>
-                        <Ellipse x:Name="thumb" Width="14" Height="14" Fill="#C9CFDA" HorizontalAlignment="Left" Margin="5,0,0,0"/>
+                        <Border x:Name="track" CornerRadius="12" Background="{DynamicResource Hub.ToggleTrack}" BorderBrush="{DynamicResource Hub.ToggleEdge}" BorderThickness="1"/>
+                        <Ellipse x:Name="thumb" Width="14" Height="14" Fill="{DynamicResource Hub.ToggleThumb}" HorizontalAlignment="Left" Margin="5,0,0,0"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="track" Property="Background" Value="{StaticResource Hub.Accent}"/>
-                            <Setter TargetName="track" Property="BorderBrush" Value="{StaticResource Hub.Accent}"/>
+                            <Setter TargetName="track" Property="Background" Value="{DynamicResource Hub.Accent}"/>
+                            <Setter TargetName="track" Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
                             <Setter TargetName="thumb" Property="Fill" Value="White"/>
                             <Setter TargetName="thumb" Property="HorizontalAlignment" Value="Right"/>
                             <Setter TargetName="thumb" Property="Margin" Value="0,0,5,0"/>
@@ -320,20 +306,20 @@
         <Setter Property="IsReadOnly" Value="True"/>
         <Setter Property="IsReadOnlyCaretVisible" Value="False"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Foreground" Value="{StaticResource Hub.Text}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Hub.Text}"/>
         <Setter Property="FontFamily" Value="Cascadia Code, Consolas"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Margin" Value="16,0,0,0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
-                    <Border x:Name="bd" Background="{StaticResource Hub.Bg}" BorderBrush="{StaticResource Hub.BorderStrong}"
+                    <Border x:Name="bd" Background="{DynamicResource Hub.Bg}" BorderBrush="{DynamicResource Hub.BorderStrong}"
                             BorderThickness="1" CornerRadius="8">
                         <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Hub.Accent}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Hub.Accent}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

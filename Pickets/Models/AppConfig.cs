@@ -29,6 +29,8 @@ namespace Pickets
         public bool GlobalHotkeys { get; set; } = true;
         public string SearchHotkey { get; set; } = "Ctrl+Alt+F";
         public string ToggleFencesHotkey { get; set; } = "Ctrl+Alt+H";
+        // Brings every fence in front of app windows until you click elsewhere (Services/FencesInFront).
+        public string FrontHotkey { get; set; } = "Ctrl+Alt+Space";
 
         // The "still running in the tray" notification is shown once, not on every minimize.
         public bool TrayHintShown { get; set; }
@@ -49,6 +51,9 @@ namespace Pickets
 
         // Tile labels leave out file extensions ("Budget" instead of "Budget.xlsx").
         public bool HideFileExtensions { get; set; } = false;
+
+        // Light or dark look; System follows Windows' app mode.
+        public Pickets.Services.AppTheme Theme { get; set; } = Pickets.Services.AppTheme.System;
     }
 
     // How a desktop item is matched to a target fence by the rules engine.

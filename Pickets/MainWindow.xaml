@@ -7,8 +7,8 @@
         MinWidth="860" MinHeight="560"
         WindowStyle="None"
         ResizeMode="CanResize"
-        Background="#0E1117"
-        Foreground="#E8EBF2"
+        Background="{DynamicResource Hub.Bg}"
+        Foreground="{DynamicResource Hub.Text}"
         FontFamily="Segoe UI Variable Text, Segoe UI"
         FontSize="14"
         UseLayoutRounding="True"
@@ -31,7 +31,7 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Background="{StaticResource Hub.Bg}">
+    <Grid Background="{DynamicResource Hub.Bg}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="232"/>
             <ColumnDefinition Width="*"/>
@@ -42,7 +42,7 @@
         </Grid.RowDefinitions>
 
         <!-- ===== Title bar ===== -->
-        <Border Grid.ColumnSpan="2" Background="{StaticResource Hub.Sidebar}" BorderBrush="{StaticResource Hub.Border}" BorderThickness="0,0,0,1">
+        <Border Grid.ColumnSpan="2" Background="{DynamicResource Hub.Sidebar}" BorderBrush="{DynamicResource Hub.Border}" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="False">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                     <Image Source="pack://application:,,,/Pickets;component/Assets/open-fence.ico" Width="18" Height="18"/>
@@ -60,7 +60,7 @@
         </Border>
 
         <!-- ===== Sidebar ===== -->
-        <Border Grid.Row="1" Background="{StaticResource Hub.Sidebar}" BorderBrush="{StaticResource Hub.Border}" BorderThickness="0,0,1,0">
+        <Border Grid.Row="1" Background="{DynamicResource Hub.Sidebar}" BorderBrush="{DynamicResource Hub.Border}" BorderThickness="0,0,1,0">
             <DockPanel Margin="12,16,12,14">
                 <StackPanel DockPanel.Dock="Bottom">
                     <Button Style="{StaticResource Hub.SecondaryButton}" HorizontalAlignment="Stretch" Click="MinimizeButton_Click"
@@ -70,7 +70,7 @@
                             <TextBlock Text="Hide to tray"/>
                         </StackPanel>
                     </Button>
-                    <TextBlock x:Name="SidebarVersion" Margin="4,12,0,0" FontSize="12" Foreground="{StaticResource Hub.Muted}"/>
+                    <TextBlock x:Name="SidebarVersion" Margin="4,12,0,0" FontSize="12" Foreground="{DynamicResource Hub.Muted}"/>
                 </StackPanel>
 
                 <StackPanel>
@@ -161,7 +161,7 @@
 
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Details}" Foreground="{StaticResource Hub.Muted}" FontSize="12.5" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Details}" Foreground="{DynamicResource Hub.Muted}" FontSize="12.5" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                         </StackPanel>
 
                                         <Border Grid.Column="2" Style="{StaticResource Hub.Pill}" Background="{Binding StateBrush}" Margin="12,0">
@@ -180,8 +180,8 @@
                     </ItemsControl>
 
                     <Border Style="{StaticResource Hub.Card}" Margin="0,18,0,0" Padding="16,12">
-                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Hub.Muted}">
-                            <Run Foreground="{StaticResource Hub.Text}" FontWeight="SemiBold" Text="Tips:"/>
+                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource Hub.Muted}">
+                            <Run Foreground="{DynamicResource Hub.Text}" FontWeight="SemiBold" Text="Tips:"/>
                             <Run Text="right-drag on empty desktop to draw a fence · double-click a title to roll it up · right-click a title for colors, backgrounds and more."/>
                         </TextBlock>
                     </Border>
@@ -196,6 +196,13 @@
                     <TextBlock Text="General" Style="{StaticResource Hub.SectionTitle}" Margin="0,26,0,10"/>
                     <Border Style="{StaticResource Hub.Card}">
                         <StackPanel>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <Button x:Name="ThemeButton" DockPanel.Dock="Right" Style="{StaticResource Hub.SecondaryButton}"
+                                        Margin="16,0,0,0" MinWidth="150" Click="ThemeButton_Click"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Theme"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Light or dark look for this window, menus and fences. System follows your Windows setting."/></StackPanel>
+                            </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
                             <DockPanel Style="{StaticResource Hub.SettingRow}">
                                 <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding RunAtStartup}" Click="Setting_Changed"/>
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Start with Windows"/>
@@ -275,7 +282,14 @@
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Hide or show all fences"/>
                                     <TextBlock Style="{StaticResource Hub.RowText}" Text="Use Ctrl, Alt, Shift or Win plus a key."/></StackPanel>
                             </DockPanel>
-                            <TextBlock x:Name="HotkeyStatus" Margin="16,0,16,14" TextWrapping="Wrap" Foreground="#F59E0B" Visibility="Collapsed"/>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <TextBox x:Name="FrontHotkeyBox" DockPanel.Dock="Right" Style="{StaticResource Hub.HotkeyBox}" Tag="Front"
+                                         PreviewKeyDown="HotkeyBox_PreviewKeyDown" GotKeyboardFocus="HotkeyBox_GotFocus" LostKeyboardFocus="HotkeyBox_LostFocus"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Bring fences in front of windows"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Use your fences without minimizing anything. Click another window or press Esc to put them back."/></StackPanel>
+                            </DockPanel>
+                            <TextBlock x:Name="HotkeyStatus" Margin="16,0,16,14" TextWrapping="Wrap" Foreground="{DynamicResource Hub.Warning}" Visibility="Collapsed"/>
                         </StackPanel>
                     </Border>
 
@@ -307,7 +321,7 @@
                     </DockPanel>
                     <Border Style="{StaticResource Hub.Card}">
                         <StackPanel>
-                            <TextBlock x:Name="NoLayoutsText" Margin="16,14" Foreground="{StaticResource Hub.Muted}"
+                            <TextBlock x:Name="NoLayoutsText" Margin="16,14" Foreground="{DynamicResource Hub.Muted}"
                                        Text="No saved layouts yet. Pickets also saves one automatically before big changes."/>
                             <ItemsControl x:Name="LayoutList">
                                 <ItemsControl.ItemTemplate>
@@ -363,10 +377,10 @@
                                 <Image Source="pack://application:,,,/Pickets;component/Assets/open-fence.ico" Width="64" Height="64"/>
                                 <StackPanel Margin="18,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="Pickets" FontSize="28" FontWeight="SemiBold"/>
-                                    <TextBlock x:Name="AboutVersion" Foreground="{StaticResource Hub.Muted}" Margin="0,2,0,0"/>
+                                    <TextBlock x:Name="AboutVersion" Foreground="{DynamicResource Hub.Muted}" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </StackPanel>
-                            <TextBlock Margin="0,18,0,0" TextWrapping="Wrap" Foreground="{StaticResource Hub.Muted}" MaxWidth="640" HorizontalAlignment="Left"
+                            <TextBlock Margin="0,18,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Hub.Muted}" MaxWidth="640" HorizontalAlignment="Left"
                                        Text="A free, open-source app that organizes your Windows desktop into movable, resizable fences. Your files stay where they are; fences only decide where each item is shown."/>
                             <WrapPanel Margin="0,20,0,0">
                                 <Button Style="{StaticResource Hub.SecondaryButton}" Margin="0,0,8,8" Content="Website" Tag="https://chrisdfennell.github.io/Pickets/" Click="Link_Click"/>
@@ -377,7 +391,7 @@
                             </WrapPanel>
                         </StackPanel>
                     </Border>
-                    <TextBlock Margin="4,18,0,0" TextWrapping="Wrap" FontSize="12.5" Foreground="{StaticResource Hub.Muted}"
+                    <TextBlock Margin="4,18,0,0" TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Hub.Muted}"
                                Text="© Christopher Fennell · MIT license · Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner."/>
                 </StackPanel>
             </Grid>

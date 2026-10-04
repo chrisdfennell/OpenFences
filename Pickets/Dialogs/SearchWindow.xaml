@@ -15,7 +15,7 @@
 
     <Window.Resources>
         <Style x:Key="ResultItem" TargetType="ListBoxItem">
-            <Setter Property="Foreground" Value="#EDEDED"/>
+            <Setter Property="Foreground" Value="{DynamicResource Dlg.Fg}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -25,10 +25,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#232A39"/>
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Search.Hover}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#2D3B57"/>
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Search.Selected}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -38,7 +38,7 @@
     </Window.Resources>
 
     <Border Margin="16" Padding="12" CornerRadius="12"
-            Background="#1B1D23" BorderBrush="#3B3F4C" BorderThickness="1">
+            Background="{DynamicResource Search.Bg}" BorderBrush="{DynamicResource Search.Edge}" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.5" Color="#000000"/>
         </Border.Effect>
@@ -47,17 +47,17 @@
                 <TextBox x:Name="QueryBox"
                          FontSize="18"
                          Padding="10,8"
-                         Foreground="#FFFFFF"
-                         Background="#22252E"
-                         BorderBrush="#3A4453"
+                         Foreground="{DynamicResource Dlg.InputFg}"
+                         Background="{DynamicResource Search.InputBg}"
+                         BorderBrush="{DynamicResource Dlg.InputEdge}"
                          BorderThickness="1"
-                         CaretBrush="#FFFFFF"
+                         CaretBrush="{DynamicResource Dlg.InputFg}"
                          TextChanged="QueryBox_TextChanged"/>
                 <TextBlock x:Name="Placeholder"
                            Text="Search fences…"
                            FontSize="18"
                            Margin="13,9,0,0"
-                           Foreground="#6E7584"
+                           Foreground="{DynamicResource Search.Hint}"
                            IsHitTestVisible="False"/>
             </Grid>
 
@@ -74,7 +74,7 @@
                         <DockPanel>
                             <Image Width="24" Height="24" Source="{Binding Item.Icon}" Margin="0,0,10,0"/>
                             <TextBlock DockPanel.Dock="Right" Text="{Binding FenceName}"
-                                       Foreground="#8A93A6" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                       Foreground="{DynamicResource Search.Where}" FontSize="12" VerticalAlignment="Center" Margin="12,0,0,0"/>
                             <TextBlock Text="{Binding Item.DisplayName}" FontSize="14"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                         </DockPanel>
@@ -85,7 +85,7 @@
             <TextBlock x:Name="Hint"
                        Margin="4,8,0,0"
                        FontSize="11"
-                       Foreground="#6E7584"
+                       Foreground="{DynamicResource Search.Hint}"
                        Text="↑↓ choose · Enter open · Esc close"/>
         </StackPanel>
     </Border>

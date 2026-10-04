@@ -6,8 +6,8 @@
         SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="#1B1B20"
-        Foreground="#EDEDED"
+        Background="{DynamicResource Dlg.Bg}"
+        Foreground="{DynamicResource Dlg.Fg}"
         WindowStyle="ToolWindow"
         ShowInTaskbar="True"
         Topmost="True"
@@ -16,16 +16,11 @@
 
     <Window.Resources>
         <!-- Buttons (same look as InputDialog) -->
-        <SolidColorBrush x:Key="BtnBg"       Color="#2D3547"/>
-        <SolidColorBrush x:Key="BtnBgHover"  Color="#38425A"/>
-        <SolidColorBrush x:Key="BtnBgPress"  Color="#2A344C"/>
-        <SolidColorBrush x:Key="BtnBorder"   Color="#55607A"/>
-        <SolidColorBrush x:Key="BtnFg"       Color="#FFFFFF"/>
 
         <Style TargetType="Button">
-            <Setter Property="Foreground" Value="{StaticResource BtnFg}"/>
-            <Setter Property="Background" Value="{StaticResource BtnBg}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BtnBorder}"/>
+            <Setter Property="Foreground" Value="{DynamicResource Dlg.BtnFg}"/>
+            <Setter Property="Background" Value="{DynamicResource Dlg.BtnBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Dlg.BtnBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -45,10 +40,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BtnBgHover}"/>
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Dlg.BtnHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BtnBgPress}"/>
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Dlg.BtnPress}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.6"/>
@@ -60,26 +55,26 @@
         </Style>
     </Window.Resources>
 
-    <Border Padding="16" Background="#26262C" CornerRadius="12" BorderBrush="#3B3B46" BorderThickness="1">
+    <Border Padding="16" Background="{DynamicResource Dlg.Card}" CornerRadius="12" BorderBrush="{DynamicResource Dlg.CardEdge}" BorderThickness="1">
         <StackPanel>
             <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,6"/>
-            <TextBlock x:Name="SubtitleText" Foreground="#C9CFDA" TextWrapping="Wrap" Margin="0,0,0,10"/>
+            <TextBlock x:Name="SubtitleText" Foreground="{DynamicResource Dlg.Body}" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
-            <TextBlock Text="What's new" Foreground="#9AA3B2" Margin="0,0,0,4"/>
+            <TextBlock Text="What's new" Foreground="{DynamicResource Dlg.Subtle}" Margin="0,0,0,4"/>
             <TextBox x:Name="NotesBox"
                      IsReadOnly="True"
                      TextWrapping="Wrap"
                      VerticalScrollBarVisibility="Auto"
                      Height="200"
                      Padding="8"
-                     Foreground="#FFFFFF"
-                     Background="#202533"
-                     BorderBrush="#3A4453"
+                     Foreground="{DynamicResource Dlg.InputFg}"
+                     Background="{DynamicResource Dlg.InputBg}"
+                     BorderBrush="{DynamicResource Dlg.InputEdge}"
                      BorderThickness="1"
                      Margin="0,0,0,12"/>
 
             <ProgressBar x:Name="Progress" Height="6" Minimum="0" Maximum="1" Visibility="Collapsed" Margin="0,0,0,6"/>
-            <TextBlock x:Name="StatusText" Foreground="#C9CFDA" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,10"/>
+            <TextBlock x:Name="StatusText" Foreground="{DynamicResource Dlg.Body}" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,10"/>
 
             <DockPanel LastChildFill="False">
                 <Button x:Name="SkipButton" DockPanel.Dock="Left" Content="Skip this version" Click="Skip_Click"/>

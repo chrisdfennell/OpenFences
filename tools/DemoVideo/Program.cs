@@ -46,6 +46,11 @@ internal static class Program
         Directory.CreateDirectory(_work);
 
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        // Same order as App.xaml: the color palette first, then the menu styles that use it.
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("pack://application:,,,/Pickets;component/Themes/Palette.Dark.xaml")
+        });
         app.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
             Source = new Uri("pack://application:,,,/Pickets;component/Themes/DarkMenu.xaml")

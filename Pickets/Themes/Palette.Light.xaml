@@ -1,0 +1,77 @@
+<!-- Light palette: same keys as Palette.Dark.xaml (see there). -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Pickets window -->
+    <SolidColorBrush x:Key="Hub.Bg"           Color="#F3F4F7"/>
+    <SolidColorBrush x:Key="Hub.Sidebar"      Color="#EAECF1"/>
+    <SolidColorBrush x:Key="Hub.Surface"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Hub.SurfaceHover" Color="#EEF1F6"/>
+    <SolidColorBrush x:Key="Hub.Control"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Hub.Border"       Color="#E0E3EA"/>
+    <SolidColorBrush x:Key="Hub.BorderStrong" Color="#C9CFD9"/>
+    <SolidColorBrush x:Key="Hub.Text"         Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Hub.Muted"        Color="#5C6577"/>
+    <SolidColorBrush x:Key="Hub.Accent"       Color="#2563EB"/>
+    <SolidColorBrush x:Key="Hub.AccentHover"  Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="Hub.AccentSoft"   Color="#DCE7FD"/>
+    <SolidColorBrush x:Key="Hub.Danger"       Color="#DC2626"/>
+    <SolidColorBrush x:Key="Hub.DangerEdge"   Color="#F5B5B5"/>
+    <SolidColorBrush x:Key="Hub.Warning"      Color="#B45309"/>
+    <SolidColorBrush x:Key="Hub.CaptionHover" Color="#E2E5EB"/>
+    <SolidColorBrush x:Key="Hub.ToggleTrack"  Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Hub.ToggleEdge"   Color="#8A93A5"/>
+    <SolidColorBrush x:Key="Hub.ToggleThumb"  Color="#5C6577"/>
+    <SolidColorBrush x:Key="Hub.StateShown"   Color="#D3F2DE"/>
+    <SolidColorBrush x:Key="Hub.StateClosed"  Color="#E6E9EF"/>
+    <SolidColorBrush x:Key="Hub.StateRolled"  Color="#DCE7FD"/>
+    <SolidColorBrush x:Key="Hub.Swatch"       Color="#B4BBC8"/>
+
+    <!-- Dialogs -->
+    <SolidColorBrush x:Key="Dlg.Bg"        Color="#F3F4F7"/>
+    <SolidColorBrush x:Key="Dlg.Card"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Dlg.CardEdge"  Color="#DADEE6"/>
+    <SolidColorBrush x:Key="Dlg.Fg"        Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Dlg.Strong"    Color="#0B0D12"/>
+    <SolidColorBrush x:Key="Dlg.Body"      Color="#3A4150"/>
+    <SolidColorBrush x:Key="Dlg.Subtle"    Color="#5C6577"/>
+    <SolidColorBrush x:Key="Dlg.BtnBg"     Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Dlg.BtnHover"  Color="#EEF1F6"/>
+    <SolidColorBrush x:Key="Dlg.BtnPress"  Color="#E2E6ED"/>
+    <SolidColorBrush x:Key="Dlg.BtnBorder" Color="#C9CFD9"/>
+    <SolidColorBrush x:Key="Dlg.BtnFg"     Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Dlg.InputBg"   Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Dlg.InputEdge" Color="#C9CFD9"/>
+    <SolidColorBrush x:Key="Dlg.InputFg"   Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Dlg.Accent"    Color="#2563EB"/>
+
+    <!-- Menus and scroll bars -->
+    <SolidColorBrush x:Key="Menu.Background" Color="#FBFBFD"/>
+    <SolidColorBrush x:Key="Menu.Bar"        Color="#F3F4F7"/>
+    <SolidColorBrush x:Key="Menu.Border"     Color="#D5DAE2"/>
+    <SolidColorBrush x:Key="Menu.Foreground" Color="#1A1D24"/>
+    <SolidColorBrush x:Key="Menu.Subtle"     Color="#5C6577"/>
+    <SolidColorBrush x:Key="Menu.ItemHover"  Color="#EAEEF5"/>
+    <SolidColorBrush x:Key="Menu.ItemPress"  Color="#DDE3EE"/>
+    <SolidColorBrush x:Key="Menu.Accent"     Color="#2563EB"/>
+    <SolidColorBrush x:Key="Menu.Separator"  Color="#E0E3EA"/>
+    <SolidColorBrush x:Key="Menu.BoxBg"      Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Menu.BoxEdge"    Color="#8A93A5"/>
+    <SolidColorBrush x:Key="Menu.Danger"     Color="#DC2626"/>
+    <SolidColorBrush x:Key="Scroll.Track"    Color="#EEF0F4"/>
+    <SolidColorBrush x:Key="Scroll.Thumb"    Color="#C3C9D3"/>
+    <SolidColorBrush x:Key="Scroll.ThumbEdge" Color="#B4BBC7"/>
+
+    <!-- Search and Quick Look -->
+    <SolidColorBrush x:Key="Search.Bg"       Color="#FBFBFD"/>
+    <SolidColorBrush x:Key="Search.Edge"     Color="#D5DAE2"/>
+    <SolidColorBrush x:Key="Search.InputBg"  Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Search.Hover"    Color="#EAEEF5"/>
+    <SolidColorBrush x:Key="Search.Selected" Color="#DCE7FD"/>
+    <SolidColorBrush x:Key="Search.Hint"     Color="#7A8294"/>
+    <SolidColorBrush x:Key="Search.Where"    Color="#5C6577"/>
+    <SolidColorBrush x:Key="QuickLook.Bg"    Color="#F7FBFBFD"/>
+    <!-- The "Default" swatch in a fence's Color menu -->
+    <SolidColorBrush x:Key="Fence.DefaultSwatch" Color="#E3E6EB"/>
+    <SolidColorBrush x:Key="QuickLook.Code"  Color="#2A303C"/>
+</ResourceDictionary>

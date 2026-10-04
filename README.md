@@ -41,7 +41,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 - **Fences hold your real desktop items.** Each desktop item shows in exactly one fence; anything not in another fence lives in the **Desktop** fence.
 - **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
-- **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it.
+- **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
 - **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions, everything else), and the Desktop fence can be re-sorted on demand.
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
@@ -51,6 +51,8 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ### Find and open
 
+- **Fences in front of your windows.** **Ctrl+Alt+Space** brings every fence above your open apps, so you can use them without minimizing anything. Click another window or press Esc and they go back.
+- **Open all.** The fence menu's **Open all** opens everything in a fence (or tab) at once, e.g. a "Work" fence that starts your work apps.
 - **Search every fence.** **Ctrl+Alt+F** searches every fence and tab: matches are listed (Enter opens one), fences come to the front and everything else fades out.
 - **Quick Look.** Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
 - **The real Windows right-click menu.** Open with, Send to, Properties and menu entries other apps add, plus **Remove from fence**. **Rename** (or F2) renames the actual file, and it stays in its fence, as do files renamed in Explorer or saved by apps such as Office.
@@ -58,6 +60,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ### Make it yours
 
+- **Light or dark.** Pickets follows Windows' light or dark app mode, or pick one in Settings. The Pickets window, menus, dialogs and fences all switch; fences keep any color you gave them, with text that stays readable.
 - **Style each fence.** Colors (presets or any custom color), title size, transparency, **frosted glass**, or a **picture or looping video background** (fill, fit or stretch, optional darkening, sound on or off per video).
 - **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden. Hover a tile for its full name, type, size, date and folder.
 - **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles. Rolled-up fences show how many items they hold.
@@ -67,7 +70,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 ### Stays out of your way
 
 - **One home for everything.** The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete it, plus quick actions, a **Settings** page with simple switches, and About. It hides to the system tray and reopens where you left it.
-- **Global shortcuts.** **Ctrl+Alt+H** hides or shows all fences from anywhere; both shortcuts can be changed in Settings.
+- **Global shortcuts.** **Ctrl+Alt+H** hides or shows all fences from anywhere; all three shortcuts can be changed in Settings.
 - **Multi-monitor aware.** Each fence remembers where you put it for every monitor setup (docked, undocked, projector) and is never left off-screen.
 - **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import.
 - **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
@@ -93,10 +96,11 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ## 🚀 Using Pickets
 
-- **Create a fence:** right-drag a rectangle on empty desktop, or **New fence** on the Pickets window's Home page.
+- **Create a fence:** right-drag a rectangle on empty desktop, or **New fence** on the Pickets window's Home page. The right-drag menu can also put a **folder portal** in that box.
 - **Fill it:** drag tiles in from other fences, drop files from Explorer, or use **Auto-import desktop** on the Home page.
 - **Fence options:** right-click a fence's title bar (or click ✎) to rename it, sort, change icon size, add a tab, set a color, background, transparency or title size, lock it, or delete it.
 - **Find something:** **Ctrl+Alt+F**, type, Enter. Or select a tile and press **Space** to preview it.
+- **Use fences while apps are open:** **Ctrl+Alt+Space**; click another window or press Esc when you're done.
 - **Hide or show all fences:** **Ctrl+Alt+H**, or double-click empty desktop if that's turned on in Settings.
 - **Reopen a closed fence:** open the Pickets window; closed fences are listed on Home with an **Open** button.
 - **Save or restore a layout:** **Settings → Layouts**.
@@ -147,7 +151,6 @@ In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and
 
 - Compact list view for long fences
 - Smarter rules (by name pattern, age or size)
-- Light theme that follows Windows
 - Export and import layouts as a file
 - Different fences per virtual desktop
 - Sticky-note fences

@@ -3,25 +3,15 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ===== Colors ===== -->
-    <SolidColorBrush x:Key="DarkMenu.Background" Color="#151821"/>
-    <SolidColorBrush x:Key="DarkMenu.Border"     Color="#242938"/>
-    <SolidColorBrush x:Key="DarkMenu.Foreground" Color="#FFFFFFFF"/>
-    <SolidColorBrush x:Key="DarkMenu.Subtle"     Color="#A8AEBD"/>
-
-    <SolidColorBrush x:Key="DarkMenu.ItemHover"  Color="#232A39"/>
-    <SolidColorBrush x:Key="DarkMenu.ItemPress"  Color="#2D3547"/>
-    <SolidColorBrush x:Key="DarkMenu.Accent"     Color="#3B82F6"/>
-
-    <SolidColorBrush x:Key="DarkMenu.Separator"  Color="#30384A"/>
 
     <!-- ===== Menu (top bar) ===== -->
     <Style TargetType="Menu">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
-        <Setter Property="Background" Value="#11141B"/>
+        <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
+        <Setter Property="Background" Value="{DynamicResource Menu.Bar}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource DarkMenu.Border}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Menu.Border}"/>
         <Setter Property="Padding" Value="4,0"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -40,9 +30,9 @@
     <Style TargetType="ContextMenu">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
-        <Setter Property="Background" Value="{StaticResource DarkMenu.Background}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource DarkMenu.Border}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
+        <Setter Property="Background" Value="{DynamicResource Menu.Background}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Menu.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="6"/>
         <Setter Property="Template">
@@ -63,7 +53,7 @@
 
     <!-- ===== MenuItem (top-level & submenu) ===== -->
     <Style TargetType="MenuItem">
-        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="12,8"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -100,7 +90,7 @@
                                 Width="14"
                                 Margin="0,0,8,0"
                                 VerticalAlignment="Center"
-                                Foreground="{StaticResource DarkMenu.Accent}"
+                                Foreground="{DynamicResource Menu.Accent}"
                                 FontWeight="Bold"
                                 Visibility="Collapsed"/>
 
@@ -113,7 +103,7 @@
                             <TextBlock Grid.Column="2"
                          Margin="12,0,6,0"
                          VerticalAlignment="Center"
-                         Foreground="{StaticResource DarkMenu.Subtle}"
+                         Foreground="{DynamicResource Menu.Subtle}"
                          Text="{TemplateBinding InputGestureText}"/>
                         </Grid>
 
@@ -124,7 +114,7 @@
                   HorizontalAlignment="Right"
                   VerticalAlignment="Center"
                   Width="8" Height="8"
-                  Fill="{StaticResource DarkMenu.Subtle}"
+                  Fill="{DynamicResource Menu.Subtle}"
                   Data="M 0 0 L 8 4 L 0 8 Z"
                   Visibility="Collapsed"/>
 
@@ -136,8 +126,8 @@
                    StaysOpen="False"
                    PopupAnimation="Fade"
                    IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}">
-                            <Border Background="{StaticResource DarkMenu.Background}"
-                      BorderBrush="{StaticResource DarkMenu.Border}"
+                            <Border Background="{DynamicResource Menu.Background}"
+                      BorderBrush="{DynamicResource Menu.Border}"
                       BorderThickness="1"
                       CornerRadius="10"
                       Padding="6">
@@ -152,10 +142,10 @@
                     <ControlTemplate.Triggers>
                         <!-- Hover / Press -->
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource DarkMenu.ItemHover}"/>
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Menu.ItemHover}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource DarkMenu.ItemPress}"/>
+                            <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Menu.ItemPress}"/>
                         </Trigger>
 
                         <!-- Top bar header spacing -->
@@ -183,7 +173,7 @@
                         </Trigger>
 
                         <Trigger Property="IsSubmenuOpen" Value="True">
-                            <Setter Property="Background" Value="{StaticResource DarkMenu.ItemHover}"/>
+                            <Setter Property="Background" Value="{DynamicResource Menu.ItemHover}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -204,7 +194,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Separator">
-                    <Border Height="1" Background="{StaticResource DarkMenu.Separator}" />
+                    <Border Height="1" Background="{DynamicResource Menu.Separator}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -212,7 +202,7 @@
 
     <!-- ===== CheckBox (for controls embedded inside menus) ===== -->
     <Style TargetType="CheckBox">
-        <Setter Property="Foreground" Value="{StaticResource DarkMenu.Foreground}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Menu.Foreground}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="4,2"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -225,18 +215,18 @@
                     CornerRadius="3"
                     BorderThickness="1"
                     Margin="0,0,8,0"
-                    BorderBrush="#556079"
-                    Background="#1E2430"/>
+                    BorderBrush="{DynamicResource Menu.BoxEdge}"
+                    Background="{DynamicResource Menu.BoxBg}"/>
                         <ContentPresenter VerticalAlignment="Center"
                               RecognizesAccessKey="True"/>
                     </StackPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource DarkMenu.Accent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Menu.Accent}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="Box" Property="Background" Value="{StaticResource DarkMenu.Accent}"/>
-                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource DarkMenu.Accent}"/>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Menu.Accent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Menu.Accent}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.6"/>
@@ -252,8 +242,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border Background="#30394B"
-                  BorderBrush="#3B4458"
+                    <Border Background="{DynamicResource Scroll.Thumb}"
+                  BorderBrush="{DynamicResource Scroll.ThumbEdge}"
                   BorderThickness="1"
                   CornerRadius="3"/>
                 </ControlTemplate>
@@ -267,7 +257,7 @@
         <Setter Property="MinWidth" Value="0"/>
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Width" Value="6"/>
-        <Setter Property="Background" Value="#10141C"/>
+        <Setter Property="Background" Value="{DynamicResource Scroll.Track}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollBar">

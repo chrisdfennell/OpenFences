@@ -5,6 +5,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Swapped for Palette.Light.xaml by Services/Theme; must stay first. -->
+                <ResourceDictionary Source="Themes/Palette.Dark.xaml"/>
                 <ResourceDictionary Source="Themes/DarkMenu.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>

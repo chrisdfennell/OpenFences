@@ -164,20 +164,26 @@ namespace Pickets
 
         private static readonly MediaColor DefaultBody = MediaColor.FromRgb(0x20, 0x20, 0x20);  // #202020
         private static readonly MediaColor DefaultTitle = MediaColor.FromRgb(0x2B, 0x2B, 0x2B); // #2B2B2B
+        private static readonly MediaColor LightBody = MediaColor.FromRgb(0xF4, 0xF5, 0xF7);    // light theme
+        private static readonly MediaColor LightTitle = MediaColor.FromRgb(0xE3, 0xE6, 0xEB);
 
         private void ApplyBackground()
         {
-            // An accent tints the dark base (strongly on the title bar, lightly on the body), so
-            // light text stays readable whatever color is picked.
-            MediaColor body = DefaultBody, title = DefaultTitle;
+            // An accent tints the base (strongly on the title bar, lightly on the body). The base
+            // follows the app theme, except under a picture/video, where the darkening layer keeps
+            // the dark base so "Darken" still darkens.
+            var media = MediaBrush();
+            bool light = Pickets.Services.Theme.IsLight && media == null;
+            MediaColor body = light ? LightBody : DefaultBody, title = light ? LightTitle : DefaultTitle;
             if (TryParseColor(_model.AccentColor, out var accent))
             {
-                body = Mix(accent, DefaultBody, 0.16);
-                title = Mix(accent, DefaultTitle, 0.55);
+                body = Mix(accent, body, light ? 0.12 : 0.16);
+                title = Mix(accent, title, light ? 0.40 : 0.55);
             }
 
             double opacity = Math.Clamp(_model.BackgroundOpacity, 0.0, 1.0);
-            var media = MediaBrush();
+            // A mostly see-through fence shows the wallpaper, not its body color: keep light labels.
+            ApplyTextColors(titleIsLight: IsLightColor(title), bodyIsLight: IsLightColor(body) && opacity >= 0.5);
             if (media != null)
             {
                 // Picture/video background: it fades with the fence's transparency, and a
@@ -357,6 +363,37 @@ namespace Pickets
             }
         }
 
+        private static bool IsLightColor(MediaColor c) => 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 150;
+
+        private static SolidColorBrush Frozen(MediaColor c)
+        {
+            var b = new SolidColorBrush(c);
+            b.Freeze();
+            return b;
+        }
+
+        // Text and hover colors for the title bar and the tiles, picked for what's behind them.
+        // The fence's XAML uses these keys with DynamicResource.
+        private void ApplyTextColors(bool titleIsLight, bool bodyIsLight)
+        {
+            Resources["Fence.TitleFg"] = Frozen(titleIsLight ? MediaColor.FromRgb(0x1F, 0x23, 0x2B) : MediaColor.FromRgb(0xE0, 0xE0, 0xE0));
+            Resources["Fence.ButtonFg"] = Frozen(titleIsLight ? MediaColor.FromRgb(0x4A, 0x51, 0x5E) : MediaColor.FromRgb(0xC7, 0xCB, 0xD1));
+            Resources["Fence.ButtonHoverFg"] = Frozen(titleIsLight ? MediaColor.FromRgb(0x10, 0x13, 0x18) : MediaColor.FromRgb(0xFF, 0xFF, 0xFF));
+            Resources["Fence.ButtonHover"] = Frozen(titleIsLight ? MediaColor.FromArgb(0x1F, 0, 0, 0) : MediaColor.FromRgb(0x3A, 0x3D, 0x44));
+            Resources["Fence.ButtonPress"] = Frozen(titleIsLight ? MediaColor.FromArgb(0x33, 0, 0, 0) : MediaColor.FromRgb(0x4A, 0x4E, 0x57));
+            Resources["Fence.LabelFg"] = Frozen(bodyIsLight ? MediaColor.FromRgb(0x1A, 0x1D, 0x24) : MediaColor.FromRgb(0xEA, 0xEA, 0xEA));
+            Resources["Fence.Hint"] = Frozen(bodyIsLight ? MediaColor.FromRgb(0x5C, 0x65, 0x77) : MediaColor.FromRgb(0x9A, 0xA3, 0xB5));
+            Resources["Fence.ItemHover"] = Frozen(bodyIsLight ? MediaColor.FromArgb(0x16, 0, 0, 0) : MediaColor.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
+            Resources["Fence.Edge"] = Frozen(Pickets.Services.Theme.IsLight ? MediaColor.FromRgb(0xC9, 0xCF, 0xD9) : MediaColor.FromRgb(0x3A, 0x3A, 0x3A));
+        }
+
+        /// <summary>The app switched between light and dark.</summary>
+        public void ApplyTheme()
+        {
+            ApplyBackground();
+            RebuildTabs();
+        }
+
         private static MediaColor Mix(MediaColor c, MediaColor baseColor, double amount) => MediaColor.FromRgb(
             (byte)Math.Round(baseColor.R + (c.R - baseColor.R) * amount),
             (byte)Math.Round(baseColor.G + (c.G - baseColor.G) * amount),
@@ -475,7 +512,10 @@ namespace Pickets
 
         public void EnsureBottomZOrder()
         {
-            DesktopHelper.SendToDesktopLayer(new WindowInteropHelper(this).Handle);
+            var hwnd = new WindowInteropHelper(this).Handle;
+            // While fences are in front of app windows, clicking or opening one keeps it there.
+            if (Pickets.Services.FencesInFront.IsActive) DesktopHelper.SetTopmost(hwnd, true);
+            else DesktopHelper.SendToDesktopLayer(hwnd);
         }
 
         /// <summary>Stack this fence above every other fence (still below normal app windows),
@@ -620,7 +660,9 @@ namespace Pickets
             _watcher = null;
             _currentFolder = folder;
             TitleText.Text = "🗁 " + _model.Name;
-            TitleText.ToolTip = _model.FolderPath;
+            var filter = Pickets.Services.PortalFilter.Describe(_model.PortalFilter, _model.PortalMaxAgeDays);
+            TitleText.ToolTip = filter.Length > 0 ? $"{_model.FolderPath}\nShowing: {filter}" : _model.FolderPath;
+            EnsureAgeRefresh();
 
             try
             {
@@ -721,6 +763,33 @@ namespace Pickets
             FenceRenamed?.Invoke(this, EventArgs.Empty); // persists
         }
 
+        // With "changed within N days", items age out without any file event; re-check now and then.
+        private System.Windows.Threading.DispatcherTimer? _ageTimer;
+
+        private void EnsureAgeRefresh()
+        {
+            if (_model.PortalMaxAgeDays is not > 0) { _ageTimer?.Stop(); return; }
+            if (_ageTimer == null)
+            {
+                _ageTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
+                _ageTimer.Tick += (_, __) => ReloadItems();
+                Closed += (_, __) => _ageTimer.Stop();
+            }
+            _ageTimer.Start();
+        }
+
+        private void PortalFilter_Click(object sender, RoutedEventArgs e)
+        {
+            // Owned by the fence so it stays above it, even while fences are in front of windows.
+            var dlg = new PortalFilterDialog(_model.PortalFilter, _model.PortalMaxAgeDays) { Owner = this };
+            if (dlg.ShowDialog() != true) return;
+
+            _model.PortalFilter = string.IsNullOrWhiteSpace(dlg.Patterns) ? null : dlg.Patterns.Trim();
+            _model.PortalMaxAgeDays = dlg.MaxAgeDays;
+            NavigatePortal(_currentFolder);
+            Changed?.Invoke(this, EventArgs.Empty); // persists
+        }
+
         private void ChangePortalFolder_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog
@@ -745,6 +814,19 @@ namespace Pickets
 
                 entries.AddRange(Directory.EnumerateFiles(_currentFolder)
                                           .Where(p => !p.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)));
+
+                if (_model.IsPortal && Pickets.Services.PortalFilter.IsActive(_model.PortalFilter, _model.PortalMaxAgeDays))
+                {
+                    var patterns = Pickets.Services.PortalFilter.ParsePatterns(_model.PortalFilter);
+                    var now = DateTime.UtcNow;
+                    entries = entries.Where(p =>
+                    {
+                        bool isDir = Directory.Exists(p);
+                        var written = isDir ? Directory.GetLastWriteTimeUtc(p) : File.GetLastWriteTimeUtc(p);
+                        return Pickets.Services.PortalFilter.Matches(Path.GetFileName(p), isDir, written,
+                                                                     patterns, _model.PortalMaxAgeDays, now);
+                    }).ToList();
+                }
             }
             catch
             {
@@ -870,6 +952,7 @@ namespace Pickets
         /// <summary>While searching, fences come up above app windows so matches are visible.</summary>
         public void SetRaised(bool raised)
         {
+            if (!raised && Pickets.Services.FencesInFront.IsActive) return; // search closed; stay in front
             var hwnd = new WindowInteropHelper(this).Handle;
             DesktopHelper.SetTopmost(hwnd, raised);
             if (!raised) EnsureBottomZOrder();
@@ -1315,21 +1398,22 @@ namespace Pickets
                 var label = new TextBlock
                 {
                     Text = _model.Tabs[i].Name,
-                    Foreground = new SolidColorBrush(active ? MediaColor.FromRgb(0xFF, 0xFF, 0xFF) : MediaColor.FromRgb(0xB8, 0xBF, 0xCC)),
                     FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal,
                     FontSize = 12
                 };
+                label.SetResourceReference(TextBlock.ForegroundProperty, active ? "Fence.LabelFg" : "Fence.Hint");
                 var header = new Border
                 {
                     Child = label,
                     Padding = new Thickness(10, 3, 10, 4),
                     Margin = new Thickness(0, 0, 4, 2),
                     CornerRadius = new CornerRadius(6),
-                    Background = new SolidColorBrush(active ? MediaColor.FromArgb(0x55, 0x5A, 0x8F, 0xD8) : MediaColor.FromArgb(0x22, 0xFF, 0xFF, 0xFF)),
                     Cursor = System.Windows.Input.Cursors.Hand,
                     AllowDrop = true,
                     ToolTip = "Click to show · drop tiles here to move them to this tab · right-click for options"
                 };
+                if (active) header.Background = new SolidColorBrush(MediaColor.FromArgb(0x55, 0x5A, 0x8F, 0xD8));
+                else header.SetResourceReference(Border.BackgroundProperty, "Fence.ItemHover");
                 header.MouseLeftButtonUp += (_, __) => SwitchTab(index);
                 header.DragOver += (_, e) =>
                 {
@@ -1564,6 +1648,17 @@ namespace Pickets
 
         // Fit to contents: narrow the fence if it has room to spare, then make it exactly as tall
         // as its tiles (no scrollbar), within the screen.
+        // Opens everything on the current tab, e.g. a "Work" fence that starts your work apps.
+        private void OpenAll_Click(object sender, RoutedEventArgs e)
+        {
+            var paths = ItemsSource.Select(i => i.Path).ToList();
+            if (paths.Count == 0) return;
+            if (paths.Count > 8 &&
+                MessageBox.Show(this, $"Open all {paths.Count} items?", "Open all",
+                                MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            foreach (var p in paths) LaunchPath(p);
+        }
+
         private void FitToContents_Click(object sender, RoutedEventArgs e)
         {
             if (_model.Collapsed) SetCollapsed(false, animate: false);
@@ -1832,6 +1927,7 @@ namespace Pickets
                     return;
                 case Key.Escape:
                     SelectOnly(null);
+                    Pickets.Services.FencesInFront.Exit();
                     e.Handled = true;
                     return;
                 case Key.Tab when (mods & ModifierKeys.Control) != 0 && HasTabs:
@@ -2246,7 +2342,10 @@ namespace Pickets
             CheckByTag(ColorMenu, _model.AccentColor ?? "");
             CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
-            MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
+            MiChangeFolder.Visibility = MiPortalFilter.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
+            // A portal can hold a whole folder's worth of files, so "Open all" is for fences only.
+            MiOpenAll.Visibility = !_model.IsPortal && ItemsSource.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            MiOpenAll.Header = HasTabs ? $"Open all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Open all";
             MiLock.IsChecked = _model.Locked;
             MiAddTab.Visibility = _model.IsPortal ? Visibility.Collapsed : Visibility.Visible;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);

@@ -55,6 +55,15 @@ namespace Pickets
             // Fences read app-wide options (snapping, hover roll-up) live.
             FenceWindow.Options = _config.Options;
 
+            // Light/dark before any fence is built. Fences paint some colors in code, so they
+            // repaint when the theme (or Windows' app mode, under "System") changes.
+            Theme.Apply(_config.Options.Theme);
+            Theme.Changed += () =>
+            {
+                foreach (var w in _openWindows) w.ApplyTheme();
+                RefreshHome();
+            };
+
             // Apply settings effects at startup
             if (_config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled())
                 StartupHelper.SetRunAtStartup(true);
@@ -84,8 +93,8 @@ namespace Pickets
             StateChanged += MainWindow_StateChanged;
             InitTrayIcon();
 
-            // Right-click-drag rectangle to create an (empty) fence
-            DesktopRightDragFenceSelector.Start(CreateFenceFromRect);
+            // Right-click-drag rectangle to create an (empty) fence or a folder portal there
+            DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r));
 
             // Delete/Enter operate on the whole selection across all fences
             FenceWindow.RequestDeleteSelected = DeleteAllSelected;
@@ -155,6 +164,7 @@ namespace Pickets
                 _hotkeyProblems.Clear();
                 RegisterHotkey(_config.Options.ToggleFencesHotkey, TogglePeek);
                 RegisterHotkey(_config.Options.SearchHotkey, OpenSearch);
+                RegisterHotkey(_config.Options.FrontHotkey, ToggleFencesInFront);
             }
             catch (Exception ex)
             {
@@ -176,6 +186,21 @@ namespace Pickets
         }
 
         private void Search_Click(object? sender, RoutedEventArgs? e) => OpenSearch();
+
+        // ========== Fences in front of app windows ==========
+        // Hidden fences (Ctrl+Alt+H) come out for the occasion and go away again afterwards.
+        private void ToggleFencesInFront()
+        {
+            if (FencesInFront.IsActive) { FencesInFront.Exit(); return; }
+
+            bool wasHidden = _peeked;
+            if (wasHidden) SetFencesHidden(false);
+            FencesInFront.Enter(() =>
+            {
+                if (wasHidden) SetFencesHidden(true);
+                RefreshHome();
+            });
+        }
 
         // ========== Monitor arrangement changes ==========
         private System.Windows.Threading.DispatcherTimer? _displayTimer;
@@ -919,7 +944,11 @@ namespace Pickets
             win.Show();
         }
 
-        private void NewFolderPortal_Click(object? sender, RoutedEventArgs? e)
+        private void NewFolderPortal_Click(object? sender, RoutedEventArgs? e) => CreateFolderPortal(null);
+
+        /// <summary>Ask for a folder and add a portal showing it: in <paramref name="screenRect"/>
+        /// (a box drawn by right-dragging on the desktop), or near the mouse when null.</summary>
+        private void CreateFolderPortal(Rect? screenRect)
         {
             var dlg = new Microsoft.Win32.OpenFolderDialog
             {
@@ -939,6 +968,10 @@ namespace Pickets
                 name = $"{baseName} ({++n})";
 
             var (left, top) = SpawnNearCursor();
+            double width = 440, height = 320;
+            if (screenRect is Rect r)
+                (left, top, width, height) = (r.Left, r.Top, Math.Max(160, r.Width), Math.Max(120, r.Height));
+
             var model = new FenceModel
             {
                 Name = name,
@@ -946,8 +979,8 @@ namespace Pickets
                 IsPortal = true,
                 Left = left,
                 Top = top,
-                Width = 440,
-                Height = 320,
+                Width = width,
+                Height = height,
                 Collapsed = false
             };
 
@@ -1192,6 +1225,7 @@ namespace Pickets
 
         private void SetFencesHidden(bool hidden)
         {
+            if (hidden) FencesInFront.Exit();
             _peeked = hidden;
             foreach (var w in _openWindows)
             {
