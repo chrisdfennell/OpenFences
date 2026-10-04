@@ -287,6 +287,13 @@ namespace OpenFences
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            // While Windows' item menu is open, let it fill submenus (Send to, Open with…).
+            if (OpenFences.Services.ShellContextMenu.HandleMenuMessage(msg, wParam, lParam, out var menuResult))
+            {
+                handled = true;
+                return menuResult;
+            }
+
             switch (msg)
             {
                 case OpenFences.Services.FenceSnapper.WM_MOVING:
@@ -958,6 +965,89 @@ namespace OpenFences
                 SelectOnly(item);
         }
 
+        // Right-click shows Windows' own menu for the selection (Open with, Send to, Properties…)
+        // with "Remove from fence" on top; special items like This PC use our own menu.
+        private void Item_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
+            e.Handled = true;
+
+            var paths = ItemsSource.Where(i => i.IsSelected).Select(i => i.Path).ToList();
+            if (paths.Count == 0) paths.Add(item.Path);
+
+            bool special = paths.Any(p => p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase));
+            if (!special)
+            {
+                var extras = new List<OpenFences.Services.ShellContextMenu.Extra>();
+                if (CanRemoveSelected)
+                    extras.Add(new("Remove from fence", () => RequestRemoveSelected?.Invoke()));
+
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (OpenFences.Services.ShellContextMenu.Show(hwnd, paths, extras, () => RenameItem(item)))
+                    return;
+            }
+
+            if (fe.ContextMenu is ContextMenu menu)
+            {
+                menu.PlacementTarget = fe;
+                menu.DataContext = item;
+                menu.IsOpen = true;
+            }
+        }
+
+        // ---------- Rename items ----------
+        /// <summary>Rename the real file/folder behind a tile. Shortcut extensions (.lnk/.url)
+        /// stay hidden, like on the desktop. A renamed item stays in this fence.</summary>
+        private void RenameItem(FenceItem item)
+        {
+            var path = item.Path;
+            if (path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)) return;
+
+            bool isDir = Directory.Exists(path);
+            string ext = Path.GetExtension(path);
+            bool hideExt = !isDir && (ext.Equals(".lnk", StringComparison.OrdinalIgnoreCase) ||
+                                      ext.Equals(".url", StringComparison.OrdinalIgnoreCase));
+            string current = hideExt ? Path.GetFileNameWithoutExtension(path) : Path.GetFileName(path);
+
+            var prompt = new InputDialog("Rename", "New name:", current) { Owner = this };
+            if (prompt.ShowDialog() != true) return;
+
+            var name = prompt.Value.Trim();
+            if (name.Length == 0 || name == current) return;
+            if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                MessageBox.Show("A name can't contain any of these characters:\n\\ / : * ? \" < > |",
+                                "Rename", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dir = Path.GetDirectoryName(path)!;
+            var newPath = Path.Combine(dir, hideExt ? name + ext : name);
+            bool caseOnly = string.Equals(newPath, path, StringComparison.OrdinalIgnoreCase);
+            if (!caseOnly && (File.Exists(newPath) || Directory.Exists(newPath)))
+            {
+                MessageBox.Show($"There's already an item called “{Path.GetFileName(newPath)}” there.",
+                                "Rename", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Update the fence first, so the file watcher sees a path we already own.
+            bool owned = IsRealIcon && ReplaceItemPath(path, newPath);
+            try
+            {
+                if (isDir) Directory.Move(path, newPath);
+                else File.Move(path, newPath);
+            }
+            catch (Exception ex)
+            {
+                if (owned) ReplaceItemPath(newPath, path);
+                MessageBox.Show("The item couldn't be renamed:\n" + ex.Message, "Rename",
+                                MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (!IsRealIcon) ReloadItems();
+        }
+
         private void SelectOnly(FenceItem? item)
         {
             foreach (var i in ItemsSource)
@@ -1122,7 +1212,10 @@ namespace OpenFences
             switch (key)
             {
                 case Key.F2:
-                    Rename_Click(this, new RoutedEventArgs());
+                    // F2 renames the selected item; with nothing (or several) selected, the fence.
+                    var sel = ItemsSource.Where(i => i.IsSelected).ToList();
+                    if (sel.Count == 1) RenameItem(sel[0]);
+                    else Rename_Click(this, new RoutedEventArgs());
                     e.Handled = true;
                     return;
                 case Key.Escape:

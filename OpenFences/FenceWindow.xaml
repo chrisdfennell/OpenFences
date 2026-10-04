@@ -264,7 +264,10 @@
                                     MouseLeftButtonDown="Item_MouseLeftButtonDown"
                                     MouseLeftButtonUp="Item_MouseLeftButtonUp"
                                     MouseMove="Item_MouseMove"
-                                    MouseRightButtonDown="Item_MouseRightButtonDown">
+                                    MouseRightButtonDown="Item_MouseRightButtonDown"
+                                    MouseRightButtonUp="Item_MouseRightButtonUp"
+                                    ContextMenuService.IsEnabled="False">
+                                <!-- Fallback when Windows' own menu isn't available (special items) -->
                                 <Border.ContextMenu>
                                     <ContextMenu Opened="ItemMenu_Opened">
                                         <MenuItem Header="Open" Click="Item_Open_Click"/>
