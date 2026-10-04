@@ -23,6 +23,14 @@ namespace Pickets
             set => Set(ref _isSelected, value);
         }
 
+        // List view's right-hand text ("12 KB · Mar 3"); filled in off the UI thread.
+        private string _details = "";
+        public string Details
+        {
+            get => _details;
+            set => Set(ref _details, value);
+        }
+
         // Faded out while a search is running and this item doesn't match.
         private bool _isDimmed;
         public bool IsDimmed

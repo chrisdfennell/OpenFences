@@ -17,7 +17,7 @@ namespace Pickets
         public sealed class RuleRow : INotifyPropertyChanged
         {
             private RuleKind _kind;
-            private string _extensionsText = "";
+            private string _valueText = "";
             private string _target = "";
             private int _number;
 
@@ -29,13 +29,24 @@ namespace Pickets
                     _kind = value;
                     OnChanged();
                     OnChanged(nameof(KindLabel));
-                    OnChanged(nameof(ExtensionsVisibility));
+                    OnChanged(nameof(ValueVisibility));
+                    OnChanged(nameof(ValueHint));
                 }
             }
 
             public string KindLabel => LabelFor(Kind);
-            public Visibility ExtensionsVisibility => Kind == RuleKind.Extensions ? Visibility.Visible : Visibility.Hidden;
-            public string ExtensionsText { get => _extensionsText; set { _extensionsText = value; OnChanged(); } }
+            public bool HasValue => Kind is RuleKind.Extensions or RuleKind.NamePattern or RuleKind.OlderThan or RuleKind.LargerThan;
+            public Visibility ValueVisibility => HasValue ? Visibility.Visible : Visibility.Hidden;
+            public string ValueHint => Kind switch
+            {
+                RuleKind.Extensions => "File types, e.g. .png .jpg .gif",
+                RuleKind.NamePattern => "Names, e.g. invoice* screenshot* (* = anything)",
+                RuleKind.OlderThan => "Days, e.g. 30 (tip: use “Save & sort Desktop fence now” to apply it to what's already there)",
+                RuleKind.LargerThan => "Size in MB, e.g. 100",
+                _ => ""
+            };
+            // File types, name patterns, or a number of days / MB, depending on Kind.
+            public string ValueText { get => _valueText; set { _valueText = value; OnChanged(); } }
             public string Target { get => _target; set { _target = value; OnChanged(); } }
             public int Number { get => _number; set { _number = value; OnChanged(); } }
 
@@ -49,7 +60,16 @@ namespace Pickets
             RuleKind.Executable => "Apps and app shortcuts",
             RuleKind.Folder => "Folders",
             RuleKind.Extensions => "Files of type…",
+            RuleKind.NamePattern => "Names like…",
+            RuleKind.OlderThan => "Not changed in (days)…",
+            RuleKind.LargerThan => "Larger than (MB)…",
             _ => "Anything else"
+        };
+
+        private static readonly RuleKind[] KindOrder =
+        {
+            RuleKind.Executable, RuleKind.Folder, RuleKind.Extensions, RuleKind.NamePattern,
+            RuleKind.OlderThan, RuleKind.LargerThan, RuleKind.Any
         };
 
         private readonly ObservableCollection<RuleRow> _rows = new();
@@ -77,7 +97,14 @@ namespace Pickets
                 _rows.Add(new RuleRow
                 {
                     Kind = r.Kind,
-                    ExtensionsText = string.Join(" ", r.Extensions),
+                    ValueText = r.Kind switch
+                    {
+                        RuleKind.Extensions => string.Join(" ", r.Extensions),
+                        RuleKind.NamePattern => r.Pattern,
+                        RuleKind.OlderThan or RuleKind.LargerThan =>
+                            r.Amount.ToString(System.Globalization.CultureInfo.CurrentCulture),
+                        _ => ""
+                    },
                     Target = r.TargetFence
                 });
             Renumber();
@@ -94,7 +121,7 @@ namespace Pickets
         {
             if (sender is not FrameworkElement fe || RowOf(sender) is not RuleRow row) return;
             var menu = new ContextMenu { PlacementTarget = fe, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-            foreach (RuleKind k in new[] { RuleKind.Executable, RuleKind.Folder, RuleKind.Extensions, RuleKind.Any })
+            foreach (RuleKind k in KindOrder)
             {
                 var mi = new MenuItem { Header = LabelFor(k), IsCheckable = true, IsChecked = row.Kind == k };
                 mi.Click += (_, __) => row.Kind = k;
@@ -140,7 +167,7 @@ namespace Pickets
         private void Add_Click(object sender, RoutedEventArgs e)
         {
             // New rules go above a trailing "Anything else" catch-all, or they could never match.
-            var row = new RuleRow { Kind = RuleKind.Extensions, ExtensionsText = "", Target = "" };
+            var row = new RuleRow { Kind = RuleKind.Extensions, ValueText = "", Target = "" };
             int at = _rows.Count;
             while (at > 0 && _rows[at - 1].Kind == RuleKind.Any) at--;
             _rows.Insert(at, row);
@@ -165,20 +192,36 @@ namespace Pickets
                     return;
                 }
 
-                var exts = ParseExtensions(row.ExtensionsText);
-                if (row.Kind == RuleKind.Extensions && exts.Count == 0)
+                var rule = new FenceRule { Kind = row.Kind, TargetFence = target };
+                string? problem = null;
+                switch (row.Kind)
                 {
-                    MessageBox.Show($"Rule {row.Number} needs at least one file type, like .png or .pdf.",
-                                    "Auto-organize rules", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    case RuleKind.Extensions:
+                        rule.Extensions = ParseExtensions(row.ValueText);
+                        if (rule.Extensions.Count == 0) problem = "needs at least one file type, like .png or .pdf";
+                        break;
+                    case RuleKind.NamePattern:
+                        rule.Pattern = row.ValueText.Trim();
+                        if (Pickets.Services.PortalFilter.ParsePatterns(rule.Pattern).Count == 0)
+                            problem = "needs at least one name, like invoice* or screenshot*";
+                        break;
+                    case RuleKind.OlderThan:
+                    case RuleKind.LargerThan:
+                        if (double.TryParse(row.ValueText.Trim(), System.Globalization.NumberStyles.Float,
+                                            System.Globalization.CultureInfo.CurrentCulture, out var amount) && amount > 0)
+                            rule.Amount = amount;
+                        else
+                            problem = row.Kind == RuleKind.OlderThan ? "needs a number of days, like 30"
+                                                                     : "needs a size in MB, like 100";
+                        break;
+                }
+                if (problem != null)
+                {
+                    MessageBox.Show($"Rule {row.Number} {problem}.", "Auto-organize rules",
+                                    MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-
-                rules.Add(new FenceRule
-                {
-                    Kind = row.Kind,
-                    Extensions = row.Kind == RuleKind.Extensions ? exts : new List<string>(),
-                    TargetFence = target
-                });
+                rules.Add(rule);
             }
 
             Rules = rules;

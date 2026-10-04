@@ -82,8 +82,6 @@ jobs:
           if (-not $msi) { throw 'No MSI produced.' }
           Copy-Item $msi.FullName "out\Pickets-${{ matrix.arch }}.msi" -Force
           ./.github/scripts/sign.ps1 -Files "out\Pickets-${{ matrix.arch }}.msi"
-          # Copies installed before the rename (OpenFences) look for OpenFences-<arch>.msi to update.
-          Copy-Item "out\Pickets-${{ matrix.arch }}.msi" "out\OpenFences-${{ matrix.arch }}.msi"
           Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\Pickets-${{ matrix.arch }}-portable.zip" -Force
           Get-ChildItem out
 

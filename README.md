@@ -43,7 +43,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
 - **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
-- **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions, everything else), and the Desktop fence can be re-sorted on demand.
+- **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions), name (`invoice*`), age (not changed in 30 days) or size (larger than 100 MB), and the Desktop fence can be re-sorted on demand.
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
 - **Move to fence.** Right-click tiles → **Move to fence…** (another fence, or one of its tabs) or **Move to new fence**, which creates a fence right beside the current one holding the selection.
 - **Select across fences.** Left-drag on empty desktop to lasso items in several fences; Ctrl+click and rubber-band selection work inside a fence.
@@ -63,6 +63,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Light or dark.** Pickets follows Windows' light or dark app mode, or pick one in Settings. The Pickets window, menus, dialogs and fences all switch; fences keep any color you gave them, with text that stays readable.
 - **Style each fence.** Colors (presets or any custom color), title size, transparency, **frosted glass**, or a **picture or looping video background** (fill, fit or stretch, optional darkening, sound on or off per video).
 - **Thumbnails.** Pictures and videos show a preview instead of a generic icon; file extensions can be hidden. Hover a tile for its full name, type, size, date and folder.
+- **Icons or a list.** Fence menu → **View → List** shows one compact row per item with its size and date, handy for long fences and portals.
 - **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles. Rolled-up fences show how many items they hold.
 - **Roll up and peek.** Double-click a title to roll a fence up; rest the mouse on it (or drag files over it) to open it until you move away.
 - **Snap and align.** Fences snap to screen edges and to each other while you move or resize them, with an optional grid. Hold **Alt** to move freely. Lock a fence to stop accidental moves.
@@ -149,8 +150,6 @@ In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and
 
 ## 🧭 Roadmap (ideas)
 
-- Compact list view for long fences
-- Smarter rules (by name pattern, age or size)
 - Export and import layouts as a file
 - Different fences per virtual desktop
 - Sticky-note fences

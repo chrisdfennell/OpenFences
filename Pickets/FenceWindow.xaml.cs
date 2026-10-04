@@ -62,6 +62,14 @@ namespace Pickets
             FenceIconSize.Large => 64,
             _ => 48
         };
+        // List view rows use a smaller icon that still follows the icon-size setting.
+        public int RowIconPx => (_model?.IconSize ?? FenceIconSize.Medium) switch
+        {
+            FenceIconSize.Small => 16,
+            FenceIconSize.Large => 24,
+            _ => 20
+        };
+        private bool IsListView => _model?.View == FenceView.List;
         public double TileWidth => IconPx + 44;
         public double TileHeight => IconPx + 50;
         public double TileContentWidth => TileWidth - 8;
@@ -73,6 +81,7 @@ namespace Pickets
         private void RaiseLayoutMetricsChanged()
         {
             OnPropertyChanged(nameof(IconPx));
+            OnPropertyChanged(nameof(RowIconPx));
             OnPropertyChanged(nameof(TileWidth));
             OnPropertyChanged(nameof(TileHeight));
             OnPropertyChanged(nameof(TileContentWidth));
@@ -112,6 +121,7 @@ namespace Pickets
             MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
             Items.ItemsSource = ItemsSource;
+            ApplyView();
 
             if (_model.IsPortal)
             {
@@ -861,7 +871,10 @@ namespace Pickets
             {
                 foreach (var item in snapshot)
                 {
-                    var icon = (thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
+                    var details = Pickets.Services.ItemDetails.For(item.Path);
+                    Dispatcher.BeginInvoke(() => item.Details = details);
+
+                    var icon =(thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
                                    ? Pickets.Services.ShellThumbnail.Get(item.Path, thumbPx)
                                    : null)
                                ?? Pickets.Services.IconHelper.GetImageSourceForPath(item.Path);
@@ -920,6 +933,23 @@ namespace Pickets
                 else ReloadItems();
                 Changed?.Invoke(this, EventArgs.Empty);
             }
+        }
+
+        private void View_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && Enum.TryParse<FenceView>(Convert.ToString(mi.Tag), out var view))
+            {
+                _model.View = view;
+                ApplyView();
+                Changed?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>Show items as tiles or as list rows (Window.Resources: Tile*/Row*).</summary>
+        private void ApplyView()
+        {
+            Items.ItemsPanel = (ItemsPanelTemplate)FindResource(IsListView ? "RowPanel" : "TilePanel");
+            Items.ItemTemplate = (DataTemplate)FindResource(IsListView ? "RowTemplate" : "TileTemplate");
         }
 
         private void IconSize_Click(object sender, RoutedEventArgs e)
@@ -1665,9 +1695,13 @@ namespace Pickets
             int n = ItemsSource.Count;
             if (n == 0) return;
 
-            int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
-            if (n < cols)
-                Width = Math.Max(200, Width - Scroller.ViewportWidth + n * TileWidth + 4);
+            // Icons: narrow a fence whose tiles don't fill one row. A list keeps its width.
+            if (!IsListView)
+            {
+                int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
+                if (n < cols)
+                    Width = Math.Max(200, Width - Scroller.ViewportWidth + n * TileWidth + 4);
+            }
             UpdateLayout();
 
             double chrome = ActualHeight - Scroller.ViewportHeight;
@@ -1949,7 +1983,7 @@ namespace Pickets
 
             int count = ItemsSource.Count;
             int cur = _cursorIndex >= 0 && _cursorIndex < count ? _cursorIndex : -1;
-            int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
+            int cols = IsListView ? 1 : Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
             int next = key switch
             {
                 Key.Right => cur < 0 ? 0 : Math.Min(count - 1, cur + 1),
@@ -2338,6 +2372,7 @@ namespace Pickets
         {
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             CheckByTag(SortMenu, _model.Sort.ToString());
+            CheckByTag(ViewMenu, _model.View.ToString());
             CheckByTag(IconSizeMenu, _model.IconSize.ToString());
             CheckByTag(ColorMenu, _model.AccentColor ?? "");
             CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));

@@ -199,6 +199,10 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Inside a menu WPF looks up MenuItem.SeparatorStyleKey, not the implicit Separator style,
+         and its default leaves an icon-column gap on the left and none on the right. -->
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator"
+           BasedOn="{StaticResource {x:Type Separator}}"/>
 
     <!-- ===== CheckBox (for controls embedded inside menus) ===== -->
     <Style TargetType="CheckBox">

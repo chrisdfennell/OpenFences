@@ -3,6 +3,9 @@ namespace Pickets
     public enum FenceSort { Name, Type, DateModified, Size, Manual }
     public enum FenceIconSize { Small, Medium, Large }
 
+    // Tiles in rows, or one compact row per item (name, size, date).
+    public enum FenceView { Icons, List }
+
     // How a background image/video fills the fence: crop to cover, show all, or stretch.
     public enum FenceBackgroundFit { Fill, Fit, Stretch }
 
@@ -62,6 +65,7 @@ namespace Pickets
 
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;
+        public FenceView View { get; set; } = FenceView.Icons;
 
         // Accent color ("#RRGGBB") that tints the title bar and body; null = default graphite.
         public string? AccentColor { get; set; }

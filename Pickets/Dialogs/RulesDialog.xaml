@@ -62,11 +62,11 @@
                                     </DockPanel>
                                 </Button>
 
-                                <!-- File types (only for "File types") -->
+                                <!-- File types, names, days or MB, depending on the rule -->
                                 <TextBox Grid.Column="2" Margin="8,0,0,0" Height="32"
-                                         Text="{Binding ExtensionsText, UpdateSourceTrigger=PropertyChanged}"
-                                         Visibility="{Binding ExtensionsVisibility}"
-                                         ToolTip="File types, e.g. .png .jpg .gif"/>
+                                         Text="{Binding ValueText, UpdateSourceTrigger=PropertyChanged}"
+                                         Visibility="{Binding ValueVisibility}"
+                                         ToolTip="{Binding ValueHint}"/>
 
                                 <TextBlock Grid.Column="3" Text="→" Margin="10,0" VerticalAlignment="Center"
                                            Foreground="{DynamicResource Dlg.Subtle}"/>

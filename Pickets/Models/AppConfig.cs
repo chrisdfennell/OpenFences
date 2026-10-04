@@ -57,7 +57,7 @@ namespace Pickets
     }
 
     // How a desktop item is matched to a target fence by the rules engine.
-    public enum RuleKind { Executable, Folder, Extensions, Any }
+    public enum RuleKind { Executable, Folder, Extensions, Any, NamePattern, OlderThan, LargerThan }
 
     public class FenceRule
     {
@@ -65,6 +65,12 @@ namespace Pickets
 
         // Only used when Kind == Extensions (e.g. ".png", ".jpg"). Case-insensitive.
         public List<string> Extensions { get; set; } = new();
+
+        // Kind == NamePattern: wildcard names, e.g. "invoice* screenshot*" (see Services/PortalFilter).
+        public string Pattern { get; set; } = "";
+
+        // Kind == OlderThan: days since last change. Kind == LargerThan: size in MB.
+        public double Amount { get; set; }
 
         // Name of the fence to route matching items into (created if missing).
         public string TargetFence { get; set; } = "Documents";

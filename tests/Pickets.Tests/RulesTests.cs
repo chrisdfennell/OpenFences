@@ -64,6 +64,45 @@ namespace Pickets.Tests
                 new() { Kind = RuleKind.Extensions, Extensions = { ".png" }, TargetFence = "Pictures" }
             }));
 
+        [Fact]
+        public void Name_patterns_match_files_and_folders()
+        {
+            var rules = new List<FenceRule>
+            {
+                new() { Kind = RuleKind.NamePattern, Pattern = "invoice* screenshot*", TargetFence = "Paperwork" },
+            };
+            Assert.Equal("Paperwork", DesktopRules.ResolveTargetFence(File("Invoice-001.pdf"), rules));
+            Assert.Equal("Paperwork", DesktopRules.ResolveTargetFence(Folder("Screenshots 2026"), rules));
+            Assert.Null(DesktopRules.ResolveTargetFence(File("notes.txt"), rules));
+        }
+
+        [Fact]
+        public void Older_than_uses_the_last_change()
+        {
+            var rules = new List<FenceRule> { new() { Kind = RuleKind.OlderThan, Amount = 30, TargetFence = "Archive" } };
+            var old = File("old.txt");
+            System.IO.File.SetLastWriteTime(old, DateTime.Now.AddDays(-45));
+            var recent = File("recent.txt");
+            System.IO.File.SetLastWriteTime(recent, DateTime.Now.AddDays(-5));
+
+            Assert.Equal("Archive", DesktopRules.ResolveTargetFence(old, rules));
+            Assert.Null(DesktopRules.ResolveTargetFence(recent, rules));
+        }
+
+        [Fact]
+        public void Larger_than_counts_megabytes_and_skips_folders()
+        {
+            var rules = new List<FenceRule> { new() { Kind = RuleKind.LargerThan, Amount = 1, TargetFence = "Big" } };
+            var big = Path.Combine(_dir, "big.bin");
+            System.IO.File.WriteAllBytes(big, new byte[1024 * 1024 + 1]);
+            var small = Path.Combine(_dir, "small.bin");
+            System.IO.File.WriteAllBytes(small, new byte[1024 * 1024]);
+
+            Assert.Equal("Big", DesktopRules.ResolveTargetFence(big, rules));
+            Assert.Null(DesktopRules.ResolveTargetFence(small, rules));
+            Assert.Null(DesktopRules.ResolveTargetFence(Folder("Huge folder"), rules));
+        }
+
         [Theory]
         [InlineData("png, .JPG;gif", new[] { ".png", ".jpg", ".gif" })]
         [InlineData("*.pdf  *.PDF", new[] { ".pdf" })]

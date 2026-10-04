@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Enumeration;
 using System.Linq;
 
 namespace Pickets.Services
@@ -50,10 +51,11 @@ namespace Pickets.Services
         /// Returns the name of the fence the item should land in, or null if no rule matches.
         /// Rules are evaluated top-to-bottom; first match wins.
         /// </summary>
-        public static string? ResolveTargetFence(string path, IEnumerable<FenceRule> rules)
+        public static string? ResolveTargetFence(string path, IEnumerable<FenceRule> rules, DateTime? now = null)
         {
             bool isDir = Directory.Exists(path);
             string ext = Path.GetExtension(path).ToLowerInvariant();
+            string name = Path.GetFileName(path);
 
             foreach (var rule in rules)
             {
@@ -63,6 +65,12 @@ namespace Pickets.Services
                     RuleKind.Folder => isDir,
                     RuleKind.Extensions => !isDir && rule.Extensions
                         .Any(e => string.Equals(e, ext, StringComparison.OrdinalIgnoreCase)),
+                    RuleKind.NamePattern => PortalFilter.ParsePatterns(rule.Pattern)
+                        .Any(p => FileSystemName.MatchesSimpleExpression(p, name, ignoreCase: true)),
+                    RuleKind.OlderThan => rule.Amount > 0 &&
+                        LastWrite(path, isDir) < (now ?? DateTime.Now).AddDays(-rule.Amount),
+                    RuleKind.LargerThan => !isDir && rule.Amount > 0 &&
+                        SizeOf(path) > rule.Amount * 1024 * 1024,
                     RuleKind.Any => true,
                     _ => false
                 };
@@ -70,6 +78,18 @@ namespace Pickets.Services
                 if (match) return rule.TargetFence;
             }
             return null;
+        }
+
+        private static DateTime LastWrite(string path, bool isDir)
+        {
+            try { return isDir ? Directory.GetLastWriteTime(path) : File.GetLastWriteTime(path); }
+            catch { return DateTime.MaxValue; } // unreadable: never "old"
+        }
+
+        private static long SizeOf(string path)
+        {
+            try { return new FileInfo(path).Length; }
+            catch { return 0; }
         }
     }
 }

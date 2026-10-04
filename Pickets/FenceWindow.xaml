@@ -82,6 +82,102 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Fallback item menu when Windows' own menu isn't available (special items).
+             Not shared: each tile/row gets its own copy. -->
+        <ContextMenu x:Key="ItemMenu" x:Shared="False" Opened="ItemMenu_Opened">
+            <MenuItem Header="Open" Click="Item_Open_Click"/>
+            <MenuItem Header="Quick Look" InputGestureText="Space" Click="Item_QuickLook_Click"/>
+            <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
+            <Separator/>
+            <MenuItem Header="Move to fence…" Tag="MoveToFence" Click="Item_MoveToFence_Click"/>
+            <MenuItem Header="Move to new fence" Tag="MoveToNewFence" Click="Item_MoveToNewFence_Click"/>
+            <MenuItem Header="Remove from fence" Tag="RemoveFromFence" Click="Item_RemoveFromFence_Click"/>
+            <MenuItem Header="Delete (Recycle Bin)" Click="Item_Delete_Click"/>
+        </ContextMenu>
+
+        <!-- Icon view: tiles in rows, sized by the fence's icon size -->
+        <ItemsPanelTemplate x:Key="TilePanel">
+            <WrapPanel ItemWidth="{Binding TileWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                       ItemHeight="{Binding TileHeight, RelativeSource={RelativeSource AncestorType=Window}}" />
+        </ItemsPanelTemplate>
+        <DataTemplate x:Key="TileTemplate">
+            <!-- Highlight card; width tracks the tile size -->
+            <Border Style="{StaticResource FenceItemBorder}"
+                    Width="{Binding TileContentWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Margin="4,4,4,4"
+                    Padding="4,6,4,4"
+                    ToolTipService.ShowDuration="60000"
+                    ToolTip="{Binding DisplayName}"
+                    ToolTipOpening="Item_ToolTipOpening"
+                    MouseLeftButtonDown="Item_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Item_MouseLeftButtonUp"
+                    MouseMove="Item_MouseMove"
+                    MouseRightButtonDown="Item_MouseRightButtonDown"
+                    MouseRightButtonUp="Item_MouseRightButtonUp"
+                    ContextMenu="{StaticResource ItemMenu}"
+                    ContextMenuService.IsEnabled="False">
+                <StackPanel>
+                    <Image Width="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Height="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Source="{Binding Icon}"
+                           Stretch="Uniform"
+                           SnapsToDevicePixels="True"
+                           UseLayoutRounding="True"/>
+                    <!-- Two-line label, like Fences -->
+                    <TextBlock Text="{Binding DisplayName}"
+                               Foreground="{DynamicResource Fence.LabelFg}"
+                               FontSize="11"
+                               Margin="0,5,0,0"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis"
+                               MaxHeight="28"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- List view: one compact row per item, with size and date on the right -->
+        <ItemsPanelTemplate x:Key="RowPanel">
+            <StackPanel/>
+        </ItemsPanelTemplate>
+        <DataTemplate x:Key="RowTemplate">
+            <Border Style="{StaticResource FenceItemBorder}"
+                    Margin="2,1"
+                    Padding="6,3"
+                    ToolTipService.ShowDuration="60000"
+                    ToolTip="{Binding DisplayName}"
+                    ToolTipOpening="Item_ToolTipOpening"
+                    MouseLeftButtonDown="Item_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Item_MouseLeftButtonUp"
+                    MouseMove="Item_MouseMove"
+                    MouseRightButtonDown="Item_MouseRightButtonDown"
+                    MouseRightButtonUp="Item_MouseRightButtonUp"
+                    ContextMenu="{StaticResource ItemMenu}"
+                    ContextMenuService.IsEnabled="False">
+                <DockPanel>
+                    <Image DockPanel.Dock="Left"
+                           Width="{Binding RowIconPx, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Height="{Binding RowIconPx, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Margin="0,0,8,0"
+                           Source="{Binding Icon}"
+                           Stretch="Uniform"
+                           SnapsToDevicePixels="True"
+                           UseLayoutRounding="True"/>
+                    <TextBlock DockPanel.Dock="Right"
+                               Text="{Binding Details}"
+                               Foreground="{DynamicResource Fence.Hint}"
+                               FontSize="11"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding DisplayName}"
+                               Foreground="{DynamicResource Fence.LabelFg}"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <!-- Root surface: rounded dark card + drop shadow -->
@@ -181,6 +277,11 @@
                             <MenuItem Header="Date modified" Tag="DateModified" IsCheckable="True" Click="Sort_Click"/>
                             <MenuItem Header="Size"          Tag="Size"         IsCheckable="True" Click="Sort_Click"/>
                             <MenuItem Header="Manual"        Tag="Manual"       IsCheckable="True" Click="Sort_Click"/>
+                        </MenuItem>
+                        <MenuItem x:Name="ViewMenu" Header="View">
+                            <MenuItem Header="Icons" Tag="Icons" IsCheckable="True" Click="View_Click"/>
+                            <MenuItem Header="List"  Tag="List"  IsCheckable="True" Click="View_Click"
+                                      ToolTip="One row per item with its size and date"/>
                         </MenuItem>
                         <MenuItem x:Name="IconSizeMenu" Header="Icon size">
                             <MenuItem Header="Small"  Tag="Small"  IsCheckable="True" Click="IconSize_Click"/>
@@ -315,62 +416,12 @@
               PanningMode="None">
 
                 <ItemsControl x:Name="Items" SnapsToDevicePixels="True">
+                    <!-- Icons or list (fence menu: View); switched in code by ApplyView -->
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <!-- Tile size follows the fence's icon-size setting -->
-                            <WrapPanel ItemWidth="{Binding TileWidth, RelativeSource={RelativeSource AncestorType=Window}}"
-                                       ItemHeight="{Binding TileHeight, RelativeSource={RelativeSource AncestorType=Window}}" />
-                        </ItemsPanelTemplate>
+                        <StaticResource ResourceKey="TilePanel"/>
                     </ItemsControl.ItemsPanel>
-
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!-- Highlight card; width tracks the tile size -->
-                            <Border Style="{StaticResource FenceItemBorder}"
-                                    Width="{Binding TileContentWidth, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    Margin="4,4,4,4"
-                                    Padding="4,6,4,4"
-                                    ToolTipService.ShowDuration="60000"
-                                    ToolTip="{Binding DisplayName}"
-                                    ToolTipOpening="Item_ToolTipOpening"
-                                    MouseLeftButtonDown="Item_MouseLeftButtonDown"
-                                    MouseLeftButtonUp="Item_MouseLeftButtonUp"
-                                    MouseMove="Item_MouseMove"
-                                    MouseRightButtonDown="Item_MouseRightButtonDown"
-                                    MouseRightButtonUp="Item_MouseRightButtonUp"
-                                    ContextMenuService.IsEnabled="False">
-                                <!-- Fallback when Windows' own menu isn't available (special items) -->
-                                <Border.ContextMenu>
-                                    <ContextMenu Opened="ItemMenu_Opened">
-                                        <MenuItem Header="Open" Click="Item_Open_Click"/>
-                                        <MenuItem Header="Quick Look" InputGestureText="Space" Click="Item_QuickLook_Click"/>
-                                        <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
-                                        <Separator/>
-                                        <MenuItem Header="Move to fence…" Tag="MoveToFence" Click="Item_MoveToFence_Click"/>
-                                        <MenuItem Header="Move to new fence" Tag="MoveToNewFence" Click="Item_MoveToNewFence_Click"/>
-                                        <MenuItem Header="Remove from fence" Tag="RemoveFromFence" Click="Item_RemoveFromFence_Click"/>
-                                        <MenuItem Header="Delete (Recycle Bin)" Click="Item_Delete_Click"/>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <StackPanel>
-                                    <Image Width="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
-                     Height="{Binding IconPx, RelativeSource={RelativeSource AncestorType=Window}}"
-                     Source="{Binding Icon}"
-                     Stretch="Uniform"
-                     SnapsToDevicePixels="True"
-                     UseLayoutRounding="True"/>
-                                    <!-- Two-line label, like Fences -->
-                                    <TextBlock Text="{Binding DisplayName}"
-                     Foreground="{DynamicResource Fence.LabelFg}"
-                     FontSize="11"
-                     Margin="0,5,0,0"
-                     TextAlignment="Center"
-                     TextWrapping="Wrap"
-                     TextTrimming="CharacterEllipsis"
-                     MaxHeight="28"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
+                        <StaticResource ResourceKey="TileTemplate"/>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
