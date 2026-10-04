@@ -103,6 +103,7 @@ namespace OpenFences
             // content area, and both accept drops.
             AllowDrop = true;
             DragEnter += FenceWindow_DragEnter;
+            DragOver += FenceWindow_DragOver;
             MouseEnter += FenceWindow_MouseEnter;
             MouseLeave += FenceWindow_MouseLeave;
             Drop += FenceWindow_Drop;
@@ -857,11 +858,97 @@ namespace OpenFences
             _cursorIndex = ItemsSource.IndexOf(item);
             if (e.ClickCount == 2) { OpenItem(item); return; }
 
-            // Ctrl+click toggles; plain click selects just this one.
+            // Remember where a possible drag starts.
+            _dragItem = item;
+            _dragStart = e.GetPosition(this);
+            _deferredSelectOnly = null;
+
+            // Ctrl+click toggles; plain click selects just this one. Clicking an item that's
+            // already part of a multi-selection keeps the selection until mouse-up, so the whole
+            // selection can be dragged.
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
                 item.IsSelected = !item.IsSelected;
+            else if (item.IsSelected && SelectedCount > 1)
+                _deferredSelectOnly = item;
             else
                 SelectOnly(item);
+        }
+
+        private void Item_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_deferredSelectOnly != null) SelectOnly(_deferredSelectOnly); // a click, not a drag
+            _deferredSelectOnly = null;
+            _dragItem = null;
+        }
+
+        // ---------- Dragging tiles ----------
+        // Tiles drag out as real files (Explorer, mail, apps) and as OpenFences items, so another
+        // fence takes them over and the same fence reorders them.
+        private const string ItemPathsFormat = "OpenFences.ItemPaths";
+        private static FenceWindow? _dragSource;
+        private FenceItem? _dragItem;
+        private FenceItem? _deferredSelectOnly;
+        private Point _dragStart;
+
+        private void Item_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_dragItem == null || e.LeftButton != MouseButtonState.Pressed || sender is not DependencyObject source) return;
+
+            var pos = e.GetPosition(this);
+            if (Math.Abs(pos.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(pos.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            _deferredSelectOnly = null;
+            if (!_dragItem.IsSelected) SelectOnly(_dragItem);
+            var paths = ItemsSource.Where(i => i.IsSelected).Select(i => i.Path).ToArray();
+            _dragItem = null;
+            if (paths.Length == 0) return;
+
+            var data = new System.Windows.DataObject();
+            data.SetData(ItemPathsFormat, paths);
+            // Special items (This PC, …) aren't files; only real paths go to other apps.
+            var files = paths.Where(p => !p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (files.Length > 0)
+                data.SetData(System.Windows.DataFormats.FileDrop, files);
+
+            _dragSource = this;
+            try
+            {
+                System.Windows.DragDrop.DoDragDrop(source, data,
+                    System.Windows.DragDropEffects.Move | System.Windows.DragDropEffects.Copy | System.Windows.DragDropEffects.Link);
+            }
+            catch (Exception ex)
+            {
+                (System.Windows.Application.Current as App)?.SafeLog("Drag tiles", ex);
+            }
+            finally { _dragSource = null; }
+        }
+
+        /// <summary>Move the dragged paths to just before <paramref name="target"/> (or to the end)
+        /// and switch the fence to Manual sort so the order sticks.</summary>
+        private void ReorderItems(IReadOnlyCollection<string> moving, FenceItem? target)
+        {
+            if (!IsRealIcon) return;
+
+            // Start from what's on screen, so switching from another sort keeps the visible order.
+            var order = ItemsSource.Select(i => i.Path).ToList();
+            foreach (var p in _model.ItemPaths)
+                if (!order.Contains(p, StringComparer.OrdinalIgnoreCase)) order.Add(p);
+
+            var set = new HashSet<string>(moving, StringComparer.OrdinalIgnoreCase);
+            if (target != null && set.Contains(target.Path)) return; // dropped onto itself
+
+            var moved = order.Where(set.Contains).ToList();
+            order.RemoveAll(set.Contains);
+            int at = target == null ? order.Count
+                                    : Math.Max(0, order.FindIndex(p => string.Equals(p, target.Path, StringComparison.OrdinalIgnoreCase)));
+            order.InsertRange(at, moved);
+
+            _model.ItemPaths = order;
+            _model.Sort = FenceSort.Manual;
+            ReloadRealItems();
+            foreach (var i in ItemsSource) i.IsSelected = set.Contains(i.Path);
+            Changed?.Invoke(this, EventArgs.Empty);
         }
 
         // Right-clicking an unselected item selects just it (so the menu acts on it).
@@ -1181,15 +1268,36 @@ namespace OpenFences
         private void FenceWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
         {
             if (_model.Collapsed) TempExpand(true); // let the user drop into a rolled-up fence
+            FenceWindow_DragOver(sender, e);
+        }
 
-            e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
-                ? System.Windows.DragDropEffects.Copy
-                : System.Windows.DragDropEffects.None;
+        private void FenceWindow_DragOver(object sender, System.Windows.DragEventArgs e)
+        {
+            // Tiles from a fence move (to this fence, or within it); files from elsewhere copy.
+            if (e.Data.GetDataPresent(ItemPathsFormat) && IsRealIcon)
+                e.Effects = System.Windows.DragDropEffects.Move;
+            else if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+                e.Effects = System.Windows.DragDropEffects.Copy;
+            else
+                e.Effects = System.Windows.DragDropEffects.None;
             e.Handled = true;
         }
 
         private void FenceWindow_Drop(object sender, System.Windows.DragEventArgs e)
         {
+            // Tiles dragged from a normal fence: reorder within the same fence, or take them over.
+            // (Portal tiles are files from elsewhere; they go through the file-drop path below.)
+            if (IsRealIcon && _dragSource is { IsPortal: false } &&
+                e.Data.GetData(ItemPathsFormat) is string[] fencePaths && fencePaths.Length > 0)
+            {
+                e.Handled = true;
+                if (ReferenceEquals(_dragSource, this))
+                    ReorderItems(fencePaths, FindItem(e.OriginalSource as DependencyObject));
+                else
+                    AssignToThisFence(fencePaths);
+                return;
+            }
+
             if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)) return;
             var paths = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop)!;
 

@@ -262,6 +262,8 @@
                                     ToolTipService.ShowDuration="60000"
                                     ToolTip="{Binding DisplayName}"
                                     MouseLeftButtonDown="Item_MouseLeftButtonDown"
+                                    MouseLeftButtonUp="Item_MouseLeftButtonUp"
+                                    MouseMove="Item_MouseMove"
                                     MouseRightButtonDown="Item_MouseRightButtonDown">
                                 <Border.ContextMenu>
                                     <ContextMenu Opened="ItemMenu_Opened">
