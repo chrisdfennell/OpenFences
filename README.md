@@ -9,6 +9,8 @@
 
 # OpenFences
 
+**Website:** [chrisdfennell.github.io/OpenFences](https://chrisdfennell.github.io/OpenFences/) · [Privacy policy](https://chrisdfennell.github.io/OpenFences/privacy.html)
+
 OpenFences is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
 Your real desktop items are shown as tiles inside fences. Nothing is copied and no shortcuts are created; a fence just decides where each desktop item appears. Group items into fences, mirror any folder as a **Folder Portal**, lasso-select across fences, and use **Auto-Import** to sort your desktop into **Apps**, **Documents**, and **System** fences in one click.
 
