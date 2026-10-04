@@ -60,6 +60,9 @@ namespace Pickets.Services
             return virtualKey != 0 && (modifiers & (MOD_CONTROL | MOD_ALT | MOD_WIN)) != 0;
         }
 
+        /// <summary>"Ctrl+Alt+F" that never wraps onto two lines (word joiners around each +).</summary>
+        public static string NoBreak(string shortcut) => shortcut.Replace("+", "⁠+⁠");
+
         private static string KeyName(Key key) => key switch
         {
             >= Key.D0 and <= Key.D9 => ((int)(key - Key.D0)).ToString(),

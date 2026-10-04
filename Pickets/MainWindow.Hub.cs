@@ -194,7 +194,7 @@ namespace Pickets
             ToggleAllButton.Content = _peeked ? "Show all fences" : "Hide all fences";
             RefreshProfileButton();
             SearchTileHint.Text = _config.Options.GlobalHotkeys
-                ? $"Find any item ({_config.Options.SearchHotkey})"
+                ? $"Find any item ({HotkeyText.NoBreak(_config.Options.SearchHotkey)})"
                 : "Find any item in any fence";
         }
 

@@ -84,9 +84,11 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ## 📷 Screenshots
 
-![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal and a rolled-up Archive fence](Pickets/Docs/screenshot-desktop.png "Fences on the desktop")
+![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal, a rolled-up Archive fence and a Recent files fence in list view](Pickets/Docs/screenshot-desktop.png "Fences on the desktop")
 
-![The Pickets window: quick actions and every fence with its state](Pickets/Docs/screenshot-app.png "The Pickets window")
+![The Pickets window: quick actions, desktop profiles and every fence with its state](Pickets/Docs/screenshot-app.png "The Pickets window")
+
+![The Pickets window in the light theme](Pickets/Docs/screenshot-app-light.png "Light theme")
 
 ![Quick Look previewing a picture from a fence](Pickets/Docs/screenshot-quicklook.png "Quick Look")
 

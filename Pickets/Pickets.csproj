@@ -18,6 +18,8 @@
 
     <!-- Per-monitor DPI awareness -->
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WFAC010 suggests WinForms' own DPI setting; this is a WPF app, which needs the manifest. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
 
   <!-- Prevent default wildcard from including the ico as <None> -->

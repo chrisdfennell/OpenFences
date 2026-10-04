@@ -54,6 +54,9 @@ internal static class Program
                 SaveDesktop(fences, "screenshot-search.png", search: "no");
                 SaveWelcome("screenshot-welcome.png");
                 SaveAppWindow(fences, "screenshot-app.png");
+                UsePalette("Light");
+                SaveAppWindow(fences, "screenshot-app-light.png");
+                UsePalette("Dark");
                 SaveQuickLook(fences, "screenshot-quicklook.png");
                 foreach (var f in fences) f.Close();
                 Console.WriteLine("Saved screenshots to " + _outDir);
@@ -75,14 +78,26 @@ internal static class Program
         if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         Directory.CreateDirectory(root);
 
-        foreach (var name in new[]
-                 {
-                     "Quarterly Report.docx", "Budget 2026.xlsx", "Roadmap.pptx", "Meeting Notes.txt",
-                     "Invoice-1042.pdf", "Team Photo.jpg", "Design Assets.zip"
-                 })
-            File.WriteAllText(Path.Combine(root, name), "");
-
         DrawLandscape(Path.Combine(root, "Mountains.png"));
+
+        // Believable sizes and "last changed" times, for the list view's size · date column.
+        var now = DateTime.Now;
+        foreach (var (name, kb, ago) in new[]
+                 {
+                     ("Quarterly Report.docx", 48, TimeSpan.FromMinutes(12)),
+                     ("Budget 2026.xlsx", 126, TimeSpan.FromHours(2)),
+                     ("Meeting Notes.txt", 3, TimeSpan.FromHours(5)),
+                     ("Roadmap.pptx", 2310, TimeSpan.FromDays(2)),
+                     ("Invoice-1042.pdf", 214, TimeSpan.FromDays(6)),
+                     ("Team Photo.jpg", 3480, TimeSpan.FromDays(19)),
+                     ("Design Assets.zip", 18200, TimeSpan.FromDays(41)),
+                 })
+        {
+            var path = Path.Combine(root, name);
+            File.WriteAllBytes(path, new byte[kb * 1024]);
+            File.SetLastWriteTime(path, now - ago);
+        }
+        File.SetLastWriteTime(Path.Combine(root, "Mountains.png"), now - TimeSpan.FromDays(3));
 
         var projects = Directory.CreateDirectory(Path.Combine(root, "Projects")).FullName;
         foreach (var dir in new[] { "Website Redesign", "Mobile App", "Annual Review" })
@@ -149,6 +164,13 @@ internal static class Program
                 Left = 530, Top = 390, Width = 520, Height = 260
             },
             new FenceModel { Name = "Archive", Collapsed = true, Left = 1090, Top = 60, Width = 300, Height = 200 },
+            // List view: one row per item with its size and date, like the Recent files fence.
+            new FenceModel
+            {
+                Name = "Recent files", IsPortal = true, FolderPath = _demo, View = FenceView.List,
+                Sort = FenceSort.DateModified, PortalFilter = ".docx .xlsx .pptx .pdf .txt .jpg .png .zip",
+                Left = 1090, Top = 130, Width = 300, Height = 330
+            },
         };
 
         var windows = new List<FenceWindow>();
@@ -157,10 +179,11 @@ internal static class Program
             var w = new FenceWindow(m);
             // Where it goes in the picture. Read before moving off-screen, which updates the model.
             w.Tag = new Point(m.Left, m.Top);
-            // Off-screen: rendered to bitmaps, never seen on the real desktop.
+            // Off-screen: rendered to bitmaps, never seen on the real desktop. Moved after Show,
+            // since a fence places itself where its model says once its window exists.
+            w.Show();
             w.Left = -30000 + windows.Count * 2000;
             w.Top = -30000;
-            w.Show();
             windows.Add(w);
         }
         return windows;
@@ -234,18 +257,20 @@ internal static class Program
 
         T Find<T>(string name) where T : class => (w.FindName(name) as T)!;
         Brush B(string c) => (Brush)new BrushConverter().ConvertFromString(c)!;
+        Brush R(string key) => (Brush)System.Windows.Application.Current.FindResource(key); // current palette
         Find<TextBlock>("SidebarVersion").Text = ""; // would go stale with every release
         Find<Button>("ToggleAllButton").Content = "Hide all fences";
-        Find<TextBlock>("SearchTileHint").Text = "Find any item (Ctrl+Alt+F)";
+        Find<TextBlock>("SearchTileHint").Text = "Find any item (Ctrl⁠+⁠Alt⁠+⁠F)"; // as the app shows it: never split
+        Find<Button>("ProfileButton").Content = "Work  ▾"; // a desktop profile in use
 
         var rows = fences.Select(f => new MainWindow.FenceRow(f)
         {
             Name = f.FenceName,
             Details = f.IsPortal ? $"Folder portal · {f.ItemCount} items"
                                  : f.TabCount > 0 ? $"{f.ItemCount} items · {f.TabCount} tabs" : $"{f.ItemCount} items",
-            Swatch = string.IsNullOrEmpty(f.AccentColor) ? B("#4A5366") : B(f.AccentColor!),
+            Swatch = string.IsNullOrEmpty(f.AccentColor) ? R("Hub.Swatch") : B(f.AccentColor!),
             State = f.IsCollapsed ? "Rolled up" : "Shown",
-            StateBrush = f.IsCollapsed ? B("#1B2A4A") : B("#14532D"),
+            StateBrush = f.IsCollapsed ? R("Hub.StateRolled") : R("Hub.StateShown"),
             ShowLabel = "Close"
         }).ToList();
         Find<ItemsControl>("FenceList").ItemsSource = rows;
@@ -284,6 +309,17 @@ internal static class Program
         Place(scene, card, new Point((SceneW - 860) / 2, (SceneH - 560) / 2 + 10), 860, 560);
         Save(scene, file);
         ql.Close();
+    }
+
+    // Swap the app's color palette (first merged dictionary, as in App.xaml).
+    private static void UsePalette(string name)
+    {
+        var dicts = System.Windows.Application.Current.Resources.MergedDictionaries;
+        dicts[0] = new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/Pickets;component/Themes/Palette.{name}.xaml")
+        };
+        Flush();
     }
 
     private static string FindRepoFile(string relative)

@@ -21,7 +21,7 @@ namespace Pickets.Services
         public static string Size(long bytes) => bytes switch
         {
             < 1024 => $"{bytes} B",
-            < 1024 * 1024 => $"{Math.Max(1, bytes / 1024)} KB",
+            < 1024 * 1024 => $"{Math.Max(1, (long)Math.Round(bytes / 1024.0))} KB", // as Explorer and Quick Look
             < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):0.#} MB",
             _ => $"{bytes / (1024.0 * 1024 * 1024):0.#} GB",
         };

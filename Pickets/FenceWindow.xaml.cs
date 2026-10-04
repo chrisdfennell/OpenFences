@@ -139,7 +139,7 @@ namespace Pickets
             // window is shown, e.g. for a fence that starts rolled up).
             System.ComponentModel.DependencyPropertyDescriptor
                 .FromProperty(VisibilityProperty, typeof(ScrollViewer))
-                .AddValueChanged(Scroller, (_, __) => UpdateTabStripVisibility());
+                .AddValueChanged(Scroller, (_, __) => { UpdateTabStripVisibility(); UpdateEmptyHint(); });
 
             if (_model.Collapsed) SetCollapsed(true, animate: false);
 
@@ -1678,8 +1678,12 @@ namespace Pickets
         // An empty fence says what to do instead of being a blank box.
         private void UpdateEmptyHint()
         {
-            EmptyHint.Text = IsPortal ? "This folder is empty" : "Drag items here";
-            EmptyHint.Visibility = ItemsSource.Count == 0 && !TitleText.Text.EndsWith("(unavailable)", StringComparison.Ordinal)
+            EmptyHint.Text = !IsPortal ? "Drag items here"
+                : Pickets.Services.PortalFilter.IsActive(_model.PortalFilter, _model.PortalMaxAgeDays) ? "Nothing matches the filter"
+                : "This folder is empty";
+            // Only with the body showing: a rolled-up fence would show it cut off under the title.
+            EmptyHint.Visibility = ItemsSource.Count == 0 && Scroller.Visibility == Visibility.Visible &&
+                                   !TitleText.Text.EndsWith("(unavailable)", StringComparison.Ordinal)
                 ? Visibility.Visible : Visibility.Collapsed;
         }
 
