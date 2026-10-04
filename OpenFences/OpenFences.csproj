@@ -9,7 +9,7 @@
     <Nullable>enable</Nullable>
 
     <!-- Shown in About. CI overrides this with the release tag (-p:Version=...). -->
-    <Version>1.3.2</Version>
+    <Version>1.4.0</Version>
     <!-- Keep About showing "1.1.1", not "1.1.1+<commit hash>". -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 
