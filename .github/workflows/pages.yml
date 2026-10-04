@@ -1,11 +1,11 @@
 name: pages
 
 # Publishes the project website (site/) to GitHub Pages:
-# https://chrisdfennell.github.io/OpenFences/
+# https://chrisdfennell.github.io/Pickets/
 on:
   push:
     branches: [ master ]
-    paths: [ 'site/**', 'OpenFences/Docs/**', 'OpenFences/Assets/open-fence.png', '.github/workflows/pages.yml' ]
+    paths: [ 'site/**', 'Pickets/Docs/**', 'Pickets/Assets/open-fence.png', '.github/workflows/pages.yml' ]
   workflow_dispatch:
 
 permissions:
@@ -30,8 +30,8 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site/assets
-          cp OpenFences/Docs/screenshot-*.png OpenFences/Docs/backgrounds-demo.mp4 site/assets/
-          cp OpenFences/Assets/open-fence.png site/assets/
+          cp Pickets/Docs/screenshot-*.png Pickets/Docs/backgrounds-demo.mp4 site/assets/
+          cp Pickets/Assets/open-fence.png site/assets/
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

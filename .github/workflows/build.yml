@@ -40,18 +40,18 @@ jobs:
           Write-Host "Version = $v"
 
       - name: Restore
-        run: dotnet restore OpenFences/OpenFences.csproj
+        run: dotnet restore Pickets/Pickets.csproj
 
       # Unit tests (rules, repair, snapping, screen fitting, snapshots). Once per run is
       # enough; a failure stops the build, so a broken release never gets published.
       - name: Test
         if: matrix.arch == 'x64'
-        run: dotnet test tests/OpenFences.Tests -c Release
+        run: dotnet test tests/Pickets.Tests -c Release
 
       # Self-contained publish: the installer needs no .NET runtime on the user's PC.
       - name: Publish app (self-contained ${{ matrix.arch }})
         run: >
-          dotnet publish OpenFences/OpenFences.csproj
+          dotnet publish Pickets/Pickets.csproj
           -c Release
           -r win-${{ matrix.arch }}
           --self-contained true
@@ -63,12 +63,12 @@ jobs:
         shell: pwsh
         run: >
           ./.github/scripts/sign.ps1 -Files
-          publish\${{ matrix.arch }}\OpenFences.exe,publish\${{ matrix.arch }}\OpenFences.dll
+          publish\${{ matrix.arch }}\Pickets.exe,publish\${{ matrix.arch }}\Pickets.dll
 
       # WiX SDK builds the MSI; no Visual Studio / extension required.
       - name: Build MSI (WiX)
         run: >
-          dotnet build OpenFences.Installer/OpenFences.Installer.wixproj
+          dotnet build Pickets.Installer/Pickets.Installer.wixproj
           -c Release
           -p:Platform=${{ matrix.arch }}
           -p:PublishDir=${{ github.workspace }}\publish\${{ matrix.arch }}
@@ -78,17 +78,19 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          $msi = Get-ChildItem -Recurse -Filter *.msi -Path OpenFences.Installer | Select-Object -First 1
+          $msi = Get-ChildItem -Recurse -Filter *.msi -Path Pickets.Installer | Select-Object -First 1
           if (-not $msi) { throw 'No MSI produced.' }
-          Copy-Item $msi.FullName "out\OpenFences-${{ matrix.arch }}.msi" -Force
-          ./.github/scripts/sign.ps1 -Files "out\OpenFences-${{ matrix.arch }}.msi"
-          Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\OpenFences-${{ matrix.arch }}-portable.zip" -Force
+          Copy-Item $msi.FullName "out\Pickets-${{ matrix.arch }}.msi" -Force
+          ./.github/scripts/sign.ps1 -Files "out\Pickets-${{ matrix.arch }}.msi"
+          # Copies installed before the rename (OpenFences) look for OpenFences-<arch>.msi to update.
+          Copy-Item "out\Pickets-${{ matrix.arch }}.msi" "out\OpenFences-${{ matrix.arch }}.msi"
+          Compress-Archive -Path "publish\${{ matrix.arch }}\*" -DestinationPath "out\Pickets-${{ matrix.arch }}-portable.zip" -Force
           Get-ChildItem out
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: OpenFences-${{ matrix.arch }}
+          name: Pickets-${{ matrix.arch }}
           path: out/*
           if-no-files-found: error
 
@@ -123,6 +125,6 @@ jobs:
       - uses: vedantmgoyal9/winget-releaser@v2
         if: env.WINGET_TOKEN != ''
         with:
-          identifier: chrisdfennell.OpenFences
-          installers-regex: 'OpenFences-(x64|arm64)\.msi$'
+          identifier: chrisdfennell.Pickets
+          installers-regex: 'Pickets-(x64|arm64)\.msi$'
           token: ${{ secrets.WINGET_TOKEN }}

@@ -3,20 +3,22 @@
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Arch](https://img.shields.io/badge/Arch-x64%20%7C%20ARM64-555)
 [![License: MIT](https://img.shields.io/badge/License-MIT-34D058)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/chrisdfennell/OpenFences?include_prereleases&label=release)](https://github.com/chrisdfennell/OpenFences/releases)
-[![GitHub stars](https://img.shields.io/github/stars/chrisdfennell/OpenFences?style=social)](https://github.com/chrisdfennell/OpenFences/stargazers)
-[![Issues](https://img.shields.io/github/issues/chrisdfennell/OpenFences)](https://github.com/chrisdfennell/OpenFences/issues)
+[![Release](https://img.shields.io/github/v/release/chrisdfennell/Pickets?include_prereleases&label=release)](https://github.com/chrisdfennell/Pickets/releases)
+[![GitHub stars](https://img.shields.io/github/stars/chrisdfennell/Pickets?style=social)](https://github.com/chrisdfennell/Pickets/stargazers)
+[![Issues](https://img.shields.io/github/issues/chrisdfennell/Pickets)](https://github.com/chrisdfennell/Pickets/issues)
 
-# OpenFences
+# Pickets
 
-**Website:** [chrisdfennell.github.io/OpenFences](https://chrisdfennell.github.io/OpenFences/) · [Privacy policy](https://chrisdfennell.github.io/OpenFences/privacy.html)
+*Formerly **OpenFences**.* A free, open-source alternative to Stardock Fences.
 
-OpenFences is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
+**Website:** [chrisdfennell.github.io/Pickets](https://chrisdfennell.github.io/Pickets/) · [Privacy policy](https://chrisdfennell.github.io/Pickets/privacy.html)
+
+Pickets is a lightweight, open-source WPF app for Windows that lets you organize your desktop into movable, resizable “fences.”  
 Your real desktop items are shown as tiles inside fences. Nothing is copied and no shortcuts are created; a fence just decides where each desktop item appears. Group items into fences, mirror any folder as a **Folder Portal**, lasso-select across fences, and use **Auto-Import** to sort your desktop into **Apps**, **Documents**, and **System** fences in one click.
 
-![OpenFences in action: fences with a picture and a looping video background that fade with the fence's transparency](OpenFences/Docs/backgrounds-demo.gif "OpenFences in action")
+![Pickets in action: fences with a picture and a looping video background that fade with the fence's transparency](Pickets/Docs/backgrounds-demo.gif "Pickets in action")
 
-> Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner. This project is an educational/utility clone built from scratch in C#.
+> Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner. Pickets is an independent project, written from scratch in C#.
 
 ---
 
@@ -26,7 +28,7 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   Movable/resizable fence windows that sit above the wallpaper (nudged to the desktop Z-layer).
 
 - **Fences hold your real desktop items**  
-  While OpenFences runs, the normal desktop icons are hidden and each desktop item is shown in exactly one fence. Anything not in another fence lives in the **Desktop** fence. Quitting OpenFences shows the normal desktop icons again.
+  While Pickets runs, the normal desktop icons are hidden and each desktop item is shown in exactly one fence. Anything not in another fence lives in the **Desktop** fence. Quitting Pickets shows the normal desktop icons again.
 
 - **Drag in from anywhere**  
   Drop files from outside the desktop onto a fence and choose whether to move them onto the desktop or create a desktop shortcut.
@@ -62,7 +64,7 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   **Ctrl+Alt+F** opens a quick search across every fence and tab: matching items are listed (Enter opens one), fences come to the front, and everything that doesn't match fades out.
 
 - **Global shortcuts**  
-  **Ctrl+Alt+H** hides or shows all fences from anywhere, even while OpenFences is in the tray. Both shortcuts can be changed in **Settings**.
+  **Ctrl+Alt+H** hides or shows all fences from anywhere, even while Pickets is in the tray. Both shortcuts can be changed in **Settings**.
 
 - **Tabs inside fences**  
   Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
@@ -80,13 +82,13 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
   **Settings → Layouts** saves your whole fence layout and restores it later. A snapshot is also taken automatically before Auto-Import, rule sorting and restores, so big changes can be undone.
 
 - **Automatic update checks**  
-  OpenFences checks GitHub for a new release at startup and once a day, shows what's new, and installs it on request (one Windows permission prompt), then restarts with your fences intact. Turn it off under **Settings → Check for updates automatically**, or check any time with **Check for updates now…**. Portable-zip copies get a link to the download instead.
+  Pickets checks GitHub for a new release at startup and once a day, shows what's new, and installs it on request (one Windows permission prompt), then restarts with your fences intact. Turn it off under **Settings → Check for updates automatically**, or check any time with **Check for updates now…**. Portable-zip copies get a link to the download instead.
 
 - **Safe, persisted layout**  
-  Positions and sizes are saved automatically to `%AppData%\\OpenFences\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
+  Positions and sizes are saved automatically to `%AppData%\\Pickets\\config.json`, with a backup of the previous version in `config.json.bak` that is restored automatically if the file is ever damaged.
 
 - **One home for everything**  
-  The OpenFences window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete each one, plus quick actions and a **Settings** page with simple on/off switches. It hides to the system tray; double-click the tray icon to bring it back.
+  The Pickets window lists every fence with its state (shown, rolled up, closed) and buttons to open, close, locate or delete each one, plus quick actions and a **Settings** page with simple on/off switches. It hides to the system tray; double-click the tray icon to bring it back.
 
 - **⚡ Auto-Import Desktop Icons**  
   One click creates (or reuses) three fences and sorts your desktop items into them:
@@ -102,17 +104,17 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ## 📷 Screenshots
 
-![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal and a rolled-up Archive fence](OpenFences/Docs/screenshot-desktop.png "Fences on the desktop")
+![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal and a rolled-up Archive fence](Pickets/Docs/screenshot-desktop.png "Fences on the desktop")
 
-![The OpenFences window: quick actions and every fence with its state](OpenFences/Docs/screenshot-app.png "The OpenFences window")
+![The Pickets window: quick actions and every fence with its state](Pickets/Docs/screenshot-app.png "The Pickets window")
 
-![Quick Look previewing a picture from a fence](OpenFences/Docs/screenshot-quicklook.png "Quick Look")
+![Quick Look previewing a picture from a fence](Pickets/Docs/screenshot-quicklook.png "Quick Look")
 
-![Ctrl+Alt+F search: matching items are listed and everything else fades out](OpenFences/Docs/screenshot-search.png "Search every fence")
+![Ctrl+Alt+F search: matching items are listed and everything else fades out](Pickets/Docs/screenshot-search.png "Search every fence")
 
-![The first-run welcome](OpenFences/Docs/screenshot-welcome.png "Welcome")
+![The first-run welcome](Pickets/Docs/screenshot-welcome.png "Welcome")
 
-<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- OpenFences/Docs`); the backgrounds clip is recorded by `tools/DemoVideo` (needs ffmpeg).</sub>
+<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- Pickets/Docs`); the backgrounds clip is recorded by `tools/DemoVideo` (needs ffmpeg).</sub>
 
 ---
 
@@ -133,13 +135,13 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ### Via Visual Studio
 1. Open the solution.  
-2. Set **OpenFences** as the startup project.  
+2. Set **Pickets** as the startup project.  
 3. Build & Run (F5).
 
 ### Via CLI
 ```bash
 dotnet build
-dotnet run --project OpenFences/OpenFences.csproj
+dotnet run --project Pickets/Pickets.csproj
 ```
 
 ---
@@ -147,10 +149,10 @@ dotnet run --project OpenFences/OpenFences.csproj
 ## 📁 Where things go
 
 - **Your files:** they stay on your desktop. Fences don't copy or move them.  
-- **Config:** `%AppData%\\OpenFences\\config.json` (previous version kept as `config.json.bak`)  
-- **Layout snapshots:** `%AppData%\\OpenFences\\layouts\\`  
-- **Error log:** `%AppData%\\OpenFences\\error.log`  
-- **Uninstall:** quit OpenFences (your desktop icons reappear), uninstall it, and optionally delete `%AppData%\\OpenFences`.
+- **Config:** `%AppData%\\Pickets\\config.json` (previous version kept as `config.json.bak`)  
+- **Layout snapshots:** `%AppData%\\Pickets\\layouts\\`  
+- **Error log:** `%AppData%\\Pickets\\error.log`  
+- **Uninstall:** quit Pickets (your desktop icons reappear), uninstall it, and optionally delete `%AppData%\\Pickets`.
 
 ---
 
@@ -166,7 +168,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 - Take an item out of a fence: right-click it → **Remove from fence**.  
 - Rename: right-click a fence title bar → **Rename…**.  
 - Auto-import: click **⚡ Auto-Import Desktop Icons** to populate *Apps*, *Documents*, *System* fences.  
-- Hide controller: minimize the main window; restore via tray icon (launching OpenFences again also brings it back).
+- Hide controller: minimize the main window; restore via tray icon (launching Pickets again also brings it back).
 
 ---
 
@@ -185,7 +187,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 ## ⚠️ Known limitations
 
 - Z-order on the desktop can vary by Windows build; we nudge fences toward the desktop layer to keep them behind normal windows (search brings them to the front while it's open).  
-- A Folder Portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart OpenFences, or point it at another folder with **Change folder…**.  
+- A Folder Portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart Pickets, or point it at another folder with **Change folder…**.  
 - Ctrl+Alt+F / Ctrl+Alt+H don't work if another app already uses them; change them (or turn them off) under **Settings → Keyboard shortcuts** if they conflict.  
 - Monitors with different scaling are handled with the system scale factor, so on mixed-DPI setups a fence can look slightly larger or smaller on one screen.
 
@@ -196,7 +198,7 @@ dotnet run --project OpenFences/OpenFences.csproj
 PRs and issues welcome! If you’re proposing a new feature, please include a quick mock or description of the UI/UX.
 
 - Fork and create a feature branch  
-- `dotnet build` to ensure it compiles, and `dotnet test tests/OpenFences.Tests` (CI runs the tests on every push)  
+- `dotnet build` to ensure it compiles, and `dotnet test tests/Pickets.Tests` (CI runs the tests on every push)  
 - Maintainers: see [docs/RELEASING.md](docs/RELEASING.md) for releases, code signing and winget  
 - Open a PR with a clear summary and screenshots if there are UI changes
 

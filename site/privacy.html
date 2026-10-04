@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenFences Privacy Policy</title>
-  <meta name="description" content="What the OpenFences desktop app and website collect: no personal data, no telemetry; only optional update checks to GitHub.">
+  <title>Pickets Privacy Policy</title>
+  <meta name="description" content="What the Pickets desktop app and website collect: no personal data, no telemetry; only optional update checks to GitHub.">
   <link rel="icon" href="assets/open-fence.png">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,13 +12,13 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a class="brand" href="./"><img src="assets/open-fence.png" alt="">OpenFences</a>
+    <a class="brand" href="./"><img src="assets/open-fence.png" alt="">Pickets</a>
     <nav class="site-nav" aria-label="Site">
       <a href="./#features">Features</a>
       <a href="./#download">Download</a>
       <a href="./#signing">Code signing</a>
       <a href="privacy.html" aria-current="page">Privacy</a>
-      <a href="https://github.com/chrisdfennell/OpenFences">GitHub</a>
+      <a href="https://github.com/chrisdfennell/Pickets">GitHub</a>
     </nav>
   </div>
 </header>
@@ -28,57 +28,60 @@
   <p class="updated">Last updated: October 3, 2026</p>
 
   <div class="callout">
-    <strong>In short:</strong> OpenFences doesn't collect, store or share any personal information. It has no
+    <strong>In short:</strong> Pickets doesn't collect, store or share any personal information. It has no
     accounts, ads, analytics or telemetry. Its only network connection is an optional check for new versions on
     GitHub. Everything else stays on your PC.
   </div>
 
-  <p>This policy covers the OpenFences desktop application for Windows and this website. OpenFences is an
+  <p>This policy covers the Pickets desktop application for Windows and this website. Pickets is an
   open-source project maintained by Christopher Fennell; its source code is public at
-  <a href="https://github.com/chrisdfennell/OpenFences">github.com/chrisdfennell/OpenFences</a>, so anything
+  <a href="https://github.com/chrisdfennell/Pickets">github.com/chrisdfennell/Pickets</a>, so anything
   described here can be checked against the code.</p>
 
-  <h2>What OpenFences sends over the network</h2>
-  <p>OpenFences connects to the internet for one purpose only: <strong>checking for updates</strong>.</p>
+  <h2>What Pickets sends over the network</h2>
+  <p>Pickets connects to the internet for one purpose only: <strong>checking for updates</strong>.</p>
   <ul>
     <li>About 10 seconds after it starts, and then once a day, it asks GitHub's public API
-      (<code>api.github.com</code>) for the latest OpenFences release. The request identifies itself as
-      <code>OpenFences-Updater/</code> followed by the installed version number. It contains nothing about you,
+      (<code>api.github.com</code>) for the latest Pickets release. The request identifies itself as
+      <code>Pickets-Updater/</code> followed by the installed version number. It contains nothing about you,
       your PC or your files.</li>
     <li>If a newer version exists and you choose <strong>Install now</strong>, the installer is downloaded from
       GitHub and checked against the checksum GitHub publishes for it.</li>
     <li>You can turn automatic checks off under <strong>Settings → Check for updates automatically</strong>.
-      With it off, OpenFences only connects when you choose <strong>Check for updates now…</strong>.</li>
+      With it off, Pickets only connects when you choose <strong>Check for updates now…</strong>.</li>
   </ul>
   <p>As with any website, GitHub receives your IP address and the request when these checks happen. GitHub's
   handling of that information is covered by the
   <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub
-  General Privacy Statement</a>. OpenFences itself does not receive or keep any of it.</p>
-  <p>OpenFences sends nothing else: no usage statistics, no crash reports, no information about your desktop or
+  General Privacy Statement</a>. Pickets itself does not receive or keep any of it.</p>
+  <p>Pickets sends nothing else: no usage statistics, no crash reports, no information about your desktop or
   files.</p>
 
-  <h2>What OpenFences stores on your PC</h2>
-  <p>Everything OpenFences keeps stays on your computer, in your user profile:</p>
+  <h2>What Pickets stores on your PC</h2>
+  <p>Everything Pickets keeps stays on your computer, in your user profile:</p>
   <table>
     <thead><tr><th>What</th><th>Where</th><th>Why</th></tr></thead>
     <tbody>
       <tr><td>Settings and fence layout (names, positions, which desktop items each fence shows, colors)</td>
-          <td><code>%AppData%\OpenFences\config.json</code> and a backup, <code>config.json.bak</code></td>
+          <td><code>%AppData%\Pickets\config.json</code> and a backup, <code>config.json.bak</code></td>
           <td>To restore your fences the next time it starts</td></tr>
       <tr><td>Saved layouts</td>
-          <td><code>%AppData%\OpenFences\layouts\</code></td>
+          <td><code>%AppData%\Pickets\layouts\</code></td>
           <td>So you can restore an earlier layout</td></tr>
       <tr><td>Error log (technical details of unexpected errors, which can include file paths)</td>
-          <td><code>%AppData%\OpenFences\error.log</code></td>
+          <td><code>%AppData%\Pickets\error.log</code></td>
           <td>To help diagnose problems. It's never sent anywhere; you can choose to share it when reporting a bug.</td></tr>
       <tr><td>A "start with Windows" entry, only if you turn that setting on</td>
           <td>The current user's <code>Run</code> key in the Windows registry</td>
-          <td>To start OpenFences when you sign in</td></tr>
+          <td>To start Pickets when you sign in</td></tr>
     </tbody>
   </table>
-  <p>While it runs, OpenFences also reads your desktop folders and their icons and thumbnails (through
+  <p>While it runs, Pickets also reads your desktop folders and their icons and thumbnails (through
   Windows), and hides the normal desktop icons, restoring them when it exits. None of this leaves your PC.</p>
-  <p>To remove all of it: quit OpenFences, uninstall it, and delete the <code>%AppData%\OpenFences</code> folder.</p>
+  <p>Versions released before the rename used the folder <code>%AppData%\OpenFences</code>. The first time
+  Pickets starts, it moves that folder to <code>%AppData%\Pickets</code> and updates the "start with Windows"
+  entry, so your fences carry over.</p>
+  <p>To remove all of it: quit Pickets, uninstall it, and delete the <code>%AppData%\Pickets</code> folder.</p>
 
   <h2>This website</h2>
   <p>This website is a static site hosted on GitHub Pages. It uses no cookies, no analytics and no tracking
@@ -89,15 +92,15 @@
   <p>Download links lead to GitHub Releases, which is also covered by GitHub's privacy statement.</p>
 
   <h2>Children</h2>
-  <p>OpenFences doesn't collect personal information from anyone, including children.</p>
+  <p>Pickets doesn't collect personal information from anyone, including children.</p>
 
   <h2>Changes to this policy</h2>
-  <p>If OpenFences ever starts handling data differently, this page will be updated before that release, and the
+  <p>If Pickets ever starts handling data differently, this page will be updated before that release, and the
   change will be described in the release notes. The full history of this page is public in the project's
   repository.</p>
 
   <h2>Contact</h2>
-  <p>Questions about privacy? <a href="https://github.com/chrisdfennell/OpenFences/issues">Open an issue on
+  <p>Questions about privacy? <a href="https://github.com/chrisdfennell/Pickets/issues">Open an issue on
   GitHub</a>.</p>
 </main>
 
@@ -106,8 +109,8 @@
     <span>© Christopher Fennell · MIT license · Not affiliated with or endorsed by Stardock.</span>
     <nav aria-label="Footer">
       <a href="./">Home</a>
-      <a href="https://github.com/chrisdfennell/OpenFences">GitHub</a>
-      <a href="https://github.com/chrisdfennell/OpenFences/releases">Releases</a>
+      <a href="https://github.com/chrisdfennell/Pickets">GitHub</a>
+      <a href="https://github.com/chrisdfennell/Pickets/releases">Releases</a>
     </nav>
   </div>
 </footer>

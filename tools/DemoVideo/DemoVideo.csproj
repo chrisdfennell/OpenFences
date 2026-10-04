@@ -9,6 +9,6 @@
     <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\OpenFences\OpenFences.csproj" />
+    <ProjectReference Include="..\..\Pickets\Pickets.csproj" />
   </ItemGroup>
 </Project>

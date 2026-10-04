@@ -20,7 +20,7 @@ try {
     foreach ($file in $Files) {
         Write-Host "Signing $file"
         & $signtool.FullName sign /f $pfx /p $env:CODESIGN_PFX_PASSWORD `
-            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d OpenFences $file
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /d Pickets $file
         if ($LASTEXITCODE -ne 0) { throw "signtool failed for $file" }
     }
 }

@@ -21,7 +21,7 @@ using System.Windows.Media.Imaging;
 using Path = System.IO.Path;
 using Rectangle = System.Windows.Shapes.Rectangle;
 using System.Windows.Threading;
-using OpenFences;
+using Pickets;
 
 internal static class Program
 {
@@ -41,14 +41,14 @@ internal static class Program
         _out = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
         if (args.Length > 1) _ffmpeg = args[1];
         Directory.CreateDirectory(_out);
-        _work = Path.Combine(Path.GetTempPath(), "OpenFencesDemo");
+        _work = Path.Combine(Path.GetTempPath(), "PicketsDemo");
         if (Directory.Exists(_work)) Directory.Delete(_work, true);
         Directory.CreateDirectory(_work);
 
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
-            Source = new Uri("pack://application:,,,/OpenFences;component/Themes/DarkMenu.xaml")
+            Source = new Uri("pack://application:,,,/Pickets;component/Themes/DarkMenu.xaml")
         });
         app.Dispatcher.BeginInvoke(Run);
         app.Run();

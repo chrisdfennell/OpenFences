@@ -1,6 +1,6 @@
-// Renders the README screenshots from the real OpenFences UI, filled with neutral demo content
+// Renders the README screenshots from the real Pickets UI, filled with neutral demo content
 // (built-in Windows apps and made-up documents in a temp folder), so nobody's own desktop ends
-// up in the docs. Usage: dotnet run --project tools/Screenshots -- OpenFences/Docs
+// up in the docs. Usage: dotnet run --project tools/Screenshots -- Pickets/Docs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,7 +12,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using OpenFences;
+using Pickets;
 
 internal static class Program
 {
@@ -29,7 +29,7 @@ internal static class Program
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         app.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
-            Source = new Uri("pack://application:,,,/OpenFences;component/Themes/DarkMenu.xaml")
+            Source = new Uri("pack://application:,,,/Pickets;component/Themes/DarkMenu.xaml")
         });
         app.Dispatcher.BeginInvoke(Run);
         app.Run();
@@ -66,7 +66,7 @@ internal static class Program
 
     private static string CreateDemoFolder()
     {
-        var root = Path.Combine(Path.GetTempPath(), "OpenFencesScreenshots");
+        var root = Path.Combine(Path.GetTempPath(), "PicketsScreenshots");
         if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         Directory.CreateDirectory(root);
 
@@ -218,10 +218,10 @@ internal static class Program
     // real window can't be created here: its constructor takes over the desktop.
     private static void SaveAppWindow(List<FenceWindow> fences, string file)
     {
-        var xamlPath = FindRepoFile(Path.Combine("OpenFences", "MainWindow.xaml"));
-        var xaml = File.ReadAllText(xamlPath).Replace("x:Class=\"OpenFences.MainWindow\"", "");
+        var xamlPath = FindRepoFile(Path.Combine("Pickets", "MainWindow.xaml"));
+        var xaml = File.ReadAllText(xamlPath).Replace("x:Class=\"Pickets.MainWindow\"", "");
         xaml = Regex.Replace(xaml, @"\s(Click|Checked|PreviewKeyDown|GotKeyboardFocus|LostKeyboardFocus)=""[^""]*""", "");
-        xaml = xaml.Replace("Source=\"Themes/HubStyles.xaml\"", "Source=\"pack://application:,,,/OpenFences;component/Themes/HubStyles.xaml\"");
+        xaml = xaml.Replace("Source=\"Themes/HubStyles.xaml\"", "Source=\"pack://application:,,,/Pickets;component/Themes/HubStyles.xaml\"");
         var w = (Window)XamlReader.Parse(xaml);
         w.Width = 1080; w.Height = 720;
         w.Left = -40000; w.Top = -40000;
@@ -258,7 +258,7 @@ internal static class Program
     {
         var docs = fences.First(f => f.FenceName == "Documents");
         var items = docs.SearchableItems().Select(x => x.Item).ToList();
-        foreach (var i in items) i.Icon ??= OpenFences.Services.IconHelper.GetImageSourceForPath(i.Path);
+        foreach (var i in items) i.Icon ??= Pickets.Services.IconHelper.GetImageSourceForPath(i.Path);
         int index = items.FindIndex(i => i.Path.EndsWith("Mountains.png", StringComparison.OrdinalIgnoreCase));
 
         var ql = new QuickLookWindow(items, index) { Width = 860, Height = 560 };

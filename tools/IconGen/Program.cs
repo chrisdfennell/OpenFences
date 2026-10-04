@@ -1,4 +1,4 @@
-// Usage: dotnet run --project tools/IconGen -- OpenFences/Assets
+// Usage: dotnet run --project tools/IconGen -- Pickets/Assets
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
