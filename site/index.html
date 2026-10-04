@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenFences</title>
+  <meta name="description" content="OpenFences is a free, open-source app that organizes your Windows desktop into movable, resizable fences.">
+  <link rel="icon" href="assets/open-fence.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/open-fence.png" alt="">OpenFences</a>
+    <nav class="site-nav" aria-label="Site">
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="#signing">Code signing</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/chrisdfennell/OpenFences">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <img class="hero-icon" src="assets/open-fence.png" alt="OpenFences icon">
+      <h1>Your desktop, sorted into fences</h1>
+      <p class="lead">OpenFences is a free, open-source app for Windows 10 and 11 that groups your desktop icons into movable, resizable fences, so the clutter turns into something you can actually find things in.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="https://github.com/chrisdfennell/OpenFences/releases/latest">Download for Windows</a>
+        <a class="btn btn-ghost" href="https://github.com/chrisdfennell/OpenFences">View the source</a>
+      </div>
+      <p class="meta">Free and open source (MIT) · x64 and ARM64 · Updates itself</p>
+      <img class="hero-shot" src="assets/screenshot-desktop.png"
+           alt="Fences on a Windows desktop: Apps, Documents and System fences, a Projects folder portal and a rolled-up Archive fence">
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>What it does</h2>
+      <p class="section-lead">Your files stay exactly where they are on your desktop. A fence only decides where each item is shown, and quitting OpenFences brings your normal desktop icons back.</p>
+
+      <div class="features">
+        <div class="feature"><span class="glyph" aria-hidden="true">▦</span>
+          <h3>Fences for your real desktop items</h3>
+          <p>Every desktop item lives in exactly one fence. Drag tiles between fences, into Explorer or into any app.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">⚡</span>
+          <h3>Sorts itself</h3>
+          <p>One click sorts your desktop into Apps, Documents and System. Rules send new files to the right fence automatically.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">🗁</span>
+          <h3>Folder portals</h3>
+          <p>Show any folder as a live fence and browse into its subfolders without opening Explorer.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">⌕</span>
+          <h3>Search everything</h3>
+          <p>Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> to find any item in any fence. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd> hides or shows them all.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">⇕</span>
+          <h3>Roll up and peek</h3>
+          <p>Double-click a title to roll a fence up; rest the mouse on it to peek inside.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">◧</span>
+          <h3>Snap, style, lock</h3>
+          <p>Fences snap to screen edges and each other. Pick colors, frosted glass and title sizes, or lock a fence in place.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">▣</span>
+          <h3>Multi-monitor aware</h3>
+          <p>Each fence remembers where it goes for every monitor setup, and is never left off-screen when you undock.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">↺</span>
+          <h3>Layouts you can undo</h3>
+          <p>Save and restore whole layouts. A snapshot is taken automatically before big changes.</p></div>
+        <div class="feature"><span class="glyph" aria-hidden="true">☰</span>
+          <h3>Feels like Windows</h3>
+          <p>Windows' own right-click menu, picture and video thumbnails, rename in place and full keyboard support.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap split">
+      <div>
+        <h2>Find anything in a keystroke</h2>
+        <p class="section-lead">Search lists matches from every fence, brings the fences to the front and fades out everything that doesn't match. Press Enter to open.</p>
+      </div>
+      <img src="assets/screenshot-search.png" alt="The OpenFences search box listing matching items while non-matching tiles fade out">
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap">
+      <h2>Download</h2>
+      <p class="section-lead">Get the latest version from the <a href="https://github.com/chrisdfennell/OpenFences/releases/latest">releases page</a>. After that, OpenFences checks for new versions itself and installs them on request.</p>
+      <div class="steps">
+        <div class="step">
+          <h3>Installer (recommended)</h3>
+          <p><code>OpenFences-x64.msi</code> for most PCs, <code>OpenFences-arm64.msi</code> for ARM devices such as Snapdragon laptops.</p>
+        </div>
+        <div class="step">
+          <h3>Portable</h3>
+          <p><code>OpenFences-x64-portable.zip</code> or <code>OpenFences-arm64-portable.zip</code>: unzip and run <code>OpenFences.exe</code>.</p>
+        </div>
+        <div class="step">
+          <h3>Build it yourself</h3>
+          <p>Install the .NET 8 SDK, clone the repository and run <code>dotnet run --project OpenFences</code>.</p>
+        </div>
+      </div>
+      <p>Requires Windows 10 or 11. No .NET installation needed for the installer or the portable version.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Open source</h2>
+      <p class="section-lead">OpenFences is developed in the open on GitHub under the MIT license. Every release is built from a tagged commit in that repository by GitHub Actions, after the automated tests pass.</p>
+      <div class="steps">
+        <div class="step"><h3>Source code</h3><p><a href="https://github.com/chrisdfennell/OpenFences">github.com/chrisdfennell/OpenFences</a></p></div>
+        <div class="step"><h3>Report a problem</h3><p><a href="https://github.com/chrisdfennell/OpenFences/issues">Open an issue</a> on GitHub.</p></div>
+        <div class="step"><h3>License</h3><p><a href="https://github.com/chrisdfennell/OpenFences/blob/master/LICENSE">MIT</a>: free to use, change and share.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="signing">
+    <div class="wrap">
+      <h2>Code signing policy</h2>
+      <!-- After SignPath approval, add above the paragraph below:
+           <p>Free code signing provided by <a href="https://about.signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>.</p> -->
+      <p class="section-lead">Only official releases of OpenFences are signed. A release is signed only when it is built by the project's GitHub Actions workflow from a tagged commit in the <a href="https://github.com/chrisdfennell/OpenFences">official repository</a>, after the automated tests pass. Locally built copies and forks are not signed with the project's certificate.</p>
+      <div class="steps">
+        <div class="step"><h3>Committers and reviewers</h3><p><a href="https://github.com/chrisdfennell">Christopher Fennell</a> (maintainer). Outside contributions arrive as pull requests and are reviewed by the maintainer before merging.</p></div>
+        <div class="step"><h3>Approvers</h3><p><a href="https://github.com/chrisdfennell">Christopher Fennell</a> approves each release before it is signed.</p></div>
+        <div class="step"><h3>What gets signed</h3><p><code>OpenFences.exe</code>, <code>OpenFences.dll</code> and the <code>.msi</code> installers in each release.</p></div>
+      </div>
+      <p>See the <a href="privacy.html">privacy policy</a> for exactly what OpenFences sends over the network (in short: only update checks to GitHub, which you can turn off).</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© Christopher Fennell · MIT license · Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner.</span>
+    <nav aria-label="Footer">
+      <a href="privacy.html">Privacy policy</a>
+      <a href="https://github.com/chrisdfennell/OpenFences">GitHub</a>
+      <a href="https://github.com/chrisdfennell/OpenFences/releases">Releases</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
