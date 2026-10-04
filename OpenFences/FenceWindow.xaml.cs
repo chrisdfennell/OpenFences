@@ -130,6 +130,7 @@ namespace OpenFences
                 var hwnd = new WindowInteropHelper(this).Handle;
                 DesktopHelper.HideFromAltTab(hwnd);
                 HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+                ApplyGlass();
             };
 
             Loaded += (_, __) => EnsureBottomZOrder();
@@ -137,7 +138,7 @@ namespace OpenFences
             Activated += (_, __) => { EnsureBottomZOrder(); BringToFrontOfFences(); };
 
             LocationChanged += SaveGeometry;
-            SizeChanged += (_, __) => SaveGeometry(null, null);
+            SizeChanged += (_, __) => { SaveGeometry(null, null); if (_model.Glass) UpdateGlassRegion(); };
 
             // Stop watching the backing folder once this fence is gone.
             Closed += (_, __) =>
@@ -737,6 +738,33 @@ namespace OpenFences
                 ToggleCollapsed();
             else if (e.LeftButton == MouseButtonState.Pressed && !_model.Locked)
                 DragMove();
+        }
+
+        // ---------- Frosted glass ----------
+        private void Glass_Click(object sender, RoutedEventArgs e)
+        {
+            _model.Glass = !_model.Glass;
+            // Glass needs a see-through body to show; nudge a nearly opaque fence down.
+            if (_model.Glass && _model.BackgroundOpacity > 0.7) _model.BackgroundOpacity = 0.6;
+            ApplyBackground();
+            ApplyGlass();
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ApplyGlass()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;
+            OpenFences.Services.WindowBlur.Set(hwnd, _model.Glass);
+            if (_model.Glass) UpdateGlassRegion();
+        }
+
+        // The blur covers the whole window rectangle; clip it to the card's rounded corners.
+        private void UpdateGlassRegion()
+        {
+            double s = OpenFences.Services.ScreenLayout.Scale;
+            OpenFences.Services.WindowBlur.SetRoundedRegion(new WindowInteropHelper(this).Handle,
+                (int)Math.Round(ActualWidth * s), (int)Math.Round(ActualHeight * s), (int)Math.Round(10 * s));
         }
 
         // ---------- Lock ----------
@@ -1687,6 +1715,7 @@ namespace OpenFences
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
             MiChangeFolder.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
             MiLock.IsChecked = _model.Locked;
+            MiGlass.IsChecked = _model.Glass;
         }
 
         private void Color_Click(object sender, RoutedEventArgs e)

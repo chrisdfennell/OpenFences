@@ -33,6 +33,9 @@ namespace OpenFences
         // Locked fences can't be moved or resized (until unlocked from the fence menu).
         public bool Locked { get; set; } = false;
 
+        // Frosted glass: whatever is behind the fence shows through, blurred.
+        public bool Glass { get; set; } = false;
+
         // 0.0 (fully transparent) … 1.0 (opaque)
         public double BackgroundOpacity { get; set; } = 0.92;
 

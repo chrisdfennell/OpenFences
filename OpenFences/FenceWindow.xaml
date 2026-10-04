@@ -214,6 +214,8 @@
                             <MenuItem Header="Very High (40%)"    Tag="0.40" IsCheckable="True" Click="Transparency_Click"/>
                             <MenuItem Header="Glass (20%)"        Tag="0.20" IsCheckable="True" Click="Transparency_Click"/>
                             <MenuItem Header="Invisible (0%)"     Tag="0.00" IsCheckable="True" Click="Transparency_Click"/>
+                            <Separator/>
+                            <MenuItem x:Name="MiGlass" Header="Frosted glass" IsCheckable="True" Click="Glass_Click"/>
                         </MenuItem>
                         <Separator/>
                         <MenuItem Header="Delete Fence…" Foreground="#FFEF4444" Click="DeleteFence_Click"/>
