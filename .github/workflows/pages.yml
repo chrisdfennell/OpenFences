@@ -30,7 +30,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site/assets
-          cp OpenFences/Docs/screenshot-*.png site/assets/
+          cp OpenFences/Docs/screenshot-*.png OpenFences/Docs/backgrounds-demo.mp4 site/assets/
           cp OpenFences/Assets/open-fence.png site/assets/
 
       - uses: actions/configure-pages@v6

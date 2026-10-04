@@ -97,13 +97,15 @@ Your real desktop items are shown as tiles inside fences. Nothing is copied and 
 
 ## 📷 Screenshots
 
+![Fence backgrounds: a picture and a looping video behind the tiles, fading with the fence's transparency, with darkening and fit options](OpenFences/Docs/backgrounds-demo.gif "Picture and video backgrounds")
+
 ![Fences on the desktop: Apps, Documents, System, a Projects folder portal and a rolled-up Archive fence](OpenFences/Docs/screenshot-desktop.png "Fences on the desktop")
 
 ![Ctrl+Alt+F search: matching items are listed and everything else fades out](OpenFences/Docs/screenshot-search.png "Search every fence")
 
 ![The first-run welcome](OpenFences/Docs/screenshot-welcome.png "Welcome")
 
-<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- OpenFences/Docs`).</sub>
+<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- OpenFences/Docs`); the backgrounds clip is recorded by `tools/DemoVideo` (needs ffmpeg).</sub>
 
 ---
 
