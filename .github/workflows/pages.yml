@@ -24,7 +24,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # The screenshots and icon live with the app; copy them in rather than keeping duplicates.
       - name: Assemble site
