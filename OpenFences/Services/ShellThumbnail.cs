@@ -24,7 +24,13 @@ namespace OpenFences.Services
             !path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) &&
             Array.IndexOf(Extensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
 
-        public static ImageSource? Get(string path, int sizePx)
+        public static ImageSource? Get(string path, int sizePx) => GetImage(path, sizePx, thumbnailOnly: true);
+
+        /// <summary>The thumbnail if there is one, otherwise the item's icon at a large size
+        /// (used by Quick Look for files it can't preview).</summary>
+        public static ImageSource? GetLarge(string path, int sizePx) => GetImage(path, sizePx, thumbnailOnly: false);
+
+        private static ImageSource? GetImage(string path, int sizePx, bool thumbnailOnly)
         {
             IntPtr hbmp = IntPtr.Zero;
             try
@@ -35,7 +41,8 @@ namespace OpenFences.Services
                 try
                 {
                     var size = new SIZE { cx = sizePx, cy = sizePx };
-                    if (factory.GetImage(size, SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK, out hbmp) != 0 || hbmp == IntPtr.Zero)
+                    int flags = SIIGBF_BIGGERSIZEOK | (thumbnailOnly ? SIIGBF_THUMBNAILONLY : 0);
+                    if (factory.GetImage(size, flags, out hbmp) != 0 || hbmp == IntPtr.Zero)
                         return null;
                 }
                 finally { Marshal.ReleaseComObject(factory); }

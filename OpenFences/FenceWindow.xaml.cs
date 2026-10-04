@@ -1246,7 +1246,10 @@ namespace OpenFences
             bool special = paths.Any(p => p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase));
             if (!special)
             {
-                var extras = new List<OpenFences.Services.ShellContextMenu.Extra>();
+                var extras = new List<OpenFences.Services.ShellContextMenu.Extra>
+                {
+                    new("Quick Look\tSpace", () => QuickLookSelected(item))
+                };
                 if (CanRemoveSelected)
                     extras.Add(new("Remove from fence", () => RequestRemoveSelected?.Invoke()));
 
@@ -1261,6 +1264,24 @@ namespace OpenFences
                 menu.DataContext = item;
                 menu.IsOpen = true;
             }
+        }
+
+        // ---------- Quick Look ----------
+        /// <summary>Preview the selected item (or the one under the keyboard cursor) in a large
+        /// window; ←/→ there step through this fence's items.</summary>
+        private void QuickLookSelected(FenceItem? item = null)
+        {
+            item ??= ItemsSource.FirstOrDefault(i => i.IsSelected)
+                     ?? (_cursorIndex >= 0 && _cursorIndex < ItemsSource.Count ? ItemsSource[_cursorIndex] : null);
+            if (item == null) return;
+
+            var list = ItemsSource.ToList();
+            new QuickLookWindow(list, list.IndexOf(item)).Show();
+        }
+
+        private void Item_QuickLook_Click(object sender, RoutedEventArgs e)
+        {
+            if (MenuSenderToItem(sender) is FenceItem item) QuickLookSelected(item);
         }
 
         // ---------- Rename items ----------
@@ -1488,6 +1509,10 @@ namespace OpenFences
                     return;
                 case Key.Escape:
                     SelectOnly(null);
+                    e.Handled = true;
+                    return;
+                case Key.Space when mods == ModifierKeys.None:
+                    QuickLookSelected();
                     e.Handled = true;
                     return;
                 case Key.Back:

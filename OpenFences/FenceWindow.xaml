@@ -304,6 +304,7 @@
                                 <Border.ContextMenu>
                                     <ContextMenu Opened="ItemMenu_Opened">
                                         <MenuItem Header="Open" Click="Item_Open_Click"/>
+                                        <MenuItem Header="Quick Look" InputGestureText="Space" Click="Item_QuickLook_Click"/>
                                         <MenuItem Header="Open file location" Click="Item_OpenFolder_Click"/>
                                         <Separator/>
                                         <MenuItem Header="Remove from fence" Tag="RemoveFromFence" Click="Item_RemoveFromFence_Click"/>
