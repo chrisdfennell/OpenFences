@@ -211,6 +211,18 @@ namespace OpenFences
             if (any) { Changed?.Invoke(this, EventArgs.Empty); ReloadRealItems(); }
         }
 
+        /// <summary>The item was renamed on disk: keep it in this fence (same position) under its
+        /// new path. Returns false if this fence doesn't own <paramref name="oldPath"/>.</summary>
+        public bool ReplaceItemPath(string oldPath, string newPath)
+        {
+            int i = _model.ItemPaths.FindIndex(p => string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase));
+            if (i < 0) return false;
+            _model.ItemPaths[i] = newPath;
+            Changed?.Invoke(this, EventArgs.Empty);
+            ReloadRealItems();
+            return true;
+        }
+
         /// <summary>Remove a desktop item (by path) from this fence and re-render.</summary>
         public bool RemoveItemPath(string path)
         {

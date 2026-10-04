@@ -956,12 +956,8 @@ namespace OpenFences
                 {
                     var w = new FileSystemWatcher(root) { IncludeSubdirectories = false, EnableRaisingEvents = true };
                     w.Created += (_, e) => Dispatcher.BeginInvoke(() => OnDesktopFileCreated(e.FullPath));
-                    w.Deleted += (_, e) => Dispatcher.BeginInvoke(() => OnDesktopFileRemoved(e.FullPath));
-                    w.Renamed += (_, e) => Dispatcher.BeginInvoke(() =>
-                    {
-                        OnDesktopFileRemoved(e.OldFullPath);
-                        OnDesktopFileCreated(e.FullPath);
-                    });
+                    w.Deleted += (_, e) => Dispatcher.BeginInvoke(() => QueueDesktopRemoval(e.FullPath));
+                    w.Renamed += (_, e) => Dispatcher.BeginInvoke(() => OnDesktopFileRenamed(e.OldFullPath, e.FullPath));
                     _desktopWatchers.Add(w);
                 }
                 catch { /* skip this root */ }
@@ -998,6 +994,44 @@ namespace OpenFences
         }
 
         // A desktop item was removed/renamed away → drop it from whatever fence owned it.
+        // A renamed item stays in the fence it was in (instead of being treated as a new file).
+        private void OnDesktopFileRenamed(string oldPath, string newPath)
+        {
+            foreach (var w in RealFences)
+            {
+                if (w.ReplaceItemPath(oldPath, newPath))
+                {
+                    SaveConfig();
+                    return;
+                }
+            }
+            OnDesktopFileCreated(newPath); // wasn't in a fence (e.g. a temp file renamed into place)
+        }
+
+        // Deletions are confirmed after a short delay. Apps like Office save by deleting the
+        // original and renaming a temp file into its place; acting at once would drop the file
+        // from its fence and the rename would then land it in the Desktop fence.
+        private readonly HashSet<string> _pendingRemovals = new(StringComparer.OrdinalIgnoreCase);
+        private System.Windows.Threading.DispatcherTimer? _removalTimer;
+
+        private void QueueDesktopRemoval(string path)
+        {
+            _pendingRemovals.Add(path);
+            if (_removalTimer == null)
+            {
+                _removalTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+                _removalTimer.Tick += (_, __) =>
+                {
+                    _removalTimer.Stop();
+                    foreach (var p in _pendingRemovals.ToList())
+                        if (!File.Exists(p) && !Directory.Exists(p)) OnDesktopFileRemoved(p);
+                    _pendingRemovals.Clear();
+                };
+            }
+            _removalTimer.Stop();
+            _removalTimer.Start();
+        }
+
         private void OnDesktopFileRemoved(string path)
         {
             bool changed = false;
