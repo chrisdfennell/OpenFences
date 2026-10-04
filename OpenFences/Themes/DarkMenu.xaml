@@ -252,9 +252,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border Width="{TemplateBinding Width}"
-                  Height="{TemplateBinding Height}"
-                  Background="#30394B"
+                    <Border Background="#30394B"
                   BorderBrush="#3B4458"
                   BorderThickness="1"
                   CornerRadius="3"/>
@@ -264,6 +262,10 @@
     </Style>
 
     <Style TargetType="ScrollBar">
+        <!-- The default ScrollBar style sets MinWidth/MinHeight to the system scrollbar size
+             (~17px), which would override the slim width. -->
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Width" Value="6"/>
         <Setter Property="Background" Value="#10141C"/>
         <Setter Property="Template">
@@ -277,8 +279,11 @@
                             <Track.IncreaseRepeatButton>
                                 <RepeatButton IsEnabled="False" Opacity="0"/>
                             </Track.IncreaseRepeatButton>
+                            <!-- No fixed size: the Track sizes the thumb to the visible share of
+                                 the content. A fixed Height made the Track center a short thumb in
+                                 a taller slot, leaving a gap at the top and bottom. -->
                             <Track.Thumb>
-                                <Thumb Height="24" Width="6" Style="{StaticResource DarkThumb}"/>
+                                <Thumb x:Name="Thumb" MinHeight="24" MinWidth="24" Style="{StaticResource DarkThumb}"/>
                             </Track.Thumb>
                         </Track>
                     </Grid>
@@ -288,11 +293,22 @@
                              travels the wrong way while the content scrolls correctly. -->
                         <Trigger Property="Orientation" Value="Vertical">
                             <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True"/>
+                            <Setter TargetName="Thumb" Property="Width" Value="6"/>
+                        </Trigger>
+                        <Trigger Property="Orientation" Value="Horizontal">
+                            <Setter TargetName="Thumb" Property="Height" Value="6"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <!-- Slim in the cross direction for both orientations -->
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="Height" Value="6"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
 </ResourceDictionary>
