@@ -1,4 +1,4 @@
-<Window x:Class="Pickets.FenceWindow"
+﻿<Window x:Class="Pickets.FenceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -266,6 +266,8 @@
                         <MenuItem x:Name="MiPortalFilter" Header="Filter…" Click="PortalFilter_Click"/>
                         <MenuItem x:Name="MiOpenAll" Header="Open all" Click="OpenAll_Click"
                                   ToolTip="Open every item in this fence (or this tab) at once"/>
+                        <MenuItem x:Name="MiCloseAll" Header="Close all" Click="CloseAll_Click"
+                                  ToolTip="Close the running apps this fence (or this tab) starts. Each app still asks to save your work"/>
                         <MenuItem x:Name="MiAddTab" Header="Add tab…" Click="AddTab_Click"/>
                         <MenuItem x:Name="MiLock" Header="Lock position and size" IsCheckable="True" Click="Lock_Click"/>
                         <MenuItem Header="Fit to contents" Click="FitToContents_Click"

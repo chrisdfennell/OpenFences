@@ -53,7 +53,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 ### Find and open
 
 - **Fences in front of your windows.** **Ctrl+Alt+Space** brings every fence above your open apps, so you can use them without minimizing anything. Click another window or press Esc and they go back.
-- **Open all.** The fence menu's **Open all** opens everything in a fence (or tab) at once, e.g. a "Work" fence that starts your work apps.
+- **Open all.** The fence menu's **Open all** opens everything in a fence (or tab) at once, e.g. a "Work" fence that starts your work apps. **Close all** is the other half: it closes the running apps the fence starts, the same as clicking each window's X, so apps still ask to save your work.
 - **Search every fence.** **Ctrl+Alt+F** searches every fence and tab: matches are listed (Enter opens one), fences come to the front and everything else fades out.
 - **Quick Look.** Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
 - **The real Windows right-click menu.** Open with, Send to, Properties and menu entries other apps add, plus **Remove from fence**. **Rename** (or F2) renames the actual file, and it stays in its fence, as do files renamed in Explorer or saved by apps such as Office.

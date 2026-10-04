@@ -1711,8 +1711,6 @@ namespace Pickets
             Changed?.Invoke(this, EventArgs.Empty);
         }
 
-        // Fit to contents: narrow the fence if it has room to spare, then make it exactly as tall
-        // as its tiles (no scrollbar), within the screen.
         // Opens everything on the current tab, e.g. a "Work" fence that starts your work apps.
         private void OpenAll_Click(object sender, RoutedEventArgs e)
         {
@@ -1724,6 +1722,26 @@ namespace Pickets
             foreach (var p in paths) LaunchPath(p);
         }
 
+        // The other half of Open all: politely closes the running apps the current tab starts.
+        private void CloseAll_Click(object sender, RoutedEventArgs e)
+        {
+            var apps = Pickets.Services.AppCloser.FindRunning(ItemsSource.Select(i => i.Path));
+            if (apps.Count == 0)
+            {
+                MessageBox.Show(this, "None of the apps in this fence are running.", "Close all",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            string names = string.Join(Environment.NewLine, apps.Select(a => "  • " + a.Name));
+            string what = apps.Count == 1 ? apps[0].Name : $"these {apps.Count} apps";
+            if (MessageBox.Show(this, $"Close {what}?{Environment.NewLine}{Environment.NewLine}{names}" +
+                                      $"{Environment.NewLine}{Environment.NewLine}Apps with unsaved work will ask you to save it first.",
+                                "Close all", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+            Pickets.Services.AppCloser.Close(apps);
+        }
+
+        // Fit to contents: narrow the fence if it has room to spare, then make it exactly as tall
+        // as its tiles (no scrollbar), within the screen.
         private void FitToContents_Click(object sender, RoutedEventArgs e)
         {
             if (_model.Collapsed) SetCollapsed(false, animate: false);
@@ -2416,6 +2434,8 @@ namespace Pickets
             // A portal can hold a whole folder's worth of files, so "Open all" is for fences only.
             MiOpenAll.Visibility = !_model.IsPortal && ItemsSource.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             MiOpenAll.Header = HasTabs ? $"Open all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Open all";
+            MiCloseAll.Visibility = MiOpenAll.Visibility;
+            MiCloseAll.Header = HasTabs ? $"Close all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Close all";
             MiLock.IsChecked = _model.Locked;
             MiAddTab.Visibility = _model.IsPortal ? Visibility.Collapsed : Visibility.Visible;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
