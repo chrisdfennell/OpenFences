@@ -100,7 +100,7 @@ namespace Pickets
             StartProfileSchedule();
 
             // Right-click-drag rectangle to create an (empty) fence or a folder portal there
-            if (!Sandbox.IsActive) DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r));
+            if (!Sandbox.IsActive) DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r), r => CreateSystemMonitor(r));
 
             // Delete/Enter operate on the whole selection across all fences
             FenceWindow.RequestDeleteSelected = DeleteAllSelected;
@@ -275,7 +275,7 @@ namespace Pickets
         }
 
         private static bool IsCatchAll(FenceWindow w) =>
-            !w.IsPortal && string.Equals(w.FenceName, CatchAllFenceName, StringComparison.OrdinalIgnoreCase);
+            !w.IsPortal && !w.IsMonitor && string.Equals(w.FenceName, CatchAllFenceName, StringComparison.OrdinalIgnoreCase);
 
         private void OpenAllSelected()
         {
@@ -382,6 +382,7 @@ namespace Pickets
             _trayMenu.Opening += (_, __) => { undo.Text = UndoMenuText; undo.Enabled = _undo.Count > 0; };
             var newFence = new WinForms.ToolStripMenuItem("New Fence", null, (_, __) => NewFence_Click(null!, null!));
             var newPortal = new WinForms.ToolStripMenuItem("New Folder Portal…", null, (_, __) => NewFolderPortal_Click(null!, null!));
+            var newMonitor = new WinForms.ToolStripMenuItem("New System Monitor", null, (_, __) => NewSystemMonitor_Click(null, null));
             var search = new WinForms.ToolStripMenuItem("Search Fences…", null, (_, __) => OpenSearch());
             var showAll = new WinForms.ToolStripMenuItem("Show All Fences", null, (_, __) => ShowAll_Click(null!, null!));
             var deleteAll = new WinForms.ToolStripMenuItem("Delete All Fences…", null, (_, __) => DeleteAllFences_Click(null, null));
@@ -395,6 +396,7 @@ namespace Pickets
             _trayMenu.Items.Add(new WinForms.ToolStripSeparator());
             _trayMenu.Items.Add(newFence);
             _trayMenu.Items.Add(newPortal);
+            _trayMenu.Items.Add(newMonitor);
             _trayMenu.Items.Add(search);
             _trayMenu.Items.Add(showAll);
             _trayMenu.Items.Add(hideAll);
@@ -608,6 +610,20 @@ namespace Pickets
             // Delete fence → remove from config (+ optional folder delete)
             win.DeleteRequested += (_, __) =>
             {
+                if (model.IsMonitor)
+                {
+                    // Nothing to re-home: a monitor holds no items.
+                    if (MessageBox.Show($"Delete the system monitor “{model.Name}”?", "Delete Fence",
+                                        MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+                    Undoable($"Delete system monitor “{model.Name}”", () =>
+                    {
+                        _fences.Remove(model);
+                        SaveConfig();
+                        win.Close();
+                    });
+                    return;
+                }
+
                 if (model.IsPortal)
                 {
                     // A portal points at the user's own folder — NEVER delete it; just unlink.
@@ -743,7 +759,7 @@ namespace Pickets
             bool changed = false;
             foreach (var m in _fences)
             {
-                if (m.IsPortal || m.IconNames.Count == 0) continue;
+                if (!m.HoldsDesktopItems || m.IconNames.Count == 0) continue;
                 foreach (var name in m.IconNames)
                 {
                     var path = DesktopItems.ResolvePath(name);
@@ -766,7 +782,8 @@ namespace Pickets
             if (FenceRepair.Repair(_fences, CatchAllFenceName)) SaveConfig();
         }
 
-        private IEnumerable<FenceWindow> RealFences => _openWindows.Where(w => !w.IsPortal);
+        // Fences that own desktop items (not portals or system monitors).
+        private IEnumerable<FenceWindow> RealFences => _openWindows.Where(w => !w.IsPortal && !w.IsMonitor);
 
         private bool AnyFenceOwns(string path) => RealFences.Any(w => w.OwnsPath(path));
 
@@ -806,7 +823,7 @@ namespace Pickets
 
             // A fence with this name exists but its window isn't open (e.g. it failed to
             // spawn): reopen it rather than creating a duplicate.
-            var model0 = _fences.FirstOrDefault(f => !f.IsPortal &&
+            var model0 = _fences.FirstOrDefault(f => f.HoldsDesktopItems &&
                 string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
             if (model0 != null)
             {
@@ -1038,6 +1055,46 @@ namespace Pickets
             win.Show();
         }
 
+        private void NewSystemMonitor_Click(object? sender, RoutedEventArgs? e) => CreateSystemMonitor(null);
+
+        /// <summary>Add a system monitor fence (CPU, memory, disk space, network, battery): in
+        /// <paramref name="screenRect"/> (a box drawn by right-dragging on the desktop), or near the mouse.</summary>
+        private void CreateSystemMonitor(Rect? screenRect)
+        {
+            string name = "System";
+            int n = 1;
+            while (_fences.Any(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                name = $"System ({++n})";
+
+            // Two tiles across, as tall as the tiles need (a drive or battery can come and go);
+            // a box drawn on the desktop keeps the size it was drawn at.
+            var (left, top) = SpawnNearCursor();
+            double width = 352, height = 440;
+            bool fit = screenRect == null;
+            if (screenRect is Rect r)
+                (left, top, width, height) = (r.Left, r.Top, Math.Max(160, r.Width), Math.Max(120, r.Height));
+
+            var model = new FenceModel
+            {
+                Name = name,
+                IsMonitor = true,
+                Left = left,
+                Top = top,
+                Width = width,
+                Height = height,
+                AutoHeight = fit,
+                Collapsed = false
+            };
+            _fences.Add(model);
+            SaveConfig();
+
+            var win = new FenceWindow(model);
+            HookFenceWindow(win, model);
+            _openWindows.Add(win);
+            win.Show();
+            win.EnsureBottomZOrder();
+        }
+
         private void About_Click(object? sender, RoutedEventArgs? e)
         {
             RestoreFromTray();
@@ -1190,7 +1247,7 @@ namespace Pickets
             FencesInFront.Exit();
             var fences = LayoutSnapshots.Clone(source);
             var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var f in fences.Where(f => !f.IsPortal))
+            foreach (var f in fences.Where(f => f.HoldsDesktopItems))
                 f.ItemPaths = f.ItemPaths
                     .Where(p => p.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) || File.Exists(p) || Directory.Exists(p))
                     .Where(p => claimed.Add(p))

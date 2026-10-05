@@ -25,7 +25,7 @@ namespace Pickets.Services
             var sb = new StringBuilder();
             var o = config.Options;
             var fences = config.Fences;
-            var real = fences.Where(f => !f.IsPortal).ToList();
+            var real = fences.Where(f => f.HoldsDesktopItems).ToList();
 
             sb.AppendLine($"Pickets {UpdateService.CurrentVersion.ToString(3)} ({RuntimeInformation.ProcessArchitecture}, {(IsInstalled ? "installed" : "portable")})");
             sb.AppendLine($"Windows: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
@@ -42,7 +42,7 @@ namespace Pickets.Services
             }
             sb.AppendLine();
 
-            sb.AppendLine($"Fences: {real.Count}, portals: {fences.Count - real.Count}, closed: {fences.Count(f => f.Closed)}, " +
+            sb.AppendLine($"Fences: {real.Count}, portals: {fences.Count(f => f.IsPortal)}, monitors: {fences.Count(f => f.IsMonitor)}, closed: {fences.Count(f => f.Closed)}, " +
                           $"rolled up: {fences.Count(f => f.Collapsed)}, locked: {fences.Count(f => f.Locked)}, " +
                           $"fitted: {fences.Count(f => f.AutoHeight)}");
             sb.AppendLine($"Items in fences: {real.Sum(f => f.ItemPaths.Count)}, fences with tabs: {real.Count(f => f.Tabs.Count >= 2)}, " +

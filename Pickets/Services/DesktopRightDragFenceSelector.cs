@@ -19,13 +19,13 @@ namespace Pickets.Services
         // ---------- Public static API ----------
         private static DesktopRightDragFenceSelector? _instance;
 
-        public static void Start(Action<Rect> onConfirm, Action<Rect> onPortal)
+        public static void Start(Action<Rect> onConfirm, Action<Rect> onPortal, Action<Rect> onMonitor)
         {
             // Ensure WPF Application exists
             if (System.Windows.Application.Current == null)
                 _ = new System.Windows.Application();
 
-            _instance ??= new DesktopRightDragFenceSelector(onConfirm, onPortal);
+            _instance ??= new DesktopRightDragFenceSelector(onConfirm, onPortal, onMonitor);
             _instance.Hook();
         }
 
@@ -40,6 +40,7 @@ namespace Pickets.Services
         // ---------- Instance ----------
         private readonly Action<Rect> _onConfirm;
         private readonly Action<Rect> _onPortal;
+        private readonly Action<Rect> _onMonitor;
         private IntPtr _hook = IntPtr.Zero;
         private LowLevelMouseProc? _proc;
 
@@ -57,10 +58,11 @@ namespace Pickets.Services
         // Overlay
         private ScreenOverlay? _overlay;
 
-        private DesktopRightDragFenceSelector(Action<Rect> onConfirm, Action<Rect> onPortal)
+        private DesktopRightDragFenceSelector(Action<Rect> onConfirm, Action<Rect> onPortal, Action<Rect> onMonitor)
         {
             _onConfirm = onConfirm;
             _onPortal = onPortal;
+            _onMonitor = onMonitor;
         }
 
         // ---------- Hook lifecycle ----------
@@ -244,10 +246,14 @@ namespace Pickets.Services
                     var miPortal = new System.Windows.Controls.MenuItem { Header = "Create folder portal here…" };
                     miPortal.Click += (_, __) => chosen = _onPortal;
 
+                    var miMonitor = new System.Windows.Controls.MenuItem { Header = "Create system monitor here" };
+                    miMonitor.Click += (_, __) => chosen = _onMonitor;
+
                     var miCancel = new System.Windows.Controls.MenuItem { Header = "Cancel" };
 
                     cm.Items.Add(miCreate);
                     cm.Items.Add(miPortal);
+                    cm.Items.Add(miMonitor);
                     cm.Items.Add(new System.Windows.Controls.Separator());
                     cm.Items.Add(miCancel);
 

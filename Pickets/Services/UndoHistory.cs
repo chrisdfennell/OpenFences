@@ -84,11 +84,11 @@ namespace Pickets.Services
             }
 
             var recorded = new HashSet<FenceModel>(entry.Fences.Select(s => s.Model));
-            var placed = new HashSet<string>(recorded.Where(m => !m.IsPortal).SelectMany(m => m.ItemPaths),
+            var placed = new HashSet<string>(recorded.Where(m => m.HoldsDesktopItems).SelectMany(m => m.ItemPaths),
                                              StringComparer.OrdinalIgnoreCase);
             foreach (var m in fences.ToList())
             {
-                if (recorded.Contains(m) || m.IsPortal) continue;
+                if (recorded.Contains(m) || !m.HoldsDesktopItems) continue;
                 if (m.ItemPaths.RemoveAll(placed.Contains) == 0) continue;
                 FenceTabs.Normalize(m);
                 if (m.ItemPaths.Count == 0)
