@@ -74,6 +74,7 @@ namespace Pickets
             };
             FenceWindow.RequestKeyboardHelp = ShowKeyboardHelp;
 
+            InitMonitorSettings();
             RefreshSettingsPage();
             RefreshHome();
 
@@ -292,6 +293,7 @@ namespace Pickets
             ThemeButton.Content = ThemeLabel(_config.Options.Theme) + "  ▾";
             UpdateHotkeyStatus();
             RefreshLayouts();
+            RefreshMonitorSettings();
         }
 
         private static string ThemeLabel(AppTheme t) => t switch
@@ -337,6 +339,7 @@ namespace Pickets
                 _lastHideExtensions = o.HideFileExtensions;
                 foreach (var w in _openWindows) w.RefreshItems();
             }
+            ApplyMonitorOptionsToAll(); // units, warning colors
 
             SaveConfig();
         }

@@ -70,7 +70,10 @@ namespace Pickets
 
         // A system monitor shows live readings (CPU, memory…) as tiles instead of desktop items.
         public bool IsMonitor { get; set; } = false;
-        // Monitors only: which readings to show (MonitorMetrics keys); null = all of them.
+        // Monitors only: the tiles, in order (Services/MonitorLayout fills in the defaults).
+        public System.Collections.Generic.List<MonitorTileConfig>? Tiles { get; set; }
+        // Pickets 1.13 kept a monitor's readings here (MonitorMetrics keys; null = all). Converted
+        // into Tiles the first time the monitor opens, then cleared.
         public System.Collections.Generic.List<string>? Metrics { get; set; }
 
         /// <summary>An ordinary fence: one that owns desktop items (not a portal or a monitor).</summary>
@@ -101,6 +104,19 @@ namespace Pickets
         public string Name { get; set; } = "Tab";
         // Items shown on this tab (tab 0 shows everything not listed in another tab).
         public System.Collections.Generic.List<string> ItemPaths { get; set; } = new();
+    }
+
+    /// <summary>One tile on a system monitor fence.</summary>
+    public class MonitorTileConfig
+    {
+        // What it shows (a MonitorMetrics key).
+        public string Kind { get; set; } = MonitorMetrics.Cpu;
+        // Disk space tiles: which drive ("C:").
+        public string? Drive { get; set; }
+        // A name chosen by the user instead of the usual one ("CPU", "Windows (C:)").
+        public string? Label { get; set; }
+        // Readings that have a graph (or a bar) can hide it to keep the tile small.
+        public bool Graph { get; set; } = true;
     }
 
     public class FenceRect

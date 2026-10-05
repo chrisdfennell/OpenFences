@@ -66,6 +66,59 @@ namespace Pickets.Controls
         }
     }
 
+    /// <summary>A row of thin vertical bars (each 0…1), one per processor core.</summary>
+    public class BarGraph : FrameworkElement
+    {
+        public static readonly DependencyProperty ValuesProperty = DependencyProperty.Register(
+            nameof(Values), typeof(IReadOnlyList<double>), typeof(BarGraph),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public static readonly DependencyProperty FillProperty = DependencyProperty.Register(
+            nameof(Fill), typeof(Brush), typeof(BarGraph),
+            new FrameworkPropertyMetadata(Brushes.SteelBlue, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(
+            nameof(Track), typeof(Brush), typeof(BarGraph),
+            new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        public IReadOnlyList<double>? Values
+        {
+            get => (IReadOnlyList<double>?)GetValue(ValuesProperty);
+            set => SetValue(ValuesProperty, value);
+        }
+
+        public Brush Fill
+        {
+            get => (Brush)GetValue(FillProperty);
+            set => SetValue(FillProperty, value);
+        }
+
+        public Brush Track
+        {
+            get => (Brush)GetValue(TrackProperty);
+            set => SetValue(TrackProperty, value);
+        }
+
+        protected override void OnRender(DrawingContext dc)
+        {
+            double w = ActualWidth, h = ActualHeight;
+            var values = Values;
+            if (w <= 0 || h <= 0 || values == null || values.Count == 0) return;
+
+            // Bars share the width with a gap between them that shrinks as cores are added.
+            int n = values.Count;
+            double gap = System.Math.Min(3, w / n * 0.25);
+            double bw = System.Math.Max(1, (w - gap * (n - 1)) / n);
+            for (int i = 0; i < n; i++)
+            {
+                double x = i * (bw + gap);
+                dc.DrawRectangle(Track, null, new Rect(x, 0, bw, h));
+                double bh = h * System.Math.Clamp(values[i], 0, 1);
+                if (bh > 0) dc.DrawRectangle(Fill, null, new Rect(x, h - bh, bw, bh));
+            }
+        }
+    }
+
     /// <summary>A thin rounded fill bar (0…1), for disk space and battery tiles.</summary>
     public class MeterBar : FrameworkElement
     {

@@ -60,6 +60,14 @@ namespace Pickets
         // Tile labels leave out file extensions ("Budget" instead of "Budget.xlsx").
         public bool HideFileExtensions { get; set; } = false;
 
+        // System monitor fences: how often they read (seconds), how much history the graphs
+        // show (minutes), network speed in bits (Mbps) instead of bytes (MB/s), and amber/red
+        // readings when something is busy, nearly full or low.
+        public int MonitorIntervalSeconds { get; set; } = 2;
+        public int MonitorHistoryMinutes { get; set; } = 2;
+        public bool MonitorNetworkBits { get; set; } = false;
+        public bool MonitorWarnColors { get; set; } = true;
+
         // Light or dark look; System follows Windows' app mode.
         public Pickets.Services.AppTheme Theme { get; set; } = Pickets.Services.AppTheme.System;
     }

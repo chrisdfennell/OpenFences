@@ -36,7 +36,15 @@ namespace Pickets.Controls
         }
 
         /// <summary>How many values span the full width.</summary>
-        public int Capacity { get; set; } = Pickets.MonitorTile.HistoryLength;
+        public int Capacity
+        {
+            get => (int)GetValue(CapacityProperty);
+            set => SetValue(CapacityProperty, value);
+        }
+
+        public static readonly DependencyProperty CapacityProperty = DependencyProperty.Register(
+            nameof(Capacity), typeof(int), typeof(Sparkline),
+            new FrameworkPropertyMetadata(Pickets.MonitorTile.DefaultCapacity, FrameworkPropertyMetadataOptions.AffectsRender));
 
         protected override void OnRender(DrawingContext dc)
         {

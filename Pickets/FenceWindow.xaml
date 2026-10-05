@@ -200,6 +200,18 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="MonitorValue" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource Fence.LabelFg}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="1">
+                    <Setter Property="Foreground" Value="{DynamicResource Fence.Warn}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="2">
+                    <Setter Property="Foreground" Value="{DynamicResource Fence.Critical}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <ItemsPanelTemplate x:Key="MonitorTilePanel">
             <WrapPanel/>
         </ItemsPanelTemplate>
@@ -208,11 +220,12 @@
                     Width="{Binding MonitorTileWidth, RelativeSource={RelativeSource AncestorType=Window}}"
                     Margin="4"
                     Padding="10,7,10,9"
-                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown">
+                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown"
+                    MouseRightButtonUp="MonitorTile_MouseRightButtonUp">
                 <StackPanel>
                     <TextBlock Text="{Binding Label}" Foreground="{DynamicResource Fence.Hint}"
                                FontSize="11" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding Value}" Foreground="{DynamicResource Fence.LabelFg}"
+                    <TextBlock Text="{Binding Value}" Style="{StaticResource MonitorValue}"
                                FontSize="{Binding MonitorValueSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                     <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Fence.Hint}"
@@ -220,8 +233,15 @@
                     <controls:Sparkline Height="{Binding MonitorGraphHeight, RelativeSource={RelativeSource AncestorType=Window}}"
                                         Margin="0,6,0,0"
                                         Values="{Binding Graph}"
+                                        Capacity="{Binding Capacity}"
                                         Stroke="{DynamicResource Fence.Graph}"
                                         Visibility="{Binding ShowsGraph, Converter={StaticResource BoolToVis}}"/>
+                    <controls:BarGraph Height="{Binding MonitorGraphHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                       Margin="0,6,0,0"
+                                       Values="{Binding Bars}"
+                                       Fill="{DynamicResource Fence.Graph}"
+                                       Track="{DynamicResource Fence.Track}"
+                                       Visibility="{Binding ShowsBars, Converter={StaticResource BoolToVis}}"/>
                     <controls:MeterBar Height="6" Margin="0,8,0,2"
                                        Fraction="{Binding Fraction}"
                                        Fill="{DynamicResource Fence.Graph}"
@@ -240,18 +260,24 @@
                     Background="Transparent"
                     Margin="2,1"
                     Padding="8,4"
-                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown">
+                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown"
+                    MouseRightButtonUp="MonitorTile_MouseRightButtonUp">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Width="96"
                                Text="{Binding Label}" Foreground="{DynamicResource Fence.LabelFg}"
                                FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                     <TextBlock DockPanel.Dock="Right" MinWidth="72" TextAlignment="Right"
-                               Text="{Binding Value}" Foreground="{DynamicResource Fence.LabelFg}"
+                               Text="{Binding Value}" Style="{StaticResource MonitorValue}"
                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <Grid Height="16" Margin="8,0">
                         <controls:Sparkline Values="{Binding Graph}"
+                                            Capacity="{Binding Capacity}"
                                             Stroke="{DynamicResource Fence.Graph}"
                                             Visibility="{Binding ShowsGraph, Converter={StaticResource BoolToVis}}"/>
+                        <controls:BarGraph Values="{Binding Bars}"
+                                           Fill="{DynamicResource Fence.Graph}"
+                                           Track="{DynamicResource Fence.Track}"
+                                           Visibility="{Binding ShowsBars, Converter={StaticResource BoolToVis}}"/>
                         <controls:MeterBar Height="6" VerticalAlignment="Center"
                                            Fraction="{Binding Fraction}"
                                            Fill="{DynamicResource Fence.Graph}"
@@ -347,14 +373,10 @@
                 <Grid.ContextMenu>
                     <ContextMenu x:Name="FenceMenu">
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
-                        <MenuItem x:Name="MiMonitorShow" Header="Show">
-                            <MenuItem Header="CPU"        Tag="cpu"     IsCheckable="True" Click="MonitorMetric_Click"/>
-                            <MenuItem Header="Memory"     Tag="memory"  IsCheckable="True" Click="MonitorMetric_Click"/>
-                            <MenuItem Header="Disk space" Tag="disk"    IsCheckable="True" Click="MonitorMetric_Click"/>
-                            <MenuItem Header="Network"    Tag="network" IsCheckable="True" Click="MonitorMetric_Click"/>
-                            <MenuItem Header="Battery"    Tag="battery" IsCheckable="True" Click="MonitorMetric_Click"
-                                      ToolTip="Shown on PCs that have a battery"/>
-                        </MenuItem>
+                        <!-- System monitors: filled in by FenceWindow.Monitor.cs when the menu opens -->
+                        <MenuItem x:Name="MiMonitorAdd" Header="Add tile"/>
+                        <MenuItem x:Name="MiMonitorEdit" Header="Edit tiles…" Click="MonitorEditTiles_Click"
+                                  ToolTip="Add, remove, rename and reorder tiles in Settings"/>
                         <MenuItem x:Name="MiOpenFolder" Header="Open Folder" Click="OpenFolder_Click"/>
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
                         <MenuItem x:Name="MiPortalFilter" Header="Filter…" Click="PortalFilter_Click"/>
