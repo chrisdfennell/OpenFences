@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Media;
 using System.Windows;
@@ -26,15 +27,17 @@ namespace Pickets
             MessageBoxResult defaultResult = MessageBoxResult.None)
             => Show(null, text, caption, button, icon, defaultResult);
 
+        /// <param name="labels">Optional button text by result (e.g. Yes → "Minimize to tray"); others keep their default text.</param>
         public static MessageBoxResult Show(Window? owner, string text, string caption = "Pickets",
             MessageBoxButton button = MessageBoxButton.OK, MessageBoxImage icon = MessageBoxImage.None,
-            MessageBoxResult defaultResult = MessageBoxResult.None)
+            MessageBoxResult defaultResult = MessageBoxResult.None,
+            IReadOnlyDictionary<MessageBoxResult, string>? labels = null)
         {
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher != null && !dispatcher.CheckAccess())
-                return dispatcher.Invoke(() => Show(owner, text, caption, button, icon, defaultResult));
+                return dispatcher.Invoke(() => Show(owner, text, caption, button, icon, defaultResult, labels));
 
-            var dialog = new MessageDialog(text, caption, button, icon, defaultResult);
+            var dialog = new MessageDialog(text, caption, button, icon, defaultResult, labels);
 
             // Like the stock box: owned by whichever app window is active, if any.
             owner ??= Application.Current?.Windows.OfType<Window>()
@@ -63,7 +66,8 @@ namespace Pickets
         public MessageBoxResult Result { get; private set; }
 
         internal MessageDialog(string text, string caption, MessageBoxButton button,
-            MessageBoxImage icon, MessageBoxResult defaultResult)
+            MessageBoxImage icon, MessageBoxResult defaultResult,
+            IReadOnlyDictionary<MessageBoxResult, string>? labels = null)
         {
             InitializeComponent();
             _text = text ?? "";
@@ -92,7 +96,7 @@ namespace Pickets
             {
                 var b = new Button
                 {
-                    Content = r.ToString(),
+                    Content = labels != null && labels.TryGetValue(r, out var label) ? label : r.ToString(),
                     MinWidth = 96,
                     Margin = new Thickness(8, 0, 0, 0),
                     IsDefault = r == preferred,

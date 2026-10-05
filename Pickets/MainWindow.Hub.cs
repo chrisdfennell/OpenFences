@@ -119,7 +119,20 @@ namespace Pickets
         private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized; // → tray
         private void MaximizeButton_Click(object sender, RoutedEventArgs e) =>
             WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-        private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+        // The X asks; tray Exit and Alt+F4 still quit straight away.
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            var choice = MessageBox.Show(this,
+                "Minimize Pickets to the tray, or exit?\n\nYour fences only stay on the desktop while Pickets is running.",
+                "Close Pickets", MessageBoxButton.YesNoCancel, MessageBoxImage.Question, MessageBoxResult.Yes,
+                new Dictionary<MessageBoxResult, string>
+                {
+                    [MessageBoxResult.Yes] = "Minimize to tray",
+                    [MessageBoxResult.No] = "Exit",
+                });
+            if (choice == MessageBoxResult.Yes) WindowState = WindowState.Minimized; // → tray
+            else if (choice == MessageBoxResult.No) Close();
+        }
 
         // ---------- Navigation ----------
         private void Nav_Checked(object sender, RoutedEventArgs e)
