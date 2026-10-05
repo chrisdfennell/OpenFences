@@ -103,6 +103,7 @@ namespace Pickets
             Closed += (_, __) => AllFences.Remove(this);
 
             TitleText.Text = model.IsPortal ? "🗁 " + model.Name : model.Name;
+            UpdateAccessibleName();
             Left = model.Left; Top = model.Top;
             Width = model.Width; Height = model.Height;
             FitToCurrentScreens();
@@ -160,8 +161,14 @@ namespace Pickets
             SourceInitialized += (_, __) => _suppressGeometrySave = false;
 
             Loaded += (_, __) => { EnsureBottomZOrder(); QueueAutoFit(); };
-            // Clicking a fence: back below app windows, but in front of the other fences.
-            Activated += (_, __) => { EnsureBottomZOrder(); BringToFrontOfFences(); };
+            // Clicking a fence: back below app windows, but in front of the other fences. Keyboard
+            // focus goes to a tile, so a screen reader has something to read.
+            Activated += (_, __) =>
+            {
+                EnsureBottomZOrder();
+                BringToFrontOfFences();
+                if (!Items.IsKeyboardFocusWithin) FocusCurrentTile();
+            };
 
             LocationChanged += SaveGeometry;
             SizeChanged += (_, e) =>
@@ -178,6 +185,7 @@ namespace Pickets
                 _hoverTimer?.Stop();
                 _rollTimer?.Stop();
                 _reloadTimer?.Stop();
+                _reconnectTimer?.Stop();
                 ReleaseMedia();
                 try { _watcher?.Dispose(); } catch { /* ignore */ }
             };
@@ -481,6 +489,46 @@ namespace Pickets
         {
             if (RequestUndoable != null) RequestUndoable(description, action);
             else action();
+        }
+
+        // ---------- Screen readers (see Controls/FenceTiles and Services/Accessibility) ----------
+
+        /// <summary>The window's title isn't shown, but it's what a screen reader calls the fence.</summary>
+        private void UpdateAccessibleName()
+        {
+            Title = _model.IsPortal ? $"{_model.Name} folder portal" : $"{_model.Name} fence";
+            System.Windows.Automation.AutomationProperties.SetName(Items, _model.Name);
+        }
+
+        /// <summary>Say something without moving focus (rolled up, tab switched, undone…).</summary>
+        public void Announce(string message) => Pickets.Services.Accessibility.Announce(Announcer, message);
+
+        private void FocusTile(int index)
+        {
+            if (index >= 0 && index < ItemsSource.Count &&
+                Items.ItemContainerGenerator.ContainerFromIndex(index) is UIElement tile)
+                tile.Focus();
+            else
+                Scroller.Focus();
+        }
+
+        /// <summary>Focus the tile the keyboard is on, else the first selected one, else the first.</summary>
+        internal void FocusCurrentTile()
+        {
+            if (ItemsSource.Count == 0) { Scroller.Focus(); return; }
+            if (_cursorIndex < 0 || _cursorIndex >= ItemsSource.Count)
+                _cursorIndex = Math.Max(0, ItemsSource.ToList().FindIndex(i => i.IsSelected));
+            FocusTile(_cursorIndex);
+        }
+
+        /// <summary>F6 / Shift+F6: on to the next (or previous) fence, left to right, then top down.</summary>
+        private void FocusNextFence(int direction)
+        {
+            var shown = AllFences.Where(f => f.IsVisible).OrderBy(f => f.Left).ThenBy(f => f.Top).ToList();
+            if (shown.Count < 2) return;
+            var next = shown[(shown.IndexOf(this) + direction + shown.Count) % shown.Count];
+            next.Activate();
+            next.FocusCurrentTile();
         }
 
         /// <summary>Undo put this fence's items (and tabs) back: show them again.</summary>
@@ -890,11 +938,13 @@ namespace Pickets
 
         /// <summary>Show <paramref name="folder"/> (the portal's folder or one inside it) and
         /// watch it for changes. The folder may be gone or on a drive that isn't connected: never
-        /// recreate it (that would leave an empty stand-in), just show the portal as unavailable.</summary>
+        /// recreate it (that would leave an empty stand-in), just show the portal as unavailable
+        /// until it can be reached again.</summary>
         private void NavigatePortal(string folder)
         {
             try { _watcher?.Dispose(); } catch { /* ignore */ }
             _watcher = null;
+            _reconnectTimer?.Stop();
             _currentFolder = folder;
             TitleText.Text = "🗁 " + _model.Name;
             var filter = Pickets.Services.PortalFilter.Describe(_model.PortalFilter, _model.PortalMaxAgeDays);
@@ -921,18 +971,62 @@ namespace Pickets
                 {
                     if (_model.Sort == FenceSort.DateModified) Dispatcher.BeginInvoke(ScheduleReload);
                 };
+                // Raised when the drive goes away (unplugged, network share dropped).
+                _watcher.Error += (_, __) => Dispatcher.BeginInvoke(CheckPortalFolderStillThere);
             }
             catch
             {
-                _watcher?.Dispose();
-                _watcher = null;
-                ItemsSource.Clear();
-                TitleText.Text = "🗁 " + _model.Name + " (unavailable)";
-                TitleText.ToolTip = $"This folder can't be reached:\n{folder}\n\n" +
-                                    "Reconnect the drive (or restore the folder) and restart Pickets.";
+                ShowPortalUnavailable(folder);
             }
 
             UpdateBreadcrumbs();
+        }
+
+        private bool IsPortalUnavailable => TitleText.Text.EndsWith("(unavailable)", StringComparison.Ordinal);
+
+        private void ShowPortalUnavailable(string folder)
+        {
+            try { _watcher?.Dispose(); } catch { /* ignore */ }
+            _watcher = null;
+            ItemsSource.Clear();
+            TitleText.Text = "🗁 " + _model.Name + " (unavailable)";
+            TitleText.ToolTip = $"This folder can't be reached:\n{folder}\n\n" +
+                                "It shows up again by itself once the drive is connected (or the folder is back).";
+            UpdateEmptyHint();
+            _reconnectTimer ??= NewTimer(ReconnectIntervalMs, TryReconnectPortal);
+            _reconnectTimer.Start();
+        }
+
+        // The folder (or its drive) disappeared while it was showing.
+        private void CheckPortalFolderStillThere()
+        {
+            if (_model.IsPortal && !IsPortalUnavailable && !Directory.Exists(_currentFolder))
+                ShowPortalUnavailable(_currentFolder);
+        }
+
+        // An unavailable portal checks back every few seconds. Off the UI thread: a network share
+        // that's down can take a long time to answer.
+        private System.Windows.Threading.DispatcherTimer? _reconnectTimer;
+        private bool _reconnectChecking;
+        internal static int ReconnectIntervalMs = 5000; // tests shorten it
+
+        private async void TryReconnectPortal()
+        {
+            if (_reconnectChecking || !_model.IsPortal) return;
+            _reconnectChecking = true;
+            string folder = _currentFolder, root = _model.FolderPath;
+            string? back;
+            try
+            {
+                // Back where it was, or at the portal's own folder if the subfolder it showed is gone.
+                back = await Task.Run(() => Directory.Exists(folder) ? folder : Directory.Exists(root) ? root : null);
+            }
+            catch { back = null; }
+            finally { _reconnectChecking = false; }
+
+            if (back == null || !IsPortalUnavailable || folder != _currentFolder) return;
+            _reconnectTimer?.Stop();
+            NavigatePortal(back);
         }
 
         private bool IsInSubfolder =>
@@ -977,6 +1071,7 @@ namespace Pickets
                 FontWeight = isLast ? FontWeights.SemiBold : FontWeights.Normal,
                 ToolTip = folder
             };
+            System.Windows.Automation.AutomationProperties.SetName(b, label);
             if (!isLast) b.Click += (_, __) => NavigatePortal(folder);
             Crumbs.Children.Add(b);
         }
@@ -1002,6 +1097,7 @@ namespace Pickets
 
             _model.FolderPath = folder;
             NavigatePortal(folder);
+            UpdateAccessibleName();
             FenceRenamed?.Invoke(this, EventArgs.Empty); // persists
         }
 
@@ -1086,7 +1182,9 @@ namespace Pickets
             }
             catch
             {
-                return; // folder may have been deleted/renamed out from under us
+                // The folder may have been deleted or renamed, or its drive disconnected.
+                if (_model.IsPortal) Dispatcher.BeginInvoke(CheckPortalFolderStillThere);
+                return;
             }
 
             entries = SortEntries(entries);
@@ -1487,7 +1585,7 @@ namespace Pickets
         // in the desktop layer) first, so expanding never leaves its body hidden behind a
         // neighbouring fence. Activated only re-stacks when the fence wasn't already active,
         // so re-stack explicitly too.
-        private void ToggleCollapsed()
+        internal void ToggleCollapsed()
         {
             Activate();
             Focus();
@@ -1510,12 +1608,14 @@ namespace Pickets
                 UpdateCountBadge();
                 EndPushFollowers();
                 ScheduleSave();
+                Announce("Opened");
                 return;
             }
 
             BeginPushFollowers();
             SetCollapsed(!_model.Collapsed, animate: true, done: () => { EndPushFollowers(); QueueAutoFit(); });
             ScheduleSave();
+            Announce(_model.Collapsed ? $"Rolled up, {CountBadge.Text}" : "Opened");
         }
 
 
@@ -1524,9 +1624,8 @@ namespace Pickets
         private void Item_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (sender is not FrameworkElement fe || fe.DataContext is not FenceItem item) return;
-            Scroller.Focus();
-
             _cursorIndex = ItemsSource.IndexOf(item);
+            FocusTile(_cursorIndex);
             if (e.ClickCount == 2) { OpenItem(item); return; }
 
             // Remember where a possible drag starts.
@@ -1749,6 +1848,9 @@ namespace Pickets
             ReloadRealItems();
             RebuildTabs();
             Changed?.Invoke(this, EventArgs.Empty);
+            Announce($"Tab {_model.Tabs[index].Name}, {index + 1} of {_model.Tabs.Count}, " +
+                     (ItemsSource.Count == 1 ? "1 item" : $"{ItemsSource.Count} items"));
+            Dispatcher.BeginInvoke(FocusCurrentTile, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private void AddTab_Click(object sender, RoutedEventArgs e)
@@ -1932,8 +2034,7 @@ namespace Pickets
                 : Pickets.Services.PortalFilter.IsActive(_model.PortalFilter, _model.PortalMaxAgeDays) ? "Nothing matches the filter"
                 : "This folder is empty";
             // Only with the body showing: a rolled-up fence would show it cut off under the title.
-            EmptyHint.Visibility = ItemsSource.Count == 0 && Scroller.Visibility == Visibility.Visible &&
-                                   !TitleText.Text.EndsWith("(unavailable)", StringComparison.Ordinal)
+            EmptyHint.Visibility = ItemsSource.Count == 0 && Scroller.Visibility == Visibility.Visible && !IsPortalUnavailable
                 ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -2297,6 +2398,10 @@ namespace Pickets
                     RequestKeyboardHelp?.Invoke();
                     e.Handled = true;
                     return;
+                case Key.F6:
+                    FocusNextFence((mods & ModifierKeys.Shift) != 0 ? -1 : 1);
+                    e.Handled = true;
+                    return;
                 case Key.F2:
                     // F2 renames the selected item; with nothing (or several) selected, the fence.
                     var sel = ItemsSource.Where(i => i.IsSelected).ToList();
@@ -2347,6 +2452,7 @@ namespace Pickets
 
             _cursorIndex = next;
             (Items.ItemContainerGenerator.ContainerFromIndex(next) as FrameworkElement)?.BringIntoView();
+            FocusTile(next);
             e.Handled = true;
         }
 
@@ -2561,7 +2667,7 @@ namespace Pickets
         /// desktop, then assign the resulting real desktop items to this fence.</summary>
         private void PromptOffDesktopDrop(List<string> sources)
         {
-            string userDesktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string userDesktop = Pickets.Services.Sandbox.UserDesktop;
             string what = sources.Count == 1 ? $"\"{Path.GetFileName(sources[0])}\"" : $"{sources.Count} items";
 
             var menu = _dropMenu = new ContextMenu
@@ -2649,6 +2755,7 @@ namespace Pickets
                 // mirrored folder, and real-icon fences have no backing folder at all.
                 _model.Name = newName;
                 TitleText.Text = _model.IsPortal ? "🗁 " + _model.Name : _model.Name;
+                UpdateAccessibleName();
                 FenceRenamed?.Invoke(this, EventArgs.Empty);
             }
         }
@@ -2658,7 +2765,7 @@ namespace Pickets
             // Portals open the folder they're showing; real-icon fences open the Desktop.
             string folder = _model.IsPortal
                 ? _currentFolder
-                : Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                : Pickets.Services.Sandbox.UserDesktop;
             try
             {
                 Process.Start(new ProcessStartInfo { FileName = folder, UseShellExecute = true });

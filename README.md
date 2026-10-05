@@ -41,7 +41,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 - **Fences hold your real desktop items.** Each desktop item shows in exactly one fence; anything not in another fence lives in the **Desktop** fence.
 - **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
-- **Folder portals.** A fence that shows any folder live. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
+- **Folder portals.** A fence that shows any folder live, including on USB drives and network shares: if the folder can't be reached it shows as unavailable and comes back by itself once it can. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
 - **Recent files.** One click on the Home page adds a fence of the files you opened lately, newest first.
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
 - **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions), name (`invoice*`), age (not changed in 30 days) or size (larger than 100 MB), and the Desktop fence can be re-sorted on demand.
@@ -81,7 +81,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Sharp on every monitor.** Fences and windows render at each monitor's own scaling, so a 150% laptop next to a 100% monitor looks crisp on both.
 - **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
 - **Safe settings.** Saved continuously with a backup copy that's restored automatically if the file is ever damaged.
-- **Accessible.** Press **F1** for every keyboard shortcut. Under a Windows high-contrast theme, fences, menus and the Pickets window use the theme's own colors.
+- **Accessible.** Press **F1** for every keyboard shortcut. Screen readers such as Narrator read each fence and tile (with its position and whether it's selected), **F6** moves between fences, and rolling up, switching tabs and undo are announced. Under a Windows high-contrast theme, fences, menus and the Pickets window use the theme's own colors.
 
 ---
 
@@ -145,6 +145,13 @@ You need Windows 10/11 and the [.NET 8 SDK](https://dotnet.microsoft.com/downloa
 dotnet build
 dotnet run --project Pickets/Pickets.csproj
 dotnet test tests/Pickets.Tests
+dotnet test tests/Pickets.UiTests   # opens real windows for a few seconds
+```
+
+**Try a build next to your installed Pickets:** set `PICKETS_SANDBOX` to a folder and start it. That copy keeps its settings in `<folder>\AppData`, treats `<folder>\Desktop` as the desktop, and leaves your real desktop, shortcuts and startup setting alone:
+
+```powershell
+$env:PICKETS_SANDBOX = "$env:TEMP\PicketsSandbox"; dotnet run --project Pickets/Pickets.csproj
 ```
 
 In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and press F5. The MSI installer is built with WiX (`Pickets.Installer`); CI builds it for x64 and ARM64 on every tagged release.
@@ -164,7 +171,7 @@ In Visual Studio, open `Pickets.sln`, set **Pickets** as the startup project and
 
 - Different fences per virtual desktop
 - Sticky-note fences
-- Screen reader support and translations
+- Translations
 
 Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets/issues).
 
@@ -173,7 +180,7 @@ Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets
 ## ⚠️ Known limitations
 
 - Z-order on the desktop can vary by Windows build; fences are kept in the desktop layer behind normal windows (search and Locate bring them to the front briefly).
-- A folder portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until you reconnect it and restart Pickets, or point it at another folder with **Change folder…**.
+- A folder portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until it can be reached again (checked every few seconds), or until you point it at another folder with **Change folder…**.
 - A global shortcut that another app already uses can't be registered; Settings flags it so you can pick another.
 - Background videos need Windows' codecs: MP4 and WMV work out of the box; MKV and WebM may need the free extensions from the Microsoft Store. Animated GIFs show their first frame.
 

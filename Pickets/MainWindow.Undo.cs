@@ -24,10 +24,13 @@ namespace Pickets
 
         private void Undo()
         {
+            // The fence Ctrl+Z was pressed in says what happened, for screen readers.
+            var active = _openWindows.FirstOrDefault(w => w.IsActive);
             var result = _undo.Undo(_fences, p => File.Exists(p) || Directory.Exists(p));
             if (result == null)
             {
                 System.Media.SystemSounds.Beep.Play();
+                active?.Announce("Nothing to undo");
                 return;
             }
 
@@ -45,6 +48,12 @@ namespace Pickets
 
             BuildCatchAll(); // anything the restored fences don't place (e.g. new since)
             SaveConfig();
+
+            if (active != null && _openWindows.Contains(active))
+            {
+                active.FocusCurrentTile();
+                active.Announce("Undone: " + result.Description);
+            }
         }
 
         /// <summary>Tray menu text for the next undo.</summary>

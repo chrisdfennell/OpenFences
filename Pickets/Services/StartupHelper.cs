@@ -13,6 +13,7 @@ namespace Pickets
 
         public static void SetRunAtStartup(bool enable)
         {
+            if (Pickets.Services.Sandbox.IsActive) return; // a sandbox never starts with Windows
             using var key = Registry.CurrentUser.OpenSubKey(RUN_KEY, writable: true) ??
                             Registry.CurrentUser.CreateSubKey(RUN_KEY, true);
             if (key == null) return;
@@ -31,6 +32,7 @@ namespace Pickets
 
         public static bool IsRunAtStartupEnabled()
         {
+            if (Pickets.Services.Sandbox.IsActive) return false;
             using var key = Registry.CurrentUser.OpenSubKey(RUN_KEY, false);
             var val = key?.GetValue(VALUE_NAME) as string;
             return !string.IsNullOrEmpty(val);

@@ -49,7 +49,7 @@ namespace Pickets
             _config.Options.RunAtStartup = _config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled();
             SettingsPage.DataContext = _config.Options;
 
-            var version = "Version " + UpdateService.CurrentVersion.ToString(3);
+            var version = "Version " + UpdateService.CurrentVersion.ToString(3) + (Sandbox.IsActive ? " · sandbox" : "");
             SidebarVersion.Text = version;
             VersionText.Text = version;
             AboutVersion.Text = version;
@@ -76,6 +76,9 @@ namespace Pickets
 
             RefreshSettingsPage();
             RefreshHome();
+
+            // Screen readers: name icon buttons and the switches in Settings (Services/Accessibility).
+            Pickets.Services.Accessibility.NameControls(this, (Style)FindResource("Hub.SettingRow"));
         }
 
         // ---------- Window placement ----------

@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:controls="clr-namespace:Pickets.Controls"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="Transparent"
@@ -241,16 +242,19 @@
                             Margin="0,0,6,0"
                             VerticalAlignment="Center">
                     <Button Content="✎"
+                            AutomationProperties.Name="Fence menu"
                             Style="{StaticResource FenceTitleButton}"
                             Width="28" Height="24" Margin="0,0,4,0"
                             ToolTip="Edit / manage fence (rename, sort, delete…)"
                             Click="Edit_Click"/>
                     <Button Content="–"
+                            AutomationProperties.Name="Roll up or open"
                             Style="{StaticResource FenceTitleButton}"
                             Width="28" Height="24" Margin="0,0,4,0"
                             Click="Collapse_Click"
                             ToolTip="Collapse / Expand"/>
                     <Button Content="✕"
+                            AutomationProperties.Name="Close fence"
                             Style="{StaticResource FenceCloseButton}"
                             Width="28" Height="24"
                             Click="Close_Click"
@@ -390,6 +394,7 @@
                         Style="{StaticResource FenceTitleButton}"
                         Width="28" Height="22"
                         Content="‹"
+                        AutomationProperties.Name="Back"
                         FontSize="16"
                         ToolTip="Back (Backspace)"
                         Click="Back_Click"/>
@@ -399,6 +404,10 @@
             <!-- Items area (with marquee selection overlay). Portal fences only —
                  real-icon fences collapse this to a click-through hole. -->
             <Grid x:Name="ContentArea">
+            <!-- Spoken announcements for screen readers (Services/Accessibility.Announce); never seen -->
+            <TextBlock x:Name="Announcer" Width="1" Height="1" Opacity="0" IsHitTestVisible="False"
+                       HorizontalAlignment="Left" VerticalAlignment="Top"
+                       AutomationProperties.LiveSetting="Polite"/>
             <TextBlock x:Name="EmptyHint"
                        Text="Drag items here"
                        HorizontalAlignment="Center"
@@ -419,7 +428,7 @@
               CanContentScroll="False"
               PanningMode="None">
 
-                <ItemsControl x:Name="Items" SnapsToDevicePixels="True">
+                <controls:FenceItemsControl x:Name="Items" SnapsToDevicePixels="True">
                     <!-- Icons or list (fence menu: View); switched in code by ApplyView -->
                     <ItemsControl.ItemsPanel>
                         <StaticResource ResourceKey="TilePanel"/>
@@ -427,7 +436,7 @@
                     <ItemsControl.ItemTemplate>
                         <StaticResource ResourceKey="TileTemplate"/>
                     </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                </controls:FenceItemsControl>
             </ScrollViewer>
 
                 <!-- Marquee selection rectangle (never blocks input) -->

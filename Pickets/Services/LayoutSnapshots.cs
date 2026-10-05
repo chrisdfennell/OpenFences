@@ -30,7 +30,7 @@ namespace Pickets.Services
             [JsonIgnore] public string FilePath { get; set; } = "";
         }
 
-        private static string CurrentDesktop => Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        private static string CurrentDesktop => Sandbox.UserDesktop;
         private static string CurrentProfile => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         /// <summary>Write the whole setup (fences and rules) to a file the user picked.</summary>
@@ -94,8 +94,7 @@ namespace Pickets.Services
             Converters = { new JsonStringEnumConverter() }
         };
 
-        public static string Folder => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Pickets", "layouts");
+        public static string Folder => Path.Combine(Sandbox.DataDir, "layouts");
 
         /// <summary>Newest first. Unreadable files are skipped.</summary>
         public static List<Snapshot> List()

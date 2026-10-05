@@ -39,11 +39,7 @@ namespace Pickets.Services
             @"Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel";
 
         /// <summary>The per-user and common (public) Desktop folders.</summary>
-        public static IEnumerable<string> Roots()
-        {
-            yield return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            yield return Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory);
-        }
+        public static IEnumerable<string> Roots() => Sandbox.DesktopRoots;
 
         /// <summary>Every item currently on the desktop, resolved to a launchable entry.</summary>
         public static List<Entry> Enumerate()
@@ -63,7 +59,7 @@ namespace Pickets.Services
 
             foreach (var (name, clsid) in SpecialItems)
             {
-                if (!IsSpecialShown(clsid)) continue;
+                if (Sandbox.IsActive || !IsSpecialShown(clsid)) continue; // a sandbox desktop is just its folder
                 string shell = "shell:::" + clsid;
                 if (seen.Add(shell))
                     result.Add(new Entry(name, shell, true));

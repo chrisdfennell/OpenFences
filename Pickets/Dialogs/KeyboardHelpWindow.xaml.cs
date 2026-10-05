@@ -33,6 +33,7 @@ namespace Pickets
                 ("Ctrl + mouse wheel", "Bigger or smaller icons"),
                 ("Backspace, Alt+Left", "Up one folder in a folder portal"),
                 ("Esc", "Clear the selection"),
+                ("F6, Shift+F6", "Next or previous fence"),
                 ("F1", "This list"));
 
             AddSection("Quick Look",
