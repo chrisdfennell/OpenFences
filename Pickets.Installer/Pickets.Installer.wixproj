@@ -22,4 +22,9 @@
     <DefineConstants>PublishDir=$(PublishDir);ProductVersion=$(ProductVersion);PerUser=$(PerUser)</DefineConstants>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Standard setup dialogs (Welcome, progress, finish) used by the wizard in Package.wxs. -->
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.2" />
+  </ItemGroup>
+
 </Project>
