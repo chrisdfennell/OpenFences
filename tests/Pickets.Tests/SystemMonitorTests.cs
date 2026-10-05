@@ -88,8 +88,10 @@ namespace Pickets.Tests
         public void A_tile_keeps_only_recent_history()
         {
             var tile = new MonitorTile(MonitorMetrics.Cpu, MonitorMetrics.Cpu, "CPU");
-            for (int i = 0; i < MonitorTile.HistoryLength + 25; i++) tile.Push(i % 100, 100);
-            Assert.Equal(MonitorTile.HistoryLength, tile.Graph.Count);
+            for (int i = 0; i < MonitorTile.DefaultCapacity + 25; i++) tile.Push(i % 100, 100);
+            Assert.Equal(MonitorTile.DefaultCapacity, tile.Graph.Count);
+            tile.Capacity = 10; // a shorter graph length drops the oldest readings
+            Assert.Equal(10, tile.Graph.Count);
             Assert.True(tile.ShowsGraph);
             Assert.True(new MonitorTile(MonitorMetrics.Disk, "disk:C:", "C:").ShowsBar);
         }

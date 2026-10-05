@@ -605,6 +605,9 @@ namespace Pickets
         {
             win.FenceRenamed += (_, __) => SaveConfig();
             win.Changed += (_, __) => SaveConfig();
+            // A monitor's tiles changed on the fence: keep Settings → System monitor in step.
+            if (model.IsMonitor)
+                win.Changed += (_, __) => { if (SettingsPage.Visibility == Visibility.Visible) RefreshMonitorSettings(); };
             win.Closed += (_, __) => _openWindows.Remove(win);
 
             // Delete fence → remove from config (+ optional folder delete)
@@ -1078,6 +1081,7 @@ namespace Pickets
             {
                 Name = name,
                 IsMonitor = true,
+                Tiles = MonitorLayout.Defaults(SystemMonitor.FixedDrives().Select(d => d.Name)),
                 Left = left,
                 Top = top,
                 Width = width,
@@ -1093,6 +1097,7 @@ namespace Pickets
             _openWindows.Add(win);
             win.Show();
             win.EnsureBottomZOrder();
+            RefreshMonitorSettings();
         }
 
         private void About_Click(object? sender, RoutedEventArgs? e)

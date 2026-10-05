@@ -254,6 +254,9 @@ namespace Pickets
             bool lightBody = IsLightColor(body) && opacity >= 0.5;
             Resources["Fence.Graph"] = Frozen(graph);
             Resources["Fence.Track"] = Frozen(lightBody ? MediaColor.FromArgb(0x22, 0, 0, 0) : MediaColor.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
+            // Readings that are high or low (Settings → warning colors): darker shades on a light body.
+            Resources["Fence.Warn"] = Frozen(lightBody ? MediaColor.FromRgb(0xB4, 0x53, 0x09) : MediaColor.FromRgb(0xFB, 0xBF, 0x24));
+            Resources["Fence.Critical"] = Frozen(lightBody ? MediaColor.FromRgb(0xC8, 0x1E, 0x1E) : MediaColor.FromRgb(0xF8, 0x71, 0x71));
         }
 
         // High contrast: Windows' own colors, opaque, with no accent, picture, video or glass.
@@ -284,6 +287,9 @@ namespace Pickets
             Resources["Fence.SelectedEdge"] = C(Text);
             Resources["Fence.Graph"] = C(Highlight);
             Resources["Fence.Track"] = C(Text);
+            // High contrast keeps the theme's text color; the spoken value still says it.
+            Resources["Fence.Warn"] = C(Text);
+            Resources["Fence.Critical"] = C(Text);
         }
 
         // ---------- Background picture / video ----------
@@ -1242,7 +1248,7 @@ namespace Pickets
                     var details = Pickets.Services.ItemDetails.For(item.Path);
                     Dispatcher.BeginInvoke(() => item.Details = details);
 
-                    var icon =(thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
+                    var icon = (thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
                                    ? Pickets.Services.ShellThumbnail.Get(item.Path, thumbPx)
                                    : null)
                                ?? Pickets.Services.IconHelper.GetImageSourceForPath(item.Path);
@@ -1346,6 +1352,8 @@ namespace Pickets
                 item.IsDimmed = !string.IsNullOrEmpty(query) && !match;
                 if (match && !string.IsNullOrEmpty(query)) matches++;
             }
+            // A monitor's readings aren't items: they fade with everything else that doesn't match.
+            if (IsMonitor) MonitorItems.Opacity = string.IsNullOrEmpty(query) ? 1 : 0.25;
             HoldOpen(matches > 0);
             return matches;
         }
@@ -2867,9 +2875,8 @@ namespace Pickets
             MiChangeFolder.Visibility = MiPortalFilter.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
             // System monitors: which readings to show, and nothing about files.
             var itemsOnly = IsMonitor ? Visibility.Collapsed : Visibility.Visible;
-            MiMonitorShow.Visibility = IsMonitor ? Visibility.Visible : Visibility.Collapsed;
-            foreach (var mi in MiMonitorShow.Items.OfType<MenuItem>())
-                mi.IsChecked = mi.Tag is string metric && ShowsMetric(metric);
+            MiMonitorAdd.Visibility = MiMonitorEdit.Visibility = IsMonitor ? Visibility.Visible : Visibility.Collapsed;
+            if (IsMonitor) FillAddTileMenu(MiMonitorAdd);
             MiOpenFolder.Visibility = SortMenu.Visibility = MiSystemShortcuts.Visibility = itemsOnly;
             IconSizeMenu.Header = IsMonitor ? "Tile size" : "Icon size";
             // A portal can hold a whole folder's worth of files, so "Open all" is for fences only.
