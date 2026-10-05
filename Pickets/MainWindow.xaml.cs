@@ -14,7 +14,7 @@ using Pickets.Services;
 // Aliases to avoid WinForms/WPF ambiguity
 using WinForms = System.Windows.Forms;
 using Drawing = System.Drawing;
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = Pickets.ThemedMessageBox;
 
 namespace Pickets
 {

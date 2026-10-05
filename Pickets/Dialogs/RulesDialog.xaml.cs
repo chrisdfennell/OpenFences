@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = Pickets.ThemedMessageBox;
 
 namespace Pickets
 {

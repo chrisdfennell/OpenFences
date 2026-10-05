@@ -15,7 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 // Avoid WinForms clash
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = Pickets.ThemedMessageBox;
 using MediaColor = System.Windows.Media.Color;
 using Point = System.Windows.Point;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;

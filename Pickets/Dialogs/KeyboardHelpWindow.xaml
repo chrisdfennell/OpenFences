@@ -1,11 +1,10 @@
 <Window x:Class="Pickets.KeyboardHelpWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{DynamicResource Dlg.Window}"
         Title="Keyboard shortcuts"
         Width="600" Height="640" MinWidth="420" MinHeight="300"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource Dlg.Bg}"
-        Foreground="{DynamicResource Dlg.Fg}"
         ShowInTaskbar="True"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">

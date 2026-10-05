@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Pickets.Services;
 
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = Pickets.ThemedMessageBox;
 using WinForms = System.Windows.Forms;
 
 namespace Pickets

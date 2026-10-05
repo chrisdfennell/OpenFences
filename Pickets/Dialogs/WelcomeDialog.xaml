@@ -1,12 +1,12 @@
 <Window x:Class="Pickets.WelcomeDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{DynamicResource Dlg.Window}"
         Title="Welcome to Pickets"
         Width="560"
         SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource Dlg.Bg}"
         ShowInTaskbar="True"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">

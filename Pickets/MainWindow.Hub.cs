@@ -9,7 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Pickets.Services;
 
-using MessageBox = System.Windows.MessageBox;
+using MessageBox = Pickets.ThemedMessageBox;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using Brush = System.Windows.Media.Brush;
