@@ -96,10 +96,32 @@ namespace Pickets
         public string Label { get => _label; set => Set(ref _label, value); }
 
         private string _value = "…";
-        public string Value { get => _value; set => Set(ref _value, value); }
+        public string Value
+        {
+            get => _value;
+            set { if (Set(ref _value, value) && _compact == null) OnChanged(nameof(Compact)); }
+        }
+
+        /// <summary>List view's one-line reading. Usually <see cref="Value"/>; a reading whose
+        /// detail line matters too (network: down and up) sets its own.</summary>
+        private string? _compact;
+        public string Compact
+        {
+            get => _compact ?? _value;
+            set => Set(ref _compact, value);
+        }
 
         private string _detail = "";
-        public string Detail { get => _detail; set => Set(ref _detail, value); }
+        public string Detail
+        {
+            get => _detail;
+            set { if (Set(ref _detail, value)) OnChanged(nameof(RowToolTip)); }
+        }
+
+        /// <summary>List rows show no detail line, so their tooltip does.</summary>
+        public string RowToolTip => string.IsNullOrEmpty(_detail)
+            ? "Double-click for more details"
+            : _detail + Environment.NewLine + "Double-click for more details";
 
         /// <summary>What a screen reader says ("CPU, 37 percent").</summary>
         private string _spoken = "";

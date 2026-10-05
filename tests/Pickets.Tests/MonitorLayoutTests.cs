@@ -121,6 +121,19 @@ namespace Pickets.Tests
         }
 
         [Fact]
+        public void List_rows_show_the_value_unless_a_reading_sets_its_own_and_tooltips_carry_the_detail()
+        {
+            var cpu = new MonitorTile("cpu", "cpu", "CPU") { Value = "37%", Detail = "Up 2 h" };
+            Assert.Equal("37%", cpu.Compact);
+            Assert.StartsWith("Up 2 h", cpu.RowToolTip);
+
+            var net = new MonitorTile("network", "network", "Network") { Value = "↓ 2 MB/s", Detail = "↑ 300 KB/s" };
+            net.Compact = net.Value + "  " + net.Detail;
+            net.Value = "↓ 3 MB/s"; // a later reading without a new compact line keeps the last one
+            Assert.Equal("↓ 2 MB/s  ↑ 300 KB/s", net.Compact);
+        }
+
+        [Fact]
         public void A_tile_without_its_graph_shows_no_graph_bar_or_bars()
         {
             var cpu = new MonitorTile(new MonitorTileConfig { Kind = "cpu", Graph = false }, "cpu", "CPU");

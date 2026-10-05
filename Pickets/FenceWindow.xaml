@@ -269,14 +269,16 @@
                     Background="Transparent"
                     Margin="2,1"
                     Padding="8,4"
+                    ToolTip="{Binding RowToolTip}"
                     MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown"
                     MouseRightButtonUp="MonitorTile_MouseRightButtonUp">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Left" Width="96"
                                Text="{Binding Label}" Foreground="{DynamicResource Fence.LabelFg}"
                                FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    <!-- Compact: the value, or for network both speeds (rows have no detail line) -->
                     <TextBlock DockPanel.Dock="Right" MinWidth="72" TextAlignment="Right"
-                               Text="{Binding Value}" Style="{StaticResource MonitorValue}"
+                               Text="{Binding Compact}" Style="{StaticResource MonitorValue}"
                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <Grid Height="16" Margin="8,0">
                         <controls:Sparkline Values="{Binding Graph}"

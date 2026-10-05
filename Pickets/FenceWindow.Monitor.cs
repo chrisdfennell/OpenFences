@@ -218,6 +218,7 @@ namespace Pickets
                         bool bits = o.MonitorNetworkBits;
                         tile.Value = "↓ " + SystemMonitor.FormatRate(s.NetDownBytesPerSec, bits);
                         tile.Detail = "↑ " + SystemMonitor.FormatRate(s.NetUpBytesPerSec, bits);
+                        tile.Compact = tile.Value + "  " + tile.Detail; // list rows: both directions
                         tile.Spoken = $"{tile.Label}, receiving {SystemMonitor.FormatRate(s.NetDownBytesPerSec, bits)}, " +
                                       $"sending {SystemMonitor.FormatRate(s.NetUpBytesPerSec, bits)}";
                         tile.Push(s.NetDownBytesPerSec + s.NetUpBytesPerSec, null);
