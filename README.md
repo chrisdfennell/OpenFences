@@ -43,7 +43,6 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Tabs inside fences.** Split a busy fence into tabs (fence menu → **Add tab…**). Click a tab or press **Ctrl+Tab** to switch, drag tiles onto a tab to move them, right-click a tab to rename or delete it.
 - **Folder portals.** A fence that shows any folder live, including on USB drives and network shares: if the folder can't be reached it shows as unavailable and comes back by itself once it can. Double-click a subfolder to browse into it (with a back button and breadcrumbs); point it at another folder with **Change folder…** or by dropping a folder on it. **Filter…** narrows it to certain files (`.pdf`, `screenshot*`) and/or what changed recently, for a "Recent downloads" or "This week's screenshots" fence.
 - **Recent files.** One click on the Home page adds a fence of the files you opened lately, newest first.
-- **System monitor.** A fence of live readings: CPU, memory, free space on each drive, network speed and battery, with a graph of the last two minutes. Pick what it shows from the fence menu (**Show**), switch it to a compact list with **View → List**, and double-click a reading to open Task Manager, the drive or the matching Windows settings. It only takes readings while you can see it. Add one from the Home page, the tray, or by right-dragging a box on the desktop.
 - **Auto-Import.** One click sorts your desktop into **Apps**, **Documents** and **System** fences.
 - **Auto-organize rules.** New desktop files go straight to the right fence, by type (apps, folders, file extensions), name (`invoice*`), age (not changed in 30 days) or size (larger than 100 MB), and the Desktop fence can be re-sorted on demand.
 - **Drag tiles anywhere.** Onto another fence to move them, within a fence to arrange your own order, or into Explorer, email or any app as real files. Files dragged in from elsewhere can be moved onto the desktop or added as a shortcut.
@@ -60,6 +59,17 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Quick Look.** Press **Space** on a tile for a large preview: pictures, video and audio with sound, text and code, or file details. Arrow keys step through the fence; Enter opens.
 - **The real Windows right-click menu.** Open with, Send to, Properties and menu entries other apps add, plus **Remove from fence**. **Rename** (or F2) renames the actual file, and it stays in its fence, as do files renamed in Explorer or saved by apps such as Office.
 - **Keyboard friendly.** Arrow keys, Home/End and type-a-letter move through a fence; Space previews, Enter opens, Delete recycles, F2 renames, Esc clears the selection, Backspace goes up a folder in a portal.
+
+### Watch your PC
+
+![A system monitor fence with CPU, memory, GPU, per-core, network, disk activity, drive space and battery tiles, next to a compact list-view monitor](Pickets/Docs/screenshot-monitor.png "System monitor fences")
+
+- **System monitor fences.** Live readings on your desktop, as tiles with a graph of the last few minutes: **CPU**, **CPU cores** (a bar for each core), **memory**, **GPU**, **disk space** for any drive, **disk activity** (read and write speed), **network** speed, **network info** (connection name and IP address), **battery** and a **clock**.
+- **Make it yours.** Add, remove, rename and reorder tiles, and turn any tile's graph off: from the fence menu (**Add tile**, **Edit tiles…**), by right-clicking a tile, or in **Settings → System monitor**. Switch a monitor to a compact list with **View → List**, change the tile size, or give it a color, glass or a background like any fence.
+- **Warning colors.** Readings turn amber, then red, when the CPU, GPU or memory is busy, a drive is nearly full or the battery is low.
+- **One click to the details.** Double-click a tile (or press Enter) to open Task Manager, the drive in Explorer, or the matching Windows settings.
+- **Light on your PC.** Readings come from Windows itself (no extra software, no admin rights) every 1 to 10 seconds, as you choose. A monitor only reads what its tiles show, and nothing at all while it's rolled up, hidden or closed, or while the PC is locked.
+- **Add one** from the Home page, the tray, **Settings → System monitor**, or by right-dragging a box on the desktop.
 
 ### Make it yours
 
@@ -88,11 +98,13 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ## 📷 Screenshots
 
-![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal, a rolled-up Archive fence and a Recent files fence in list view](Pickets/Docs/screenshot-desktop.png "Fences on the desktop")
+![Fences on the desktop: Apps, a Documents fence with Work and Personal tabs, System, a Projects folder portal, a rolled-up Archive fence, a Recent files fence in list view and a PC system monitor](Pickets/Docs/screenshot-desktop.png "Fences on the desktop")
 
 ![The Pickets window: quick actions, desktop profiles and every fence with its state](Pickets/Docs/screenshot-app.png "The Pickets window")
 
 ![The Pickets window in the light theme](Pickets/Docs/screenshot-app-light.png "Light theme")
+
+![Settings → System monitor: update interval, graph length, units, warning colors and the tile editor](Pickets/Docs/screenshot-monitor-settings.png "Settings: System monitor")
 
 ![Quick Look previewing a picture from a fence](Pickets/Docs/screenshot-quicklook.png "Quick Look")
 
@@ -106,7 +118,8 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ## 🚀 Using Pickets
 
-- **Create a fence:** right-drag a rectangle on empty desktop, or **New fence** on the Pickets window's Home page. The right-drag menu can also put a **folder portal** in that box.
+- **Create a fence:** right-drag a rectangle on empty desktop, or **New fence** on the Pickets window's Home page. The right-drag menu can also put a **folder portal** or a **system monitor** in that box.
+- **Watch your PC:** **System monitor** on the Home page. Right-click a tile to rename, move or remove it, or use **Add tile** in the fence menu; **Settings → System monitor** has the full tile editor, how often it updates, graph length, speeds in bits and warning colors.
 - **Fill it:** drag tiles in from other fences, drop files from Explorer, or use **Auto-import desktop** on the Home page.
 - **Fence options:** right-click a fence's title bar (or click ✎) to rename it, sort, change icon size, add a tab, set a color, background, transparency or title size, lock it, or delete it.
 - **Find something:** **Ctrl+Alt+F**, type, Enter. Or select a tile and press **Space** to preview it.
@@ -183,6 +196,7 @@ Ideas and votes are welcome in [issues](https://github.com/chrisdfennell/Pickets
 - Z-order on the desktop can vary by Windows build; fences are kept in the desktop layer behind normal windows (search and Locate bring them to the front briefly).
 - A folder portal whose folder is missing or on a disconnected drive shows as *(unavailable)* until it can be reached again (checked every few seconds), or until you point it at another folder with **Change folder…**.
 - A global shortcut that another app already uses can't be registered; Settings flags it so you can pick another.
+- System monitor GPU, CPU cores and disk activity tiles read Windows' performance counters. Where those are turned off or missing (some virtual machines, older graphics drivers), the tiles are greyed out in **Add tile** and left off the monitor. Temperatures and fan speeds aren't shown: Windows only offers them through hardware drivers that need admin rights.
 - Background videos need Windows' codecs: MP4 and WMV work out of the box; MKV and WebM may need the free extensions from the Microsoft Store. Animated GIFs show their first frame.
 
 ---

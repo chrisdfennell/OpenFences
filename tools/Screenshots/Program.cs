@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Pickets;
+using Pickets.Services;
 
 internal static class Program
 {
@@ -45,7 +46,11 @@ internal static class Program
         try
         {
             _demo = CreateDemoFolder();
+            // System monitors show made-up readings, never this PC's own (its address, drives…).
+            SystemMonitor.ShowFixed(Array.Empty<SystemSnapshot>());
             var fences = BuildFences();
+            var monitors = BuildMonitors();
+            SystemMonitor.ShowFixed(DemoReadings()); // a minute of history for the graphs
 
             // Icons load on a background thread; give them time to arrive.
             After(TimeSpan.FromSeconds(4), () =>
@@ -58,7 +63,9 @@ internal static class Program
                 SaveAppWindow(fences, "screenshot-app-light.png");
                 UsePalette("Dark");
                 SaveQuickLook(fences, "screenshot-quicklook.png");
-                foreach (var f in fences) f.Close();
+                SaveMonitors(monitors, "screenshot-monitor.png");
+                SaveMonitorSettings(monitors[0], "screenshot-monitor-settings.png");
+                foreach (var f in fences.Concat(monitors)) f.Close();
                 Console.WriteLine("Saved screenshots to " + _outDir);
                 System.Windows.Application.Current.Shutdown();
             });
@@ -171,8 +178,79 @@ internal static class Program
                 Sort = FenceSort.DateModified, PortalFilter = ".docx .xlsx .pptx .pdf .txt .jpg .png .zip",
                 Left = 1090, Top = 130, Width = 300, Height = 330
             },
+            // A system monitor in list view.
+            new FenceModel
+            {
+                Name = "PC", IsMonitor = true, View = FenceView.List, Left = 1090, Top = 490, Width = 300, Height = 160,
+                Tiles = Tiles(MonitorMetrics.Cpu, MonitorMetrics.Memory, MonitorMetrics.Gpu, MonitorMetrics.Network)
+            },
         };
+        return Open(models);
+    }
 
+    private static List<MonitorTileConfig> Tiles(params string[] kinds) =>
+        kinds.Select(k => k.StartsWith("disk:") ? new MonitorTileConfig { Kind = MonitorMetrics.Disk, Drive = k[5..] }
+                                                : new MonitorTileConfig { Kind = k }).ToList();
+
+    // The system monitor screenshot: a full monitor with every kind of graph, and a compact one.
+    private static List<FenceWindow> BuildMonitors()
+    {
+        var models = new[]
+        {
+            new FenceModel
+            {
+                // Sized by hand: fitting to contents needs a window on a screen.
+                Name = "System", IsMonitor = true, Left = 50, Top = 50, Width = 520, Height = 392,
+                Tiles = Tiles(MonitorMetrics.Cpu, MonitorMetrics.Memory, MonitorMetrics.Gpu,
+                              MonitorMetrics.Cores, MonitorMetrics.Network, MonitorMetrics.DiskIo,
+                              "disk:C:", "disk:D:", MonitorMetrics.Battery)
+            },
+            new FenceModel
+            {
+                Name = "At a glance", IsMonitor = true, View = FenceView.List, AccentColor = "#14B8A6",
+                Left = 610, Top = 50, Width = 400, Height = 190,
+                Tiles = Tiles(MonitorMetrics.Clock, MonitorMetrics.NetInfo, MonitorMetrics.Cpu, MonitorMetrics.Memory, MonitorMetrics.Battery)
+            },
+        };
+        return Open(models);
+    }
+
+    // A minute of believable, gently changing readings (oldest first). Drive D: is nearly full,
+    // so the warning color shows.
+    private static IEnumerable<SystemSnapshot> DemoReadings()
+    {
+        const long GB = 1024L * 1024 * 1024;
+        var rnd = new Random(42);
+        for (int i = 0; i < 60; i++)
+        {
+            double t = i / 60.0 * Math.PI * 2;
+            double cpu = 24 + 12 * Math.Sin(t * 3) + rnd.NextDouble() * 6;
+            yield return new SystemSnapshot
+            {
+                CpuPercent = cpu,
+                Processors = 12,
+                CoreLoads = Enumerable.Range(0, 12).Select(c => Math.Clamp(cpu + 30 * Math.Sin(c * 1.7 + i / 4.0), 2, 98)).ToList(),
+                MemoryUsed = (ulong)((9.4 + 0.3 * Math.Sin(t)) * GB),
+                MemoryTotal = 16UL * (ulong)GB,
+                GpuPercent = 38 + 22 * Math.Sin(t * 2 + 1) + rnd.NextDouble() * 4,
+                Drives = new[]
+                {
+                    new DriveSample("C:", "Windows", 1000 * GB, 412 * GB),
+                    new DriveSample("D:", "Games", 2000 * GB, 168 * GB),
+                },
+                DiskReadBytesPerSec = (6 + 5 * Math.Max(0, Math.Sin(t * 4))) * 1024 * 1024,
+                DiskWriteBytesPerSec = (1.5 + rnd.NextDouble()) * 1024 * 1024,
+                NetDownBytesPerSec = (2.4 + 1.4 * Math.Sin(t * 2.5) + rnd.NextDouble()) * 1024 * 1024,
+                NetUpBytesPerSec = (280 + 90 * rnd.NextDouble()) * 1024,
+                NetName = "Wi-Fi",
+                NetAddress = "192.168.1.24",
+                Battery = new BatterySample(76, PluggedIn: false, Charging: false, SecondsLeft: 3 * 3600 + 12 * 60),
+            };
+        }
+    }
+
+    private static List<FenceWindow> Open(IEnumerable<FenceModel> models)
+    {
         var windows = new List<FenceWindow>();
         foreach (var m in models)
         {
@@ -182,7 +260,7 @@ internal static class Program
             // Off-screen: rendered to bitmaps, never seen on the real desktop. Moved after Show,
             // since a fence places itself where its model says once its window exists.
             w.Show();
-            w.Left = -30000 + windows.Count * 2000;
+            w.Left = -30000 + _opened++ * 2000;
             w.Top = -30000;
             windows.Add(w);
         }
@@ -190,6 +268,8 @@ internal static class Program
     }
 
     // ---------- Rendering ----------
+
+    private static int _opened;
 
     private const double SceneW = 1440, SceneH = 720;
 
@@ -211,7 +291,8 @@ internal static class Program
         // A soft glow so the wallpaper isn't a flat gradient.
         var glow = new System.Windows.Shapes.Ellipse
         {
-            Width = 900, Height = 900,
+            Width = 900,
+            Height = 900,
             Fill = new RadialGradientBrush(Color.FromArgb(70, 0x60, 0xA5, 0xFA), Color.FromArgb(0, 0x60, 0xA5, 0xFA))
         };
         Canvas.SetLeft(glow, 700);
@@ -244,21 +325,27 @@ internal static class Program
 
     // The main window (Home page), loaded from its XAML with these demo fences listed. The
     // real window can't be created here: its constructor takes over the desktop.
-    private static void SaveAppWindow(List<FenceWindow> fences, string file)
+    private static Window LoadHub(double height)
     {
         var xamlPath = FindRepoFile(Path.Combine("Pickets", "MainWindow.xaml"));
         var xaml = File.ReadAllText(xamlPath).Replace("x:Class=\"Pickets.MainWindow\"", "");
         xaml = Regex.Replace(xaml, @"\s(Click|Checked|PreviewKeyDown|GotKeyboardFocus|LostKeyboardFocus)=""[^""]*""", "");
         xaml = xaml.Replace("Source=\"Themes/HubStyles.xaml\"", "Source=\"pack://application:,,,/Pickets;component/Themes/HubStyles.xaml\"");
         var w = (Window)XamlReader.Parse(xaml);
-        w.Width = 1080; w.Height = 720;
+        w.Width = 1080; w.Height = height;
         w.Left = -40000; w.Top = -40000;
         w.Show();
+        ((TextBlock)w.FindName("SidebarVersion")).Text = ""; // would go stale with every release
+        return w;
+    }
+
+    private static void SaveAppWindow(List<FenceWindow> fences, string file)
+    {
+        var w = LoadHub(720);
 
         T Find<T>(string name) where T : class => (w.FindName(name) as T)!;
         Brush B(string c) => (Brush)new BrushConverter().ConvertFromString(c)!;
         Brush R(string key) => (Brush)System.Windows.Application.Current.FindResource(key); // current palette
-        Find<TextBlock>("SidebarVersion").Text = ""; // would go stale with every release
         Find<Button>("ToggleAllButton").Content = "Hide all fences";
         Find<TextBlock>("SearchTileHint").Text = "Find any item (Ctrl⁠+⁠Alt⁠+⁠F)"; // as the app shows it: never split
         Find<Button>("ProfileButton").Content = "Work  ▾"; // a desktop profile in use
@@ -267,7 +354,8 @@ internal static class Program
         {
             Name = f.FenceName,
             Details = f.IsPortal ? $"Folder portal · {f.ItemCount} items"
-                                 : f.TabCount > 0 ? $"{f.ItemCount} items · {f.TabCount} tabs" : $"{f.ItemCount} items",
+                    : f.IsMonitor ? "System monitor · " + f.MonitorSummary
+                    : f.TabCount > 0 ? $"{f.ItemCount} items · {f.TabCount} tabs" : $"{f.ItemCount} items",
             Swatch = string.IsNullOrEmpty(f.AccentColor) ? R("Hub.Swatch") : B(f.AccentColor!),
             State = f.IsCollapsed ? "Rolled up" : "Shown",
             StateBrush = f.IsCollapsed ? R("Hub.StateRolled") : R("Hub.StateShown"),
@@ -275,11 +363,57 @@ internal static class Program
         }).ToList();
         Find<ItemsControl>("FenceList").ItemsSource = rows;
         Find<TextBlock>("SummaryText").Text =
-            $"{rows.Count} fences · {fences.Where(f => !f.IsPortal).Sum(f => f.ItemCount)} desktop items";
+            $"{rows.Count} fences · {fences.Where(f => !f.IsPortal && !f.IsMonitor).Sum(f => f.ItemCount)} desktop items";
         Flush();
 
         var root = (FrameworkElement)w.Content;
         Save(root, file);
+        w.Close();
+    }
+
+    // Two system monitors over the wallpaper.
+    private static void SaveMonitors(List<FenceWindow> monitors, string file)
+    {
+        // A focused tile would show its keyboard outline: nothing here has seen a mouse.
+        System.Windows.Input.Keyboard.ClearFocus();
+        Flush();
+        var scene = Scene();
+        scene.Width = 1060;
+        scene.Height = monitors.Max(m => ((Point)m.Tag).Y + m.ActualHeight) + 50;
+        foreach (var m in monitors)
+            Place(scene, Snapshot(m), (Point)m.Tag, m.ActualWidth, m.ActualHeight);
+        Save(scene, file);
+    }
+
+    // Settings → System monitor, editing the big monitor's tiles.
+    private static void SaveMonitorSettings(FenceWindow monitor, string file)
+    {
+        var w = LoadHub(1240);
+        T Find<T>(string name) where T : class => (w.FindName(name) as T)!;
+
+        Find<RadioButton>("NavSettings").IsChecked = true;
+        Find<FrameworkElement>("HomePage").Visibility = Visibility.Collapsed;
+        var page = Find<StackPanel>("SettingsPage");
+        page.Visibility = Visibility.Visible;
+        page.DataContext = new AppOptions();
+
+        // Just the page title and the System monitor section (its heading and two cards).
+        int start = page.Children.IndexOf(Find<FrameworkElement>("MonitorSection"));
+        for (int i = 0; i < page.Children.Count; i++)
+            page.Children[i].Visibility = i < 2 || (i >= start && i <= start + 2) ? Visibility.Visible : Visibility.Collapsed;
+
+        Find<Button>("MonitorIntervalButton").Content = "2 seconds  ▾";
+        Find<Button>("MonitorHistoryButton").Content = "2 minutes  ▾";
+        Find<Button>("MonitorPickButton").Content = monitor.FenceName + "  ▾";
+        Find<TextBlock>("MonitorTilesHint").Text = "Choose a monitor, then add, remove, rename and reorder its tiles.";
+        var labels = new Dictionary<string, string> { ["C:"] = "Windows", ["D:"] = "Games" };
+        var tiles = monitor.MonitorConfig;
+        Find<ItemsControl>("MonitorTileList").ItemsSource = tiles
+            .Select((t, i) => new MainWindow.MonitorTileRow(t, i, tiles.Count, t.Drive != null ? labels.GetValueOrDefault(t.Drive) : null, (_, __) => { }))
+            .ToList();
+        Flush();
+
+        Save((FrameworkElement)w.Content, file);
         w.Close();
     }
 
