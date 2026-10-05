@@ -27,7 +27,7 @@ namespace Pickets.Services
             var fences = config.Fences;
             var real = fences.Where(f => f.HoldsDesktopItems).ToList();
 
-            sb.AppendLine($"Pickets {UpdateService.CurrentVersion.ToString(3)} ({RuntimeInformation.ProcessArchitecture}, {(IsInstalled ? "installed" : "portable")})");
+            sb.AppendLine($"Pickets {UpdateService.CurrentVersion.ToString(3)} ({RuntimeInformation.ProcessArchitecture}, {InstallText})");
             sb.AppendLine($"Windows: {RuntimeInformation.OSDescription} ({RuntimeInformation.OSArchitecture})");
             sb.AppendLine($".NET: {RuntimeInformation.FrameworkDescription}");
             sb.AppendLine($"Theme: {o.Theme} (showing {(Theme.IsLight ? "light" : "dark")}), high contrast: {(System.Windows.SystemParameters.HighContrast ? "on" : "off")}");
@@ -58,6 +58,7 @@ namespace Pickets.Services
                 $"stacks {OnOff(o.MoveStacksTogether)}",
                 $"one open per stack {OnOff(o.StackOneOpen)}",
                 $"hover peek {OnOff(o.ExpandCollapsedOnHover)}",
+                $"public IP lookup {OnOff(o.MonitorPublicIp)}",
                 $"thumbnails {OnOff(o.ShowThumbnails)}",
                 $"hide extensions {OnOff(o.HideFileExtensions)}",
                 $"double-click peek {OnOff(o.DoubleClickPeekFences)}",
@@ -90,17 +91,12 @@ namespace Pickets.Services
 
         private static string OnOff(bool b) => b ? "on" : "off";
 
-        // The MSI installs under Program Files; anywhere else is the portable exe.
-        private static bool IsInstalled
+        private static string InstallText => UpdateService.Kind switch
         {
-            get
-            {
-                var exe = Environment.ProcessPath ?? "";
-                return new[] { Environment.SpecialFolder.ProgramFiles, Environment.SpecialFolder.ProgramFilesX86 }
-                    .Select(Environment.GetFolderPath)
-                    .Any(dir => dir.Length > 0 && exe.StartsWith(dir + "\\", StringComparison.OrdinalIgnoreCase));
-            }
-        }
+            InstallKind.AllUsers => "installed for everyone",
+            InstallKind.JustMe => "installed just for this user",
+            _ => "portable"
+        };
 
         private static List<string> LastLines(string path, int count)
         {

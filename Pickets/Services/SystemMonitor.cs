@@ -33,6 +33,10 @@ namespace Pickets.Services
         /// <summary>The connection that reaches the internet: its name ("Wi-Fi") and IPv4 address.</summary>
         public string? NetName { get; init; }
         public string? NetAddress { get; init; }
+        /// <summary>The address the internet sees, when Show public IP is on and it's known.</summary>
+        public string? PublicAddress { get; init; }
+        /// <summary>Show public IP is on but the lookup didn't work (offline, blocked…).</summary>
+        public bool PublicAddressFailed { get; init; }
         public BatterySample? Battery { get; init; }
     }
 
@@ -193,6 +197,7 @@ namespace Pickets.Services
             var (used, total) = Needs(MonitorMetrics.Memory) ? ReadMemory() : (0UL, 0UL);
             var net = Needs(MonitorMetrics.Network, MonitorMetrics.NetInfo) ? ReadNetwork() : default;
             var (read, write) = Needs(MonitorMetrics.DiskIo) ? ReadDiskIo() : (null, null);
+            var pub = Needs(MonitorMetrics.NetInfo) ? PublicIp(net.address) : (null, false);
             return new SystemSnapshot
             {
                 CpuPercent = Needs(MonitorMetrics.Cpu) ? ReadCpu() : 0,
@@ -208,6 +213,8 @@ namespace Pickets.Services
                 NetUpBytesPerSec = net.up,
                 NetName = net.name,
                 NetAddress = net.address,
+                PublicAddress = pub.address,
+                PublicAddressFailed = pub.failed,
                 Battery = Needs(MonitorMetrics.Battery) ? ReadBattery() : null,
             };
         }
@@ -319,6 +326,97 @@ namespace Pickets.Services
                 plugged,
                 p.BatteryChargeStatus.HasFlag(WinForms.BatteryChargeStatus.Charging),
                 !plugged && p.BatteryLifeRemaining > 0 ? p.BatteryLifeRemaining : null);
+        }
+
+        // ---------- Public IP (only when the user turns it on) ----------
+        // The one reading that isn't on this PC: the address the internet sees comes from asking
+        // a service out there, which sees the address too. So it's off unless the user turns on
+        // Show public IP (privacy policy), asked again only when the connection changes or every
+        // 15 minutes, never while offline, and never without a Network info tile showing.
+
+        public const string PublicIpService = "https://ipv4.icanhazip.com/";
+        public static readonly TimeSpan PublicIpRefresh = TimeSpan.FromMinutes(15);
+
+        private static readonly object PublicIpLock = new();
+        private static bool _publicIpEnabled, _publicIpBusy, _publicIpFailed;
+        private static string? _publicIp, _publicIpFor;
+        private static DateTime _publicIpAt;
+        private static System.Net.Http.HttpClient? _publicIpHttp;
+
+        /// <summary>Settings → Show public IP.</summary>
+        public static bool PublicIpEnabled
+        {
+            get => _publicIpEnabled;
+            set
+            {
+                lock (PublicIpLock)
+                {
+                    _publicIpEnabled = value;
+                    // Forget it when turned off, so turning it on again asks straight away.
+                    if (!value) { _publicIp = _publicIpFor = null; _publicIpFailed = false; _publicIpAt = default; }
+                }
+            }
+        }
+
+        /// <summary>The last public address (or that the lookup failed), starting a new lookup
+        /// in the background when one is due.</summary>
+        private static (string? address, bool failed) PublicIp(string? localAddress)
+        {
+            lock (PublicIpLock)
+            {
+                if (!_publicIpEnabled) return (null, false);
+                if (localAddress != null && !_publicIpBusy &&
+                    PublicIpDue(DateTime.UtcNow, _publicIpAt, _publicIpFor, localAddress))
+                {
+                    _publicIpBusy = true;
+                    _ = LookUpPublicIp(localAddress);
+                }
+                return (_publicIp, _publicIpFailed && _publicIp == null);
+            }
+        }
+
+        private static async Task LookUpPublicIp(string localAddress)
+        {
+            string? found = null;
+            try
+            {
+                _publicIpHttp ??= CreatePublicIpClient();
+                found = ParsePublicIp(await _publicIpHttp.GetStringAsync(PublicIpService).ConfigureAwait(false));
+            }
+            catch { /* offline, blocked, timed out: shown as unavailable until the next try */ }
+            lock (PublicIpLock)
+            {
+                _publicIpBusy = false;
+                if (!_publicIpEnabled) return; // turned off meanwhile
+                // A new connection with no answer yet shouldn't keep showing the old network's address.
+                if (found != null || _publicIpFor != localAddress) _publicIp = found;
+                _publicIpFailed = found == null;
+                _publicIpFor = localAddress;
+                _publicIpAt = DateTime.UtcNow;
+            }
+        }
+
+        private static System.Net.Http.HttpClient CreatePublicIpClient()
+        {
+            var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Pickets/" + UpdateService.CurrentVersion.ToString(3));
+            return http;
+        }
+
+        /// <summary>Ask again when the connection changed (a different local address) or the last
+        /// answer is old.</summary>
+        internal static bool PublicIpDue(DateTime now, DateTime lastAt, string? lastFor, string localAddress) =>
+            lastFor != localAddress || now - lastAt >= PublicIpRefresh;
+
+        /// <summary>The service's answer ("203.0.113.7\n"), or null if it isn't an IP address.</summary>
+        internal static string? ParsePublicIp(string? body)
+        {
+            var text = body?.Trim() ?? "";
+            // IPAddress also takes shorthand like "123" (0.0.0.123); a real answer is dotted or IPv6.
+            if (!text.Contains('.') && !text.Contains(':')) return null;
+            return System.Net.IPAddress.TryParse(text, out var ip) &&
+                   ip.AddressFamily is AddressFamily.InterNetwork or AddressFamily.InterNetworkV6
+                ? ip.ToString() : null;
         }
 
         // ---------- Arithmetic (kept apart from the Windows calls so it can be tested) ----------

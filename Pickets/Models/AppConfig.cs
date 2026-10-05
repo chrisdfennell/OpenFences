@@ -67,6 +67,9 @@ namespace Pickets
         public int MonitorHistoryMinutes { get; set; } = 2;
         public bool MonitorNetworkBits { get; set; } = false;
         public bool MonitorWarnColors { get; set; } = true;
+        // Network info also shows the public IP, which means asking a service on the internet
+        // (see SystemMonitor.PublicIpService and the privacy policy), so it's off unless turned on.
+        public bool MonitorPublicIp { get; set; } = false;
 
         // Light or dark look; System follows Windows' app mode.
         public Pickets.Services.AppTheme Theme { get; set; } = Pickets.Services.AppTheme.System;

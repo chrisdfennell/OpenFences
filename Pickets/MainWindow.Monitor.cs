@@ -65,7 +65,17 @@ namespace Pickets
         private void InitMonitorSettings()
         {
             SystemMonitor.SetInterval(_config.Options.MonitorIntervalSeconds);
+            SystemMonitor.PublicIpEnabled = _config.Options.MonitorPublicIp;
             FenceWindow.RequestEditMonitorTiles = EditMonitorTiles;
+            // A Network info tile's own Show public IP switch.
+            FenceWindow.RequestPublicIp = on =>
+            {
+                _config.Options.MonitorPublicIp = on;
+                SystemMonitor.PublicIpEnabled = on;
+                ApplyMonitorOptionsToAll();
+                SaveConfig();
+                RefreshSettingsPage(); // the switch on the Settings page
+            };
         }
 
         /// <summary>A fence's Edit tiles…: Settings → System monitor, showing that fence.</summary>

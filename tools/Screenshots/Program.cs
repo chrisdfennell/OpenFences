@@ -388,7 +388,7 @@ internal static class Program
     // Settings → System monitor, editing the big monitor's tiles.
     private static void SaveMonitorSettings(FenceWindow monitor, string file)
     {
-        var w = LoadHub(1240);
+        var w = LoadHub(1340);
         T Find<T>(string name) where T : class => (w.FindName(name) as T)!;
 
         Find<RadioButton>("NavSettings").IsChecked = true;

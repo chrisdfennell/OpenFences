@@ -29,8 +29,9 @@ namespace Pickets
 
             TitleText.Text = $"Pickets {update.Version.ToString(3)} is available";
             SubtitleText.Text = _canInstall
-                ? $"You have {UpdateService.CurrentVersion.ToString(3)}. Installing closes Pickets, " +
-                  "updates it (Windows will ask for permission), and starts it again. Your fences are kept."
+                ? $"You have {UpdateService.CurrentVersion.ToString(3)}. Installing closes Pickets, updates it" +
+                  (UpdateService.Kind == InstallKind.AllUsers ? " (Windows will ask for permission)" : "") +
+                  ", and starts it again. Your fences are kept."
                 : $"You have {UpdateService.CurrentVersion.ToString(3)}. This copy wasn't installed with the " +
                   "installer, so download the new version from the release page.";
             NotesBox.Text = string.IsNullOrWhiteSpace(update.Notes) ? "No release notes." : update.Notes.Trim();

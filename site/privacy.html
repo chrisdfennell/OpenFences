@@ -29,8 +29,9 @@
 
   <div class="callout">
     <strong>In short:</strong> Pickets doesn't collect, store or share any personal information. It has no
-    accounts, ads, analytics or telemetry. Its only network connection is an optional check for new versions on
-    GitHub. Everything else stays on your PC.
+    accounts, ads, analytics or telemetry. It connects to the internet only to check for new versions on GitHub
+    (which you can turn off) and, if you turn it on, to look up your public IP address for a system monitor.
+    Everything else stays on your PC.
   </div>
 
   <p>This policy covers the Pickets desktop application for Windows and this website. Pickets is an
@@ -38,8 +39,10 @@
   <a href="https://github.com/chrisdfennell/Pickets">github.com/chrisdfennell/Pickets</a>, so anything
   described here can be checked against the code.</p>
 
-  <h2>What Pickets sends over the network</h2>
-  <p>Pickets connects to the internet for one purpose only: <strong>checking for updates</strong>.</p>
+  <h2 id="network">What Pickets sends over the network</h2>
+  <p>Pickets connects to the internet for two purposes only: <strong>checking for updates</strong> and, only if
+  you turn it on, <strong>looking up your public IP address</strong>.</p>
+  <h3>Checking for updates</h3>
   <ul>
     <li>About 10 seconds after it starts, and then once a day, it asks GitHub's public API
       (<code>api.github.com</code>) for the latest Pickets release. The request identifies itself as
@@ -54,6 +57,23 @@
   handling of that information is covered by the
   <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub
   General Privacy Statement</a>. Pickets itself does not receive or keep any of it.</p>
+  <h3>Public IP address (off unless you turn it on)</h3>
+  <p>A system monitor's Network info tile can also show the address the internet sees your connection as. Your
+  PC doesn't know that address itself, so to show it Pickets has to ask a service on the internet. It does this
+  only after you turn on <strong>Show public IP</strong> (Settings → System monitor, or the tile's right-click
+  menu), and only while a Network info tile is on screen.</p>
+  <ul>
+    <li>It asks Cloudflare's <code>ipv4.icanhazip.com</code>, which answers with the address it sees. The request
+      identifies itself as <code>Pickets/</code> followed by the installed version number and contains nothing
+      else about you, your PC or your files.</li>
+    <li>It asks when you turn the setting on, when your network connection changes, and otherwise at most every
+      15 minutes; never while you're offline.</li>
+    <li>The address is shown on your desktop and kept in memory only: it isn't saved or sent anywhere else.
+      Turning the setting off stops the lookups and forgets the address.</li>
+  </ul>
+  <p>Like any website, Cloudflare receives your IP address with each lookup; that's how it can tell you what it is.
+  Its handling of that information is covered by the
+  <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare Privacy Policy</a>.</p>
   <p>Pickets sends nothing else: no usage statistics, no crash reports, no information about your desktop or
   files.</p>
 
@@ -80,7 +100,9 @@
   Windows), and hides the normal desktop icons, restoring them when it exits. None of this leaves your PC.</p>
   <p>System monitor fences, if you add one, read usage figures from Windows (processor, memory, graphics,
   drives, network adapters, battery) and the local IP address of your network connection, only to show them on
-  your desktop. Readings aren't saved or sent anywhere; the settings file keeps only which tiles each monitor shows.</p>
+  your desktop. Readings aren't saved or sent anywhere; the settings file keeps only which tiles each monitor shows.
+  (The public IP address, if you turn it on, is described under <a href="#network">What Pickets sends over the
+  network</a>.)</p>
   <p>Versions released before the rename used the folder <code>%AppData%\OpenFences</code>. The first time
   Pickets starts, it moves that folder to <code>%AppData%\Pickets</code> and updates the "start with Windows"
   entry, so your fences carry over.</p>

@@ -339,7 +339,8 @@ namespace Pickets
                 _lastHideExtensions = o.HideFileExtensions;
                 foreach (var w in _openWindows) w.RefreshItems();
             }
-            ApplyMonitorOptionsToAll(); // units, warning colors
+            SystemMonitor.PublicIpEnabled = o.MonitorPublicIp;
+            ApplyMonitorOptionsToAll(); // units, warning colors, public IP
 
             SaveConfig();
         }

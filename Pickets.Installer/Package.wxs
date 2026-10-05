@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
 
-  <!-- UpgradeCode is FIXED for the life of the product (do not change it). -->
+  <!-- Two installers from this file (Pickets.Installer.wixproj, PerUser):
+         - Pickets-<arch>.msi: for everyone on the PC, in Program Files (asks for admin rights).
+         - Pickets-<arch>-user.msi: just for the current user, in %LocalAppData%\Programs (no prompt).
+       Each has its own UpgradeCode, FIXED for the life of the product (do not change them): an
+       install only upgrades the same kind, and Windows can't turn one kind into the other. -->
+  <?if $(var.PerUser) = true ?>
+    <?define Scope = "perUser" ?>
+    <?define UpgradeCode = "5F1D3C9A-7B2E-4E84-A6C1-0D9B8E2F4A71" ?>
+  <?else?>
+    <?define Scope = "perMachine" ?>
+    <?define UpgradeCode = "B8E7B0C2-2F4A-4C9E-9D3F-7A1E6C5D4B30" ?>
+  <?endif?>
+
   <Package Name="Pickets"
            Manufacturer="Fennell"
            Version="$(var.ProductVersion)"
-           UpgradeCode="B8E7B0C2-2F4A-4C9E-9D3F-7A1E6C5D4B30"
-           Scope="perMachine"
+           UpgradeCode="$(var.UpgradeCode)"
+           Scope="$(var.Scope)"
            Compressed="yes">
 
     <SummaryInformation Description="Pickets — lightweight desktop fences for Windows" />
@@ -18,10 +30,19 @@
     <Property Id="ARPPRODUCTICON" Value="AppIcon" />
     <Property Id="ARPHELPLINK" Value="https://github.com/chrisdfennell/Pickets" />
 
-    <!-- Install location: Program Files\Pickets -->
+    <!-- Install location: Program Files\Pickets, or just for you %LocalAppData%\Programs\Pickets
+         (where per-user apps such as VS Code go). -->
+    <?if $(var.PerUser) = true ?>
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="UserProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Pickets" />
+      </Directory>
+    </StandardDirectory>
+    <?else?>
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Pickets" />
     </StandardDirectory>
+    <?endif?>
 
     <Feature Id="Main" Title="Pickets" Level="1">
       <ComponentGroupRef Id="AppFiles" />

@@ -25,6 +25,9 @@ namespace Pickets
         /// <summary>Wired by MainWindow: Edit tiles… opens Settings → System monitor for this fence.</summary>
         public static Action<FenceWindow>? RequestEditMonitorTiles;
 
+        /// <summary>Wired by MainWindow: a Network info tile's Show public IP (on or off).</summary>
+        public static Action<bool>? RequestPublicIp;
+
         // ----- Layout metrics bound by the XAML (follow the fence's icon size) -----
         public double MonitorTileWidth => _model.IconSize switch
         {
@@ -226,10 +229,25 @@ namespace Pickets
                     }
 
                 case MonitorMetrics.NetInfo:
-                    tile.Value = s.NetAddress ?? "Offline";
-                    tile.Detail = s.NetName ?? "No internet connection";
-                    tile.Spoken = s.NetAddress == null ? $"{tile.Label}, offline" : $"{tile.Label}, {s.NetName}, address {s.NetAddress}";
-                    break;
+                    {
+                        tile.Value = s.NetAddress ?? "Offline";
+                        if (s.NetAddress == null)
+                        {
+                            tile.Detail = "No internet connection";
+                            tile.Compact = tile.Value;
+                            tile.Spoken = $"{tile.Label}, offline";
+                            break;
+                        }
+                        // With Show public IP on, the line under the local address is the public one
+                        // (the connection's name is still read out and in the list row's tooltip).
+                        string? pub = !o.MonitorPublicIp ? null
+                                    : s.PublicAddress ?? (s.PublicAddressFailed ? "unavailable" : "looking up…");
+                        tile.Detail = pub == null ? s.NetName ?? "" : "Public " + pub;
+                        tile.Compact = s.PublicAddress == null ? tile.Value : $"{tile.Value} · {s.PublicAddress}";
+                        tile.Spoken = $"{tile.Label}, {s.NetName}, local address {s.NetAddress}" +
+                                      (pub == null ? "" : $", public address {pub}");
+                        break;
+                    }
 
                 case MonitorMetrics.Battery:
                     {
@@ -392,6 +410,19 @@ namespace Pickets
                 };
                 graph.Click += (_, __) => { tile.Config.Graph = !tile.Config.Graph; ApplyMonitorChanges(); };
                 menu.Items.Add(graph);
+            }
+            if (tile.Metric == MonitorMetrics.NetInfo && Options is { } options)
+            {
+                // The same switch as Settings → System monitor → Show public IP.
+                var pub = new MenuItem
+                {
+                    Header = "Show public IP",
+                    IsCheckable = true,
+                    IsChecked = options.MonitorPublicIp,
+                    ToolTip = "Asks Cloudflare's icanhazip.com for the address the internet sees (it sees your address too)"
+                };
+                pub.Click += (_, __) => RequestPublicIp?.Invoke(!options.MonitorPublicIp);
+                menu.Items.Add(pub);
             }
             menu.Items.Add(new Separator());
             int index = MonitorConfig.IndexOf(tile.Config);

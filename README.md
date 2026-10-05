@@ -25,7 +25,10 @@ Pickets organizes your Windows desktop into movable, resizable **fences**. Your 
 
 Requires Windows 10 or 11. No .NET installation is needed.
 
-- **Installer (recommended):** download `Pickets-x64.msi` (most PCs) or `Pickets-arm64.msi` (ARM devices such as Snapdragon laptops) from the [latest release](https://github.com/chrisdfennell/Pickets/releases/latest).
+- **Installer (recommended):** from the [latest release](https://github.com/chrisdfennell/Pickets/releases/latest), pick one:
+  - **Just for you:** `Pickets-x64-user.msi` (most PCs) or `Pickets-arm64-user.msi` (ARM devices such as Snapdragon laptops). No admin prompt, now or for updates. Installs to `%LocalAppData%\Programs\Pickets`.
+  - **For everyone on this PC:** `Pickets-x64.msi` or `Pickets-arm64.msi`. Windows asks for admin permission when installing and updating. Installs to `C:\Program Files\Pickets`.
+  - To switch kinds, uninstall the one you have, then install the other: your fences and settings stay.
 - **Portable:** `Pickets-x64-portable.exe` or `Pickets-arm64-portable.exe`, a single file: put it anywhere and run it.
 - **winget:** `winget install chrisdfennell.Pickets` (submitted to the Windows Package Manager; works once Microsoft approves it).
 
@@ -68,6 +71,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Make it yours.** Add, remove, rename and reorder tiles, and turn any tile's graph off: from the fence menu (**Add tile**, **Edit tiles…**), by right-clicking a tile, or in **Settings → System monitor**. Switch a monitor to a compact list with **View → List**, change the tile size, or give it a color, glass or a background like any fence.
 - **Warning colors.** Readings turn amber, then red, when the CPU, GPU or memory is busy, a drive is nearly full or the battery is low.
 - **One click to the details.** Double-click a tile (or press Enter) to open Task Manager, the drive in Explorer, or the matching Windows settings.
+- **Local and public IP.** Network info shows your local address, and your public one too if you turn on **Show public IP** (Settings → System monitor, or the tile's right-click menu). That's the one reading that comes from outside your PC: Pickets asks Cloudflare's icanhazip.com, which sees your address. It's off until you turn it on, and then asks only when your connection changes or every 15 minutes.
 - **Light on your PC.** Readings come from Windows itself (no extra software, no admin rights) every 1 to 10 seconds, as you choose. A monitor only reads what its tiles show, and nothing at all while it's rolled up, hidden or closed, or while the PC is locked.
 - **Add one** from the Home page, the tray, **Settings → System monitor**, or by right-dragging a box on the desktop.
 
@@ -90,7 +94,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Desktop profiles.** Keep several fence arrangements, such as Work and Home, and switch from the Home page, the tray, **Ctrl+Alt+P**, or automatically at a time of day.
 - **Layouts you can undo.** Save and restore whole layouts; one is saved automatically before big changes such as Auto-Import. **Export** and **Import** move your fences and rules to another PC.
 - **Sharp on every monitor.** Fences and windows render at each monitor's own scaling, so a 150% laptop next to a 100% monitor looks crisp on both.
-- **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request (one Windows permission prompt), keeping your fences. Can be turned off.
+- **Updates itself.** Checks GitHub at startup and once a day, shows what's new and installs on request, keeping your fences. Just-for-you installs update without an admin prompt; for-everyone installs show one Windows permission prompt. Can be turned off.
 - **Safe settings.** Saved continuously with a backup copy that's restored automatically if the file is ever damaged.
 - **Accessible.** Press **F1** for every keyboard shortcut. Screen readers such as Narrator read each fence and tile (with its position and whether it's selected), **F6** moves between fences, and rolling up, switching tabs and undo are announced. Under a Windows high-contrast theme, fences, menus and the Pickets window use the theme's own colors.
 
@@ -140,7 +144,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 ## 📁 Where things go
 
 - **Your files:** they stay where they are. Fences don't copy or move them.
-- **App:** `C:\Program Files\Pickets\` (installer) or wherever you put the portable exe.
+- **App:** `%LocalAppData%\Programs\Pickets\` (installed just for you), `C:\Program Files\Pickets\` (installed for everyone), or wherever you put the portable exe.
 - **Settings and fences:** `%AppData%\Pickets\config.json` (previous version kept as `config.json.bak`).
 - **Saved layouts:** `%AppData%\Pickets\layouts\`
 - **Error log:** `%AppData%\Pickets\error.log`
