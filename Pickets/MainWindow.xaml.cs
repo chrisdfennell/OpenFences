@@ -1267,6 +1267,9 @@ namespace Pickets
             SpawnFencesFromConfig();
             BuildCatchAll(); // anything on the desktop the new set doesn't place
             SaveConfig();
+            // Settings' tile editor pointed at a monitor that's just been closed: show the new ones.
+            _monitorTarget = null;
+            RefreshMonitorSettings();
         }
 
         // ========== Rules editor ==========

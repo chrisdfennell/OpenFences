@@ -90,7 +90,8 @@ namespace Pickets
         private void UpdateMonitorViewing()
         {
             if (!IsMonitor) return;
-            bool seen = IsVisible && (!_model.Collapsed || _tempExpanded);
+            // A monitor with no tiles has nothing to read, so it doesn't keep the sampler going.
+            bool seen = IsVisible && (!_model.Collapsed || _tempExpanded) && MonitorConfig.Count > 0;
             SystemMonitor.SetViewing(this, seen ? MonitorConfig.Select(t => t.Kind).Distinct().ToList() : null);
         }
 
@@ -243,7 +244,9 @@ namespace Pickets
                         string? pub = !o.MonitorPublicIp ? null
                                     : s.PublicAddress ?? (s.PublicAddressFailed ? "unavailable" : "looking up…");
                         tile.Detail = pub == null ? s.NetName ?? "" : "Public " + pub;
-                        tile.Compact = s.PublicAddress == null ? tile.Value : $"{tile.Value} · {s.PublicAddress}";
+                        // Gated on the setting too: turning it off redraws from the last reading,
+                        // which may still carry the public address.
+                        tile.Compact = o.MonitorPublicIp && s.PublicAddress != null ? $"{tile.Value} · {s.PublicAddress}" : tile.Value;
                         tile.Spoken = $"{tile.Label}, {s.NetName}, local address {s.NetAddress}" +
                                       (pub == null ? "" : $", public address {pub}");
                         break;
