@@ -13,6 +13,9 @@ using System.Threading.Tasks;
 
 namespace Pickets.Services
 {
+    /// <summary>Which installer put this copy here (see UpdateService.Kind).</summary>
+    public enum InstallKind { Portable, AllUsers, JustMe }
+
     /// <summary>A newer release found on GitHub.</summary>
     internal sealed record UpdateInfo(
         Version Version,
@@ -57,22 +60,33 @@ namespace Pickets.Services
         private static string Arch =>
             RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
 
-        /// <summary>True when running from an MSI install (Program Files), as opposed to the
-        /// portable exe, which can't be upgraded by the installer.</summary>
-        public static bool IsInstalledCopy
-        {
-            get
+        /// <summary>True when running from an MSI install, as opposed to the portable exe, which
+        /// can't be upgraded by the installer.</summary>
+        public static bool IsInstalledCopy => Kind != InstallKind.Portable;
+
+        /// <summary>How this copy was installed, from where it runs: Program Files (the
+        /// everyone installer), %LocalAppData%\Programs (just me), or anywhere else (portable).</summary>
+        public static InstallKind Kind => KindOf(AppContext.BaseDirectory,
+            new[]
             {
-                var dir = AppContext.BaseDirectory;
-                return new[]
-                {
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                }
-                .Where(p => !string.IsNullOrEmpty(p))
-                .Any(p => dir.StartsWith(p.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase));
-            }
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            },
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"));
+
+        internal static InstallKind KindOf(string appDir, string[] programFiles, string userPrograms)
+        {
+            static bool Under(string dir, string root) =>
+                !string.IsNullOrEmpty(root) && dir.StartsWith(root.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase);
+            if (programFiles.Any(p => Under(appDir, p))) return InstallKind.AllUsers;
+            if (Under(appDir, userPrograms)) return InstallKind.JustMe;
+            return InstallKind.Portable;
         }
+
+        /// <summary>The release asset that updates this kind of install: "Pickets-x64.msi" (everyone)
+        /// or "Pickets-x64-user.msi" (just me), for this PC's architecture.</summary>
+        internal static string MsiAssetName(InstallKind kind, string arch) =>
+            kind == InstallKind.JustMe ? $"Pickets-{arch}-user.msi" : $"Pickets-{arch}.msi";
 
         /// <summary>Returns the latest release if it's newer than this build, otherwise null.
         /// Throws on network/API errors so a manual check can report them.</summary>
@@ -90,7 +104,9 @@ namespace Pickets.Services
             if (!TryParseVersion(tag, out var latest) || latest <= CurrentVersion) return null;
 
             string? msiUrl = null, sha = null;
-            string wanted = $"Pickets-{Arch}.msi";
+            // The same kind of installer as this copy: a just-for-me install updates without asking
+            // for admin rights. Releases before 1.15 have no just-for-me MSI.
+            string wanted = MsiAssetName(Kind, Arch);
             if (root.TryGetProperty("assets", out var assets))
             {
                 foreach (var a in assets.EnumerateArray())
@@ -121,7 +137,7 @@ namespace Pickets.Services
 
             var dir = Path.Combine(Path.GetTempPath(), "Pickets-Update");
             Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, $"Pickets-{update.Version.ToString(3)}-{Arch}.msi");
+            var path = Path.Combine(dir, $"Pickets-{update.Version.ToString(3)}-" + MsiAssetName(Kind, Arch).Substring("Pickets-".Length));
 
             using (var resp = await Http.GetAsync(update.MsiUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
@@ -158,8 +174,9 @@ namespace Pickets.Services
         /// <summary>
         /// Starts a hidden helper that waits for this process to exit, runs the installer and
         /// relaunches Pickets. The caller must then close the app normally (so the config is
-        /// saved and the desktop icons are restored). If the user declines the admin prompt the
-        /// installer does nothing, and the current version simply starts again.
+        /// saved and the desktop icons are restored). An everyone install asks for admin rights;
+        /// if the user declines, the installer does nothing and the current version simply starts
+        /// again. A just-me install doesn't ask.
         /// </summary>
         public static void LaunchInstallerAndRestart(string msiPath)
         {

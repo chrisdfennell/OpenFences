@@ -380,6 +380,13 @@
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Warning colors"/>
                                     <TextBlock Style="{StaticResource Hub.RowText}" Text="Readings turn amber, then red, when the CPU, GPU or memory is busy, a drive is nearly full or the battery is low."/></StackPanel>
                             </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding MonitorPublicIp}" Click="Setting_Changed"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Show public IP"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" TextWrapping="Wrap"
+                                               Text="Network info tiles also show the address the internet sees. To find it, Pickets asks Cloudflare's icanhazip.com, which sees your address too: when you turn this on, when your connection changes, and at most every 15 minutes."/></StackPanel>
+                            </DockPanel>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource Hub.Card}" Margin="0,8,0,0">

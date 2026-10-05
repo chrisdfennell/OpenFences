@@ -86,8 +86,9 @@ jobs:
           ./.github/scripts/sign.ps1 -Files
           publish\${{ matrix.arch }}\Pickets.exe,publish\${{ matrix.arch }}\Pickets.dll,portable\${{ matrix.arch }}\Pickets.exe
 
-      # WiX SDK builds the MSI; no Visual Studio / extension required.
-      - name: Build MSI (WiX)
+      # WiX SDK builds the MSIs; no Visual Studio / extension required. Two from the same source:
+      # for everyone (Program Files, asks for admin rights) and just for me (no prompt).
+      - name: Build MSI for everyone (WiX)
         run: >
           dotnet build Pickets.Installer/Pickets.Installer.wixproj
           -c Release
@@ -95,14 +96,25 @@ jobs:
           -p:PublishDir=${{ github.workspace }}\publish\${{ matrix.arch }}
           -p:ProductVersion=${{ steps.ver.outputs.version }}
 
+      - name: Build MSI just for me (WiX)
+        run: >
+          dotnet build Pickets.Installer/Pickets.Installer.wixproj
+          -c Release
+          -p:Platform=${{ matrix.arch }}
+          -p:PerUser=true
+          -p:PublishDir=${{ github.workspace }}\publish\${{ matrix.arch }}
+          -p:ProductVersion=${{ steps.ver.outputs.version }}
+
       - name: Stage artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
-          $msi = Get-ChildItem -Recurse -Filter *.msi -Path Pickets.Installer | Select-Object -First 1
-          if (-not $msi) { throw 'No MSI produced.' }
-          Copy-Item $msi.FullName "out\Pickets-${{ matrix.arch }}.msi" -Force
-          ./.github/scripts/sign.ps1 -Files "out\Pickets-${{ matrix.arch }}.msi"
+          foreach ($name in 'Pickets-${{ matrix.arch }}.msi', 'Pickets-${{ matrix.arch }}-user.msi') {
+            $msi = Get-ChildItem -Recurse -Filter $name -Path Pickets.Installer\bin | Select-Object -First 1
+            if (-not $msi) { throw "No $name produced." }
+            Copy-Item $msi.FullName "out\$name" -Force
+            ./.github/scripts/sign.ps1 -Files "out\$name"
+          }
           Copy-Item "portable\${{ matrix.arch }}\Pickets.exe" "out\Pickets-${{ matrix.arch }}-portable.exe" -Force
           Get-ChildItem out
 

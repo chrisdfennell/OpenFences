@@ -10,6 +10,10 @@
    ```
 3. CI (`.github/workflows/build.yml`) runs the tests, builds x64 and ARM64, and publishes a GitHub Release with
    the MSIs and single-file portable exes. Replace the auto-generated notes with a written summary.
+   Each architecture gets two MSIs from `Pickets.Installer` (`-p:PerUser=true` for the second):
+   `Pickets-<arch>.msi` installs for everyone in Program Files (admin prompt), and
+   `Pickets-<arch>-user.msi` installs just for the current user in `%LocalAppData%\Programs` (no prompt).
+   Each has its own UpgradeCode; never change either. The updater picks the kind matching the running copy.
 
 Installed copies find the release through the GitHub API and offer it to the user.
 
@@ -53,4 +57,6 @@ package exists there. The first version has to be submitted once by hand:
 3. Create a classic personal access token with the `public_repo` scope and add it as the repository secret
    `WINGET_TOKEN`.
 
-After that, each tagged release is sent to winget automatically. Without `WINGET_TOKEN` the job just skips.
+After that, each tagged release is sent to winget automatically. Without `WINGET_TOKEN` the job just skips;
+with the token but before Microsoft has accepted the first version, the job fails with "Package ... does not
+exist in the winget-pkgs repository" (the release itself is unaffected). winget uses the for-everyone MSIs.

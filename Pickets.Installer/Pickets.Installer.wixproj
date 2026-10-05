@@ -2,7 +2,15 @@
 
   <PropertyGroup>
     <OutputType>Package</OutputType>
-    <OutputName>Pickets-$(Platform)</OutputName>
+    <!-- -p:PerUser=true builds the just-for-me installer (see Package.wxs). -->
+    <PerUser Condition="'$(PerUser)' == ''">false</PerUser>
+    <OutputName Condition="'$(PerUser)' != 'true'">Pickets-$(Platform)</OutputName>
+    <OutputName Condition="'$(PerUser)' == 'true'">Pickets-$(Platform)-user</OutputName>
+    <!-- Its own intermediate files, so building both kinds one after the other can't mix them. -->
+    <IntermediateOutputPath Condition="'$(PerUser)' == 'true'">obj\$(Platform)\$(Configuration)\user\</IntermediateOutputPath>
+    <!-- Per-user installs keep files (not registry values) as their key paths and don't list
+         every folder for removal; Windows handles both fine for a local (non-roaming) install. -->
+    <SuppressIces Condition="'$(PerUser)' == 'true'">ICE38;ICE64;ICE91</SuppressIces>
 
     <!-- Where the published app lives. CI overrides this with -p:PublishDir=...
          The default points at a local self-contained x64 publish for VS/CLI builds. -->
@@ -11,7 +19,7 @@
     <!-- Product version; CI overrides on tagged releases. -->
     <ProductVersion Condition="'$(ProductVersion)' == ''">1.0.0.0</ProductVersion>
 
-    <DefineConstants>PublishDir=$(PublishDir);ProductVersion=$(ProductVersion)</DefineConstants>
+    <DefineConstants>PublishDir=$(PublishDir);ProductVersion=$(ProductVersion);PerUser=$(PerUser)</DefineConstants>
   </PropertyGroup>
 
 </Project>
