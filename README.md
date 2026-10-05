@@ -15,7 +15,7 @@
 
 Pickets organizes your Windows desktop into movable, resizable **fences**. Your real desktop items show up as tiles inside fences. Nothing is copied or moved and no shortcuts are created: a fence only decides where each desktop item appears, and quitting Pickets brings your normal desktop back.
 
-![Pickets in action: fences with a picture and a looping video background that fade with the fence's transparency](Pickets/Docs/backgrounds-demo.gif "Pickets in action")
+![Pickets in action: fences with tabs, rolling a fence up, searching every fence, Quick Look, a live system monitor with a tile added and a warning color, picture and video backgrounds, and light and dark](Pickets/Docs/pickets-tour.gif "Pickets in action")
 
 > Not affiliated with or endorsed by Stardock. “Fences” is a trademark of its respective owner. Pickets is an independent project, written from scratch in C#.
 
@@ -112,7 +112,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 
 ![The first-run welcome](Pickets/Docs/screenshot-welcome.png "Welcome")
 
-<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- Pickets/Docs`); the backgrounds clip is recorded by `tools/DemoVideo` (needs ffmpeg).</sub>
+<sub>Screenshots are rendered from the real UI with demo content by `tools/Screenshots` (`dotnet run --project tools/Screenshots -- Pickets/Docs`); the tour and the backgrounds clip are recorded by `tools/DemoVideo` (`dotnet run --project tools/DemoVideo -- Pickets/Docs`, needs ffmpeg).</sub>
 
 ---
 

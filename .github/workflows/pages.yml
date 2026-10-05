@@ -30,7 +30,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site/assets
-          cp Pickets/Docs/screenshot-*.png Pickets/Docs/backgrounds-demo.mp4 site/assets/
+          cp Pickets/Docs/screenshot-*.png Pickets/Docs/backgrounds-demo.mp4 Pickets/Docs/pickets-tour.mp4 site/assets/
           cp Pickets/Assets/open-fence.png site/assets/
 
       - uses: actions/configure-pages@v6
