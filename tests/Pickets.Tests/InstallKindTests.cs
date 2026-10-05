@@ -43,6 +43,19 @@ namespace Pickets.Tests
         }
 
         [Fact]
+        public void A_public_ip_only_counts_for_the_connection_it_was_asked_on()
+        {
+            // Same network: the answer (or the failure) shows.
+            Assert.Equal(("203.0.113.7", false), SystemMonitor.PublicIpToShow("192.168.1.5", "192.168.1.5", "203.0.113.7", false));
+            Assert.Equal(((string?)null, true), SystemMonitor.PublicIpToShow("192.168.1.5", "192.168.1.5", null, true));
+            // A failed re-check keeps the address it already had.
+            Assert.Equal(("203.0.113.7", false), SystemMonitor.PublicIpToShow("192.168.1.5", "192.168.1.5", "203.0.113.7", true));
+            // Switched networks: nothing until the new lookup answers ("looking up…"), not the old address.
+            Assert.Equal(((string?)null, false), SystemMonitor.PublicIpToShow("10.0.0.8", "192.168.1.5", "203.0.113.7", false));
+            Assert.Equal(((string?)null, false), SystemMonitor.PublicIpToShow(null, "192.168.1.5", "203.0.113.7", false));
+        }
+
+        [Fact]
         public void Each_kind_updates_from_its_own_installer()
         {
             Assert.Equal("Pickets-x64.msi", UpdateService.MsiAssetName(InstallKind.AllUsers, "x64"));

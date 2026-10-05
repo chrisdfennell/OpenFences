@@ -103,7 +103,7 @@ internal static class Tour
             (10.3, () =>
             {
                 search = new SearchWindow(_fences);
-                ShowOverlay(search, (SceneW - search.Width * Scale) / 2, 150);
+                ShowOverlay(search, (SceneW - search.Width) / 2, 150);
             }),
             (10.9, () => TypeQuery(search, "q")),
             (11.2, () => TypeQuery(search, "qu")),
@@ -116,7 +116,7 @@ internal static class Tour
                 var items = photos.SearchableItems().Select(x => x.Item).ToList();
                 quickLook = new QuickLookWindow(items, Math.Max(0, items.FindIndex(i => i.Path == picture)));
                 // Well inside the frame, clear of the caption at the bottom.
-                ShowOverlay(quickLook, (SceneW - 760 * Scale) / 2, 60, width: 760, height: 440);
+                ShowOverlay(quickLook, (SceneW - 760) / 2, 60, width: 760, height: 440);
                 // The header shows the file's folder: a temp path with the user's name in it.
                 if (quickLook.FindName("DetailsText") is TextBlock details)
                     details.Text = System.Text.RegularExpressions.Regex.Replace(details.Text, @" · [A-Za-z]:\\.*$", " · Pictures");

@@ -371,9 +371,18 @@ namespace Pickets.Services
                     _publicIpBusy = true;
                     _ = LookUpPublicIp(localAddress);
                 }
-                return (_publicIp, _publicIpFailed && _publicIp == null);
+                return PublicIpToShow(localAddress, _publicIpFor, _publicIp, _publicIpFailed);
             }
         }
+
+        /// <summary>What to show for <paramref name="localAddress"/>: an answer only counts for the
+        /// connection it was asked on, so after switching networks the tile says "looking up…"
+        /// (null, not failed) instead of the old network's public address.</summary>
+        internal static (string? address, bool failed) PublicIpToShow(
+            string? localAddress, string? answeredFor, string? address, bool failed) =>
+            localAddress == null || answeredFor != localAddress
+                ? (null, false)
+                : (address, failed && address == null);
 
         private static async Task LookUpPublicIp(string localAddress)
         {
