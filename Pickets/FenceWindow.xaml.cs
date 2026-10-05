@@ -1248,7 +1248,7 @@ namespace Pickets
                     var details = Pickets.Services.ItemDetails.For(item.Path);
                     Dispatcher.BeginInvoke(() => item.Details = details);
 
-                    var icon =(thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
+                    var icon = (thumbnails && Pickets.Services.ShellThumbnail.HasPreview(item.Path)
                                    ? Pickets.Services.ShellThumbnail.Get(item.Path, thumbPx)
                                    : null)
                                ?? Pickets.Services.IconHelper.GetImageSourceForPath(item.Path);
@@ -1352,6 +1352,8 @@ namespace Pickets
                 item.IsDimmed = !string.IsNullOrEmpty(query) && !match;
                 if (match && !string.IsNullOrEmpty(query)) matches++;
             }
+            // A monitor's readings aren't items: they fade with everything else that doesn't match.
+            if (IsMonitor) MonitorItems.Opacity = string.IsNullOrEmpty(query) ? 1 : 0.25;
             HoldOpen(matches > 0);
             return matches;
         }

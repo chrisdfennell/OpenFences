@@ -36,6 +36,12 @@ namespace Pickets
                 ("F6, Shift+F6", "Next or previous fence"),
                 ("F1", "This list"));
 
+            AddSection("In a system monitor",
+                ("Arrow keys, Home, End", "Move between tiles"),
+                ("Enter", "Open details: Task Manager, the drive, or Windows settings"),
+                ("Delete", "Remove the tile"),
+                ("Menu key", "The tile's menu: rename, graph on or off, move, add a tile"));
+
             AddSection("Quick Look",
                 ("Left, Right, Up, Down", "Previous or next item in the fence"),
                 ("Enter", "Open the item"),
@@ -46,7 +52,9 @@ namespace Pickets
                 ("Drag a title", "Move the fence (and the fences stacked with it)"),
                 ("Alt while dragging", "Move freely: no snapping, and out of its stack"),
                 ("Ctrl+double-click", "Open a folder in a portal in File Explorer instead"),
-                ("Drag on the desktop", "Select items across fences (right-drag draws a new fence)"));
+                ("Drag on the desktop", "Select items across fences (right-drag draws a new fence)"),
+                ("Double-click a monitor tile", "Open details for that reading"),
+                ("Right-click a monitor tile", "Rename, graph on or off, move, remove or add tiles"));
         }
 
         private void AddSection(string title, params (string Keys, string What)[] rows)

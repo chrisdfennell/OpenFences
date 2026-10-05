@@ -183,7 +183,19 @@
         <!-- ===== System monitor fences: live readings instead of desktop items ===== -->
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-        <!-- A reading card; outlined while it has keyboard focus -->
+        <!-- Keyboard focus on a reading: a rounded outline (shown only after keyboard use) -->
+        <Style x:Key="MonitorFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border Margin="2" CornerRadius="7" BorderThickness="2"
+                                BorderBrush="{DynamicResource Fence.SelectedEdge}" SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A reading card -->
         <Style x:Key="MonitorCard" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Fence.ItemHover}"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -194,9 +206,6 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="BorderBrush" Value="{DynamicResource Fence.Edge}"/>
                 </Trigger>
-                <DataTrigger Binding="{Binding IsKeyboardFocused, RelativeSource={RelativeSource AncestorType=controls:MonitorTileView}}" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource Fence.SelectedEdge}"/>
-                </DataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -551,7 +560,13 @@
                     </ItemsControl.ItemTemplate>
                 </controls:FenceItemsControl>
                 <!-- System monitor fences show their readings here instead (FenceWindow.Monitor.cs) -->
-                <controls:MonitorItemsControl x:Name="MonitorItems" Visibility="Collapsed" SnapsToDevicePixels="True"/>
+                <controls:MonitorItemsControl x:Name="MonitorItems" Visibility="Collapsed" SnapsToDevicePixels="True">
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="controls:MonitorTileView">
+                            <Setter Property="FocusVisualStyle" Value="{StaticResource MonitorFocusVisual}"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                </controls:MonitorItemsControl>
                 </Grid>
             </ScrollViewer>
 

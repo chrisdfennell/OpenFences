@@ -99,7 +99,7 @@ namespace Pickets.Services
                 };
             }
 
-            bool run = Viewers.Count > 0 && !_locked;
+            bool run = Viewers.Count > 0 && !_locked && !_fixed;
             if (run && _timer == null)
             {
                 _timer = new DispatcherTimer { Interval = Interval };
@@ -118,6 +118,7 @@ namespace Pickets.Services
             {
                 var needs = _needs;
                 var snap = await Task.Run(() => Read(needs));
+                if (_fixed) return; // switched to made-up readings meanwhile
                 Latest = snap;
                 Sampled?.Invoke(snap);
             }
@@ -135,6 +136,7 @@ namespace Pickets.Services
         /// counters. Settings marks those tiles, and monitors leave them out.</summary>
         public static bool IsAvailable(string kind)
         {
+            if (_fixed) return true;
             if (kind == MonitorMetrics.Battery) return ReadBattery() != null;
             if (kind is not (MonitorMetrics.Gpu or MonitorMetrics.Cores or MonitorMetrics.DiskIo)) return true;
             lock (Available)
@@ -154,6 +156,23 @@ namespace Pickets.Services
 
         /// <summary>The fixed drives ("C:"), for disk space tiles.</summary>
         public static List<DriveSample> FixedDrives() => ReadDrives();
+
+        // ---------- Made-up readings (tools/Screenshots) ----------
+        private static bool _fixed;
+
+        /// <summary>Stop reading this PC and show <paramref name="readings"/> instead, oldest first so
+        /// the graphs have some history. Every kind of tile counts as available. For screenshots,
+        /// which mustn't show anyone's own PC (its address, drives…).</summary>
+        internal static void ShowFixed(IEnumerable<SystemSnapshot> readings)
+        {
+            _fixed = true;
+            _timer?.Stop();
+            foreach (var r in readings)
+            {
+                Latest = r;
+                Sampled?.Invoke(r);
+            }
+        }
 
         // ---------- Readings ----------
         private const string GpuPath = @"\GPU Engine(*)\Utilization Percentage";
