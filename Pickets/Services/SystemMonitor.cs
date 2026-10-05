@@ -50,13 +50,17 @@ namespace Pickets.Services
     /// Reads the PC's vitals for system monitor fences, from plain Windows APIs and performance
     /// counters (nothing that needs admin rights), every few seconds while at least one monitor
     /// can be seen, and only the readings its tiles show. Readings are taken off the UI thread;
-    /// <see cref="Sampled"/> is raised on it. Nothing is read while every monitor is rolled up,
-    /// closed or hidden, or while the PC is locked.
+    /// <see cref="Sampled"/> is raised on it. A rolled-up monitor reads only what its graphs
+    /// need; nothing is read while every monitor is closed or hidden, while a fullscreen game or
+    /// app is in front, or while the PC is locked.
     /// </summary>
     public static class SystemMonitor
     {
         /// <summary>A new reading (on the UI thread).</summary>
         public static event Action<SystemSnapshot>? Sampled;
+
+        /// <summary>A reading was skipped because a fullscreen game or app was in front (on the UI thread).</summary>
+        public static event Action? Skipped;
 
         /// <summary>The latest reading, so a monitor that opens shows numbers straight away.</summary>
         public static SystemSnapshot? Latest { get; private set; }
@@ -107,11 +111,27 @@ namespace Pickets.Services
             if (run && _timer == null)
             {
                 _timer = new DispatcherTimer { Interval = Interval };
-                _timer.Tick += (_, __) => SampleNow();
+                _timer.Tick += (_, __) => Tick();
             }
             if (_timer == null) return;
-            if (run && !_timer.IsEnabled) { _timer.Start(); SampleNow(); }
+            if (run && !_timer.IsEnabled) { _timer.Start(); Tick(); }
             else if (!run && _timer.IsEnabled) _timer.Stop();
+        }
+
+        // Nothing is read while a fullscreen game or app is in front, so monitors cost a game
+        // nothing; graphs leave a gap for that time.
+        private static void Tick()
+        {
+            if (FullscreenAppInFront()) { Skipped?.Invoke(); return; }
+            SampleNow();
+        }
+
+        private static bool FullscreenAppInFront()
+        {
+            // 2: a fullscreen app (borderless games, videos), 3: a Direct3D fullscreen game,
+            // 4: presentation mode. A cheap call, unlike the readings it saves.
+            try { return SHQueryUserNotificationState(out int state) == 0 && state is 2 or 3 or 4; }
+            catch { return false; }
         }
 
         private static async void SampleNow()
@@ -527,5 +547,8 @@ namespace Pickets.Services
 
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX buffer);
+
+        [DllImport("shell32.dll")]
+        private static extern int SHQueryUserNotificationState(out int state);
     }
 }

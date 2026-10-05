@@ -14,8 +14,8 @@ namespace Pickets
     // System monitor fences: live readings (CPU, memory, GPU, disks, network, battery, clock…) as
     // tiles instead of desktop items. They never hold items, so drops, rules and "Move to fence"
     // pass them by. Readings come from Services/SystemMonitor, only for the kinds of tile shown
-    // and only while the tiles can be seen. The tiles themselves are FenceModel.Tiles, edited
-    // here (fence menu, a tile's right-click menu) or in Settings → System monitor.
+    // and only while the fence is on screen (rolled up, just its graphs). The tiles themselves
+    // are FenceModel.Tiles, edited here (fence menu, a tile's right-click menu) or in Settings → System monitor.
     public partial class FenceWindow
     {
         public bool IsMonitor => _model.IsMonitor;
@@ -61,9 +61,11 @@ namespace Pickets
                 Dispatcher.BeginInvoke(() => Changed?.Invoke(this, EventArgs.Empty));
 
             SystemMonitor.Sampled += OnSampled;
+            SystemMonitor.Skipped += OnSkipped;
             Closed += (_, __) =>
             {
                 SystemMonitor.Sampled -= OnSampled;
+                SystemMonitor.Skipped -= OnSkipped;
                 SystemMonitor.SetViewing(this, null);
             };
             MonitorTiles.CollectionChanged += (_, __) => { UpdateEmptyHint(); QueueAutoFit(); };
@@ -85,15 +87,25 @@ namespace Pickets
         /// <summary>Settings changed the graph length, units or warning colors.</summary>
         internal void ApplyMonitorOptions() => SyncMonitorTiles(SystemMonitor.Latest);
 
-        /// <summary>Read only while the tiles can be seen (not hidden, closed or rolled up), and
-        /// only the kinds of reading they show.</summary>
+        /// <summary>Read only the kinds of reading the tiles show, and only while the fence is on
+        /// screen (not hidden or closed). Rolled up, only the graphs keep reading, so a fence
+        /// that peeks open on hover shows the real last few minutes rather than a stale line.</summary>
         private void UpdateMonitorViewing()
         {
             if (!IsMonitor) return;
-            // A monitor with no tiles has nothing to read, so it doesn't keep the sampler going.
-            bool seen = IsVisible && (!_model.Collapsed || _tempExpanded) && MonitorConfig.Count > 0;
-            SystemMonitor.SetViewing(this, seen ? MonitorConfig.Select(t => t.Kind).Distinct().ToList() : null);
+            var kinds = !IsVisible ? new List<string>()
+                      : MonitorOpen ? MonitorConfig.Select(t => t.Kind).Distinct().ToList()
+                      : GraphedKinds();
+            // A monitor with nothing to read doesn't keep the sampler going.
+            SystemMonitor.SetViewing(this, kinds.Count > 0 ? kinds : null);
         }
+
+        private bool MonitorOpen => !_model.Collapsed || _tempExpanded;
+
+        /// <summary>The kinds of tile drawing a line graph (the ones that keep reading rolled up).</summary>
+        private List<string> GraphedKinds() => MonitorConfig
+            .Where(t => t.Graph && MonitorMetrics.Visual(t.Kind) == MonitorVisual.Graph)
+            .Select(t => t.Kind).Distinct().ToList();
 
         /// <summary>For the Pickets window's fence list: "CPU, Memory, Network".</summary>
         public string MonitorSummary
@@ -105,7 +117,17 @@ namespace Pickets
             }
         }
 
-        private void OnSampled(SystemSnapshot snap) => SyncMonitorTiles(snap);
+        // Rolled up, a reading may leave out what the other tiles show (network info, battery…),
+        // so only the graphs take it; the rest would otherwise flash "Offline" or 0 on opening.
+        private void OnSampled(SystemSnapshot snap) => SyncMonitorTiles(snap, MonitorOpen ? null : GraphedKinds());
+
+        // A fullscreen game was in front, so nothing was read: the graphs this fence keeps leave a gap.
+        private void OnSkipped()
+        {
+            if (!IsVisible) return; // not reading anyway
+            foreach (var tile in MonitorTiles)
+                if (tile.ShowsGraph) tile.PushGap();
+        }
 
         /// <summary>A tile is left out while this PC can't give its reading: no battery, no GPU
         /// counters, or a drive that isn't there.</summary>
@@ -118,8 +140,8 @@ namespace Pickets
         };
 
         /// <summary>Make the tiles match the tile list (reusing tiles, so graphs keep their
-        /// history), then fill in <paramref name="snap"/>.</summary>
-        private void SyncMonitorTiles(SystemSnapshot? snap)
+        /// history), then fill in <paramref name="snap"/> (only for <paramref name="onlyKinds"/>, if given).</summary>
+        private void SyncMonitorTiles(SystemSnapshot? snap, List<string>? onlyKinds = null)
         {
             var wanted = MonitorConfig.Where(t => CanShow(t, snap)).ToList();
 
@@ -142,7 +164,7 @@ namespace Pickets
                 tile.Label = MonitorLayout.Label(config, volume);
                 tile.Capacity = capacity;
                 tile.RefreshVisual();
-                if (snap != null) UpdateTile(tile, snap, o);
+                if (snap != null && (onlyKinds == null || onlyKinds.Contains(config.Kind))) UpdateTile(tile, snap, o);
             }
         }
 

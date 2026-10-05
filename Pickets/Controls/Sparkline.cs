@@ -11,7 +11,8 @@ namespace Pickets.Controls
     /// <summary>
     /// A small filled line graph of recent values (each 0…1, oldest first) across the control's
     /// width, as on a system monitor tile. Fewer values than <see cref="Capacity"/> start from
-    /// the right, so the line grows in from the right edge the way Task Manager's does.
+    /// the right, so the line grows in from the right edge the way Task Manager's does. NaN
+    /// values are gaps.
     /// </summary>
     public class Sparkline : FrameworkElement
     {
@@ -58,22 +59,31 @@ namespace Pickets.Controls
             const double pad = 1; // keep the line's thickness inside the box
             double Y(double v) => pad + (h - 2 * pad) * (1 - v);
 
+            // Gaps (NaN: no reading while a fullscreen game was in front) split the line into runs.
             var line = new StreamGeometry();
             var area = new StreamGeometry();
             using (var l = line.Open())
             using (var a = area.Open())
             {
-                var first = new Point(x0, Y(values[0]));
-                l.BeginFigure(first, false, false);
-                a.BeginFigure(new Point(x0, h), true, true);
-                a.LineTo(first, false, false);
-                for (int i = 1; i < values.Count; i++)
+                int i = 0;
+                while (i < values.Count)
                 {
-                    var p = new Point(x0 + i * step, Y(values[i]));
-                    l.LineTo(p, true, true);
-                    a.LineTo(p, false, false);
+                    if (double.IsNaN(values[i])) { i++; continue; }
+                    double runX = x0 + i * step;
+                    var first = new Point(runX, Y(values[i]));
+                    l.BeginFigure(first, false, false);
+                    a.BeginFigure(new Point(runX, h), true, true);
+                    a.LineTo(first, false, false);
+                    double lastX = runX;
+                    for (i++; i < values.Count && !double.IsNaN(values[i]); i++)
+                    {
+                        lastX = x0 + i * step;
+                        var p = new Point(lastX, Y(values[i]));
+                        l.LineTo(p, true, true);
+                        a.LineTo(p, false, false);
+                    }
+                    a.LineTo(new Point(lastX, h), false, false);
                 }
-                a.LineTo(new Point(x0 + (values.Count - 1) * step, h), false, false);
             }
             line.Freeze();
             area.Freeze();

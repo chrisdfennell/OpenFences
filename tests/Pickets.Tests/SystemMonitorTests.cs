@@ -85,6 +85,22 @@ namespace Pickets.Tests
         }
 
         [Fact]
+        public void Skipped_readings_leave_a_gap_that_doesnt_skew_the_scale()
+        {
+            var tile = new MonitorTile(MonitorMetrics.Network, MonitorMetrics.Network, "Network");
+            tile.PushGap(); // nothing drawn yet: no gap to leave
+            Assert.Empty(tile.Graph);
+
+            tile.Push(1_000_000, null);
+            tile.PushGap();
+            tile.Push(2_000_000, null);
+            Assert.Equal(3, tile.Graph.Count);
+            Assert.Equal(0.5, tile.Graph[0]);
+            Assert.True(double.IsNaN(tile.Graph[1]));
+            Assert.Equal(1.0, tile.Graph[2]);
+        }
+
+        [Fact]
         public void A_tile_keeps_only_recent_history()
         {
             var tile = new MonitorTile(MonitorMetrics.Cpu, MonitorMetrics.Cpu, "CPU");

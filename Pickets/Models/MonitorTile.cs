@@ -183,14 +183,23 @@ namespace Pickets
             Graph = Scale(_history, max);
         }
 
+        /// <summary>No reading this time (a fullscreen game was in front): the graph leaves a gap.</summary>
+        public void PushGap()
+        {
+            if (_history.Count == 0) return; // nothing drawn yet, so nothing to leave a gap in
+            _history.Add(double.NaN);
+            if (_history.Count > Capacity) _history.RemoveRange(0, _history.Count - Capacity);
+            Graph = Scale(_history, _graphMax);
+        }
+
         /// <summary>Values scaled 0…1 against <paramref name="max"/>, or against the largest value
-        /// (with a small floor so a quiet line doesn't fill the graph).</summary>
+        /// (with a small floor so a quiet line doesn't fill the graph). Gaps (NaN) stay gaps.</summary>
         public static IReadOnlyList<double> Scale(IReadOnlyList<double> values, double? max)
         {
             double top = max ?? Math.Max(MinAutoScale, Peak(values));
             var scaled = new double[values.Count];
             for (int i = 0; i < values.Count; i++)
-                scaled[i] = top > 0 ? Math.Clamp(values[i] / top, 0, 1) : 0;
+                scaled[i] = double.IsNaN(values[i]) ? double.NaN : top > 0 ? Math.Clamp(values[i] / top, 0, 1) : 0;
             return scaled;
         }
 
@@ -200,7 +209,7 @@ namespace Pickets
         private static double Peak(IReadOnlyList<double> values)
         {
             double p = 0;
-            foreach (var v in values) p = Math.Max(p, v);
+            foreach (var v in values) if (!double.IsNaN(v)) p = Math.Max(p, v);
             return p;
         }
 
