@@ -32,6 +32,9 @@ namespace Pickets
             PlaceOnCursorMonitor();
             PreviewKeyDown += SearchWindow_PreviewKeyDown;
             Deactivated += (_, __) => SafeClose();
+            // However it's closed (here, or Close() from outside), losing focus while closing
+            // must not close it a second time.
+            Closing += (_, __) => _closing = true;
             Closed += (_, __) =>
             {
                 foreach (var f in _fences)

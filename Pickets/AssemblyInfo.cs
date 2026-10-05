@@ -12,5 +12,6 @@ using System.Windows;
 // Lets the test project reach internal helpers (rules parsing, snapping math, repair).
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Pickets.Tests")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Pickets.UiTests")]
-// …and the screenshot tool, which shows system monitors with made-up readings.
+// …and the screenshot and demo video tools, which show system monitors with made-up readings.
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Screenshots")]
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DemoVideo")]

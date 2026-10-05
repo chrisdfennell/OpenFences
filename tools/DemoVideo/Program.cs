@@ -1,11 +1,14 @@
-// Records the README demo of fence picture/video backgrounds: real fence windows play a
-// scripted sequence on screen (top-left of the main monitor) while ffmpeg records that area.
-// All media is generated here (a drawn landscape, an ffmpeg animation), so nothing personal or
-// copyrighted ends up in the docs.
+// Records the README and website demos: real fence windows play a scripted sequence on screen
+// (top-left of the main monitor) while ffmpeg records that area.
+//  - pickets-tour: fences, tabs, roll-up, search, Quick Look, the system monitor, backgrounds,
+//    light and dark (Tour.cs)
+//  - backgrounds-demo: fence picture and video backgrounds (below)
+// All media is generated here (a drawn landscape, an ffmpeg animation, made-up monitor
+// readings), so nothing personal or copyrighted ends up in the docs.
 //
-// Usage: dotnet run --project tools/DemoVideo -- <output dir> [path to ffmpeg.exe]
-// Writes backgrounds-demo.mp4 and backgrounds-demo.gif. Leave the top-left of the main screen
-// visible while it records (about 20 seconds).
+// Usage: dotnet run --project tools/DemoVideo -- <output dir> [path to ffmpeg.exe] [--tour | --backgrounds]
+// Writes <name>.mp4 and <name>.gif for both clips (or just the one asked for). Leave the top-left
+// of the main screen visible and don't touch the mouse or keyboard while it records (about a minute).
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -25,21 +28,25 @@ using Pickets;
 
 internal static class Program
 {
-    private const int SceneX = 40, SceneY = 40, SceneW = 1280, SceneH = 720;
+    internal const int SceneX = 40, SceneY = 40, SceneW = 1280, SceneH = 720;
     private const double Seconds = 17;
 
-    private static string _out = ".";
+    internal static string _out = ".";
     private static string _ffmpeg = "ffmpeg";
-    private static string _work = "";
+    internal static string _work = "";
     private static Window? _scene;
     private static TextBlock? _caption;
-    private static readonly List<FenceWindow> _fences = new();
+    internal static readonly List<FenceWindow> _fences = new();
+    // Windows shown over the fences (search, Quick Look): kept above them while recording.
+    internal static readonly List<Window> _overlays = new();
 
     [STAThread]
     private static void Main(string[] args)
     {
-        _out = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
-        if (args.Length > 1) _ffmpeg = args[1];
+        var positional = args.Where(a => !a.StartsWith("--")).ToList();
+        _out = Path.GetFullPath(positional.Count > 0 ? positional[0] : ".");
+        if (positional.Count > 1) _ffmpeg = positional[1];
+        bool tour = !args.Contains("--backgrounds"), backgrounds = !args.Contains("--tour");
         Directory.CreateDirectory(_out);
         _work = Path.Combine(Path.GetTempPath(), "PicketsDemo");
         if (Directory.Exists(_work)) Directory.Delete(_work, true);
@@ -55,11 +62,14 @@ internal static class Program
         {
             Source = new Uri("pack://application:,,,/Pickets;component/Themes/DarkMenu.xaml")
         });
-        app.Dispatcher.BeginInvoke(Run);
+        // One clip after the other; each cleans up its windows before the next starts.
+        Action finish = () => System.Windows.Application.Current.Shutdown();
+        Action next = tour ? () => Tour.Run(finish) : finish;
+        app.Dispatcher.BeginInvoke(backgrounds ? () => Run(next) : next);
         app.Run();
     }
 
-    private static void Run()
+    private static void Run(Action then)
     {
         var picture = DrawLandscape(Path.Combine(_work, "landscape.png"));
         var video = Path.Combine(_work, "aurora.mp4");
@@ -100,7 +110,7 @@ internal static class Program
         // Let the video and icons load before recording starts.
         After(2.5, () =>
         {
-            var rec = StartRecording();
+            var rec = StartRecording("backgrounds-demo", Seconds);
             var clock = Stopwatch.StartNew();
             var pending = steps.OrderBy(s => s.at).ToList();
             var tick = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
@@ -113,11 +123,10 @@ internal static class Program
 
                 tick.Stop();
                 rec.WaitForExit(15000);
-                foreach (var f in _fences) f.Close();
-                _scene?.Close();
-                MakeGif();
+                CloseScene();
+                MakeGif("backgrounds-demo", width: 800, fps: 12);
                 Console.WriteLine("Saved " + Path.Combine(_out, "backgrounds-demo.mp4") + " and .gif");
-                System.Windows.Application.Current.Shutdown();
+                then();
             };
             tick.Start();
         });
@@ -125,7 +134,17 @@ internal static class Program
 
     // ---------- Scene ----------
 
-    private static void ShowScene()
+    internal static void CloseScene()
+    {
+        foreach (var w in _overlays) w.Close();
+        foreach (var f in _fences) f.Close();
+        _overlays.Clear();
+        _fences.Clear();
+        _scene?.Close();
+        _scene = null;
+    }
+
+    internal static void ShowScene()
     {
         _caption = new TextBlock
         {
@@ -167,27 +186,49 @@ internal static class Program
             ShowInTaskbar = false,
             ShowActivated = false,
             Topmost = true,
-            Left = SceneX / Scale, Top = SceneY / Scale, Width = SceneW / Scale, Height = SceneH / Scale,
+            Left = SceneX / Scale,
+            Top = SceneY / Scale,
+            Width = SceneW / Scale,
+            Height = SceneH / Scale,
             Content = wallpaper
         };
         _scene.Show();
     }
 
-    private static FenceWindow AddFence(FenceModel m, double x, double y)
+    internal static FenceWindow AddFence(FenceModel m, double x, double y)
     {
+        // A fence places itself where its model says once its window exists, so the model
+        // carries the position (setting Left/Top alone gets overridden).
+        m.Left = (SceneX + x) / Scale;
+        m.Top = (SceneY + y) / Scale;
         var w = new FenceWindow(m) { ShowActivated = false, Topmost = true };
-        w.Left = (SceneX + x) / Scale;
-        w.Top = (SceneY + y) / Scale;
+        w.Left = m.Left;
+        w.Top = m.Top;
         w.Show();
         _fences.Add(w);
         return w;
     }
 
-    // Fences put themselves in the desktop layer; keep them above the scene for the recording.
-    private static void Pin()
+    // Fences put themselves in the desktop layer; keep them above the scene for the recording,
+    // and search or Quick Look above them.
+    internal static void Pin()
     {
-        foreach (var w in _fences)
+        foreach (var w in _fences.Cast<Window>().Concat(_overlays).Where(w => w.IsVisible))
             SetWindowPos(new WindowInteropHelper(w).Handle, new IntPtr(-1), 0, 0, 0, 0, 0x13);
+    }
+
+    /// <summary>Put a window (in screen pixels within the scene) on top of the fences.</summary>
+    internal static void ShowOverlay(Window w, double x, double y, double width = double.NaN, double height = double.NaN)
+    {
+        w.Topmost = true;
+        w.Show();
+        // Windows that size themselves to the monitor (Quick Look) get the scene's size instead.
+        if (!double.IsNaN(width)) w.Width = width;
+        if (!double.IsNaN(height)) w.Height = height;
+        w.Left = (SceneX + x) / Scale;
+        w.Top = (SceneY + y) / Scale;
+        _overlays.Add(w);
+        Pin();
     }
 
     private static readonly MethodInfo ApplyBackground =
@@ -195,13 +236,13 @@ internal static class Program
     private static readonly FieldInfo ModelField =
         typeof(FenceWindow).GetField("_model", BindingFlags.Instance | BindingFlags.NonPublic)!;
 
-    private static void Set(FenceWindow w, Action<FenceModel> change)
+    internal static void Set(FenceWindow w, Action<FenceModel> change)
     {
         change((FenceModel)ModelField.GetValue(w)!);
         ApplyBackground.Invoke(w, null);
     }
 
-    private static void Caption(string text) { if (_caption != null) _caption.Text = text; }
+    internal static void Caption(string text) { if (_caption != null) _caption.Text = text; }
 
     // ---------- Demo content ----------
 
@@ -241,7 +282,7 @@ internal static class Program
     }
 
     // A simple sunset landscape (sky, sun, layered hills) drawn here, so it's free to publish.
-    private static string DrawLandscape(string path)
+    internal static string DrawLandscape(string path)
     {
         const int w = 1600, h = 900;
         var dv = new DrawingVisual();
@@ -283,26 +324,26 @@ internal static class Program
 
     // ---------- Recording ----------
 
-    private static Process StartRecording()
+    internal static Process StartRecording(string name, double seconds)
     {
-        var mp4 = Path.Combine(_out, "backgrounds-demo.mp4");
+        var mp4 = Path.Combine(_out, name + ".mp4");
         // gdigrab captures layered (transparent) windows like the fences; no mouse pointer.
         return Process.Start(new ProcessStartInfo(_ffmpeg,
             $"-y -hide_banner -loglevel error -f gdigrab -framerate 30 -draw_mouse 0 " +
-            $"-offset_x {SceneX} -offset_y {SceneY} -video_size {SceneW}x{SceneH} -t {Seconds} -i desktop " +
+            $"-offset_x {SceneX} -offset_y {SceneY} -video_size {SceneW}x{SceneH} -t {seconds} -i desktop " +
             $"-c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart \"{mp4}\"")
         { UseShellExecute = false, CreateNoWindow = true })!;
     }
 
-    // README-friendly GIF: 800px wide, 12 fps, with a palette made for this clip.
-    private static void MakeGif()
+    // README-friendly GIF with a palette made for the clip.
+    internal static void MakeGif(string name, int width, int fps)
     {
-        var mp4 = Path.Combine(_out, "backgrounds-demo.mp4");
-        var gif = Path.Combine(_out, "backgrounds-demo.gif");
-        Ffmpeg($"-y -i \"{mp4}\" -vf \"fps=12,scale=800:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle\" \"{gif}\"");
+        var mp4 = Path.Combine(_out, name + ".mp4");
+        var gif = Path.Combine(_out, name + ".gif");
+        Ffmpeg($"-y -i \"{mp4}\" -vf \"fps={fps},scale={width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle\" \"{gif}\"");
     }
 
-    private static void Ffmpeg(string args)
+    internal static void Ffmpeg(string args)
     {
         using var p = Process.Start(new ProcessStartInfo(_ffmpeg, "-hide_banner -loglevel error " + args)
         { UseShellExecute = false, CreateNoWindow = true })!;
@@ -311,7 +352,7 @@ internal static class Program
     }
 
     // Screen pixels per WPF unit (the scene is positioned in pixels, windows in WPF units).
-    private static double Scale
+    internal static double Scale
     {
         get
         {
@@ -320,7 +361,7 @@ internal static class Program
         }
     }
 
-    private static void After(double seconds, Action action)
+    internal static void After(double seconds, Action action)
     {
         var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds) };
         t.Tick += (_, __) => { t.Stop(); action(); };
