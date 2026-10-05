@@ -111,7 +111,7 @@
                         </StackPanel>
                     </DockPanel>
 
-                    <UniformGrid Columns="5" Margin="-6,22,-6,0">
+                    <UniformGrid Columns="3" Margin="-6,22,-6,0">
                         <Button Style="{StaticResource Hub.ActionTile}" Click="NewFence_Click">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE710;"/>
@@ -124,6 +124,13 @@
                                 <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE8B7;"/>
                                 <TextBlock Style="{StaticResource Hub.TileTitle}" Text="New folder portal"/>
                                 <TextBlock Style="{StaticResource Hub.TileText}" Text="A live view of any folder"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource Hub.ActionTile}" Click="NewSystemMonitor_Click">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource Hub.TileGlyph}" Text="&#xE9D9;"/>
+                                <TextBlock Style="{StaticResource Hub.TileTitle}" Text="System monitor"/>
+                                <TextBlock Style="{StaticResource Hub.TileText}" Text="Live CPU, memory, disk and network"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource Hub.ActionTile}" Click="RecentFiles_Click">

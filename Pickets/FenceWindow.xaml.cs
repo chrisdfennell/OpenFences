@@ -37,9 +37,9 @@ namespace Pickets
         // user opens subfolders (not persisted; a portal always reopens at its own folder).
         private string _currentFolder = "";
 
-        // A "real" fence == every non-portal fence. It renders the desktop items it owns
-        // (_model.ItemPaths) as tiles, like a portal scoped to specific desktop items.
-        private bool IsRealIcon => !_model.IsPortal;
+        // A "real" fence == every fence that isn't a portal or a system monitor. It renders the
+        // desktop items it owns (_model.ItemPaths) as tiles, like a portal scoped to specific items.
+        private bool IsRealIcon => _model.HoldsDesktopItems;
 
 
         private const double TitleBarHeight = 34;
@@ -85,6 +85,9 @@ namespace Pickets
             OnPropertyChanged(nameof(TileWidth));
             OnPropertyChanged(nameof(TileHeight));
             OnPropertyChanged(nameof(TileContentWidth));
+            OnPropertyChanged(nameof(MonitorTileWidth));
+            OnPropertyChanged(nameof(MonitorValueSize));
+            OnPropertyChanged(nameof(MonitorGraphHeight));
             QueueAutoFit();
         }
 
@@ -129,6 +132,11 @@ namespace Pickets
             {
                 // ----- Portal: windowed view of a real folder -----
                 NavigatePortal(_model.FolderPath);
+            }
+            else if (_model.IsMonitor)
+            {
+                // ----- System monitor: live readings instead of items (FenceWindow.Monitor.cs) -----
+                InitMonitor();
             }
             else
             {
@@ -240,6 +248,12 @@ namespace Pickets
             }
             TitleBar.Background = new SolidColorBrush(title);
             TitleText.FontSize = _model.TitleFontSize > 0 ? _model.TitleFontSize : 12;
+
+            // System monitor graphs and bars: the fence's color, or a calm blue.
+            var graph = TryParseColor(_model.AccentColor, out var g) ? g : MediaColor.FromRgb(0x3B, 0x82, 0xF6);
+            bool lightBody = IsLightColor(body) && opacity >= 0.5;
+            Resources["Fence.Graph"] = Frozen(graph);
+            Resources["Fence.Track"] = Frozen(lightBody ? MediaColor.FromArgb(0x22, 0, 0, 0) : MediaColor.FromArgb(0x30, 0xFF, 0xFF, 0xFF));
         }
 
         // High contrast: Windows' own colors, opaque, with no accent, picture, video or glass.
@@ -268,6 +282,8 @@ namespace Pickets
             Resources["Fence.Edge"] = C(Text);
             Resources["Fence.Selected"] = C(Highlight);
             Resources["Fence.SelectedEdge"] = C(Text);
+            Resources["Fence.Graph"] = C(Highlight);
+            Resources["Fence.Track"] = C(Text);
         }
 
         // ---------- Background picture / video ----------
@@ -357,6 +373,7 @@ namespace Pickets
         /// hidden or rolled up (unless it's peeking open).</summary>
         private void UpdateBackgroundPlayback()
         {
+            UpdateMonitorViewing(); // monitors read the PC's vitals only while they can be seen
             if (_bgPlayer == null) return;
             bool showing = IsVisible && (!_model.Collapsed || _tempExpanded);
             if (showing) _bgPlayer.Play();
@@ -496,8 +513,11 @@ namespace Pickets
         /// <summary>The window's title isn't shown, but it's what a screen reader calls the fence.</summary>
         private void UpdateAccessibleName()
         {
-            Title = _model.IsPortal ? $"{_model.Name} folder portal" : $"{_model.Name} fence";
+            Title = _model.IsPortal ? $"{_model.Name} folder portal"
+                  : _model.IsMonitor ? $"{_model.Name} system monitor"
+                  : $"{_model.Name} fence";
             System.Windows.Automation.AutomationProperties.SetName(Items, _model.Name);
+            System.Windows.Automation.AutomationProperties.SetName(MonitorItems, _model.Name);
         }
 
         /// <summary>Say something without moving focus (rolled up, tab switched, undone…).</summary>
@@ -515,6 +535,7 @@ namespace Pickets
         /// <summary>Focus the tile the keyboard is on, else the first selected one, else the first.</summary>
         internal void FocusCurrentTile()
         {
+            if (IsMonitor) { if (!MonitorItems.IsKeyboardFocusWithin) FocusFirstMonitorTile(); return; }
             if (ItemsSource.Count == 0) { Scroller.Focus(); return; }
             if (_cursorIndex < 0 || _cursorIndex >= ItemsSource.Count)
                 _cursorIndex = Math.Max(0, ItemsSource.ToList().FindIndex(i => i.IsSelected));
@@ -554,6 +575,7 @@ namespace Pickets
         /// from other fences — go through MainWindow (RequestAssignItems) for that.</summary>
         public void AddItems(IEnumerable<string> paths)
         {
+            if (IsMonitor) return; // monitors never hold items
             bool any = false;
             foreach (var p in paths)
             {
@@ -600,7 +622,7 @@ namespace Pickets
         /// <summary>Rebuild this real fence's tiles from the desktop items it owns.</summary>
         public void ReloadRealItems()
         {
-            if (IsPortal) return;
+            if (!IsRealIcon) return;
 
             // With tabs, show only the active tab's items.
             var paths = SortEntries(_model.ItemPaths
@@ -1294,6 +1316,8 @@ namespace Pickets
         /// <summary>Show items as tiles or as list rows (Window.Resources: Tile*/Row*).</summary>
         private void ApplyView()
         {
+            MonitorItems.ItemsPanel = (ItemsPanelTemplate)FindResource(IsListView ? "MonitorRowPanel" : "MonitorTilePanel");
+            MonitorItems.ItemTemplate = (DataTemplate)FindResource(IsListView ? "MonitorRowTemplate" : "MonitorTileTemplate");
             Items.ItemsPanel = (ItemsPanelTemplate)FindResource(IsListView ? "RowPanel" : "TilePanel");
             Items.ItemTemplate = (DataTemplate)FindResource(IsListView ? "RowTemplate" : "TileTemplate");
             QueueAutoFit();
@@ -1933,7 +1957,7 @@ namespace Pickets
         /// <summary>Take these desktop items into this fence (off any other), optionally onto a tab.</summary>
         public void TakeItems(IReadOnlyList<string> paths, int tab = -1)
         {
-            if (IsPortal || paths.Count == 0) return;
+            if (!IsRealIcon || paths.Count == 0) return;
             string where = tab >= 0 && HasTabs ? $"“{_model.Tabs[tab].Name}”" : $"“{FenceName}”";
             Undoable(MoveDescription(paths.Count, where), () =>
             {
@@ -1970,7 +1994,7 @@ namespace Pickets
                 }
             }
 
-            var others = AllFences.Where(f => f != this && !f.IsPortal)
+            var others = AllFences.Where(f => f != this && !f.IsPortal && !f.IsMonitor)
                                   .OrderBy(f => f.FenceName, StringComparer.CurrentCultureIgnoreCase).ToList();
             if (menu.Items.Count > 0 && others.Count > 0) menu.Items.Add(new Separator());
             foreach (var f in others)
@@ -2021,7 +2045,7 @@ namespace Pickets
         // Rolled up: show how many items are inside ("12 items") at the right of the title.
         private void UpdateCountBadge()
         {
-            bool rolledUp = _model.Collapsed && !_tempExpanded;
+            bool rolledUp = _model.Collapsed && !_tempExpanded && !IsMonitor;
             int n = ItemCount;
             CountBadge.Text = n == 1 ? "1 item" : $"{n} items";
             CountBadge.Visibility = rolledUp ? Visibility.Visible : Visibility.Collapsed;
@@ -2030,11 +2054,13 @@ namespace Pickets
         // An empty fence says what to do instead of being a blank box.
         private void UpdateEmptyHint()
         {
-            EmptyHint.Text = !IsPortal ? "Drag items here"
+            EmptyHint.Text = IsMonitor ? "Pick what to show: fence menu → Show"
+                : !IsPortal ? "Drag items here"
                 : Pickets.Services.PortalFilter.IsActive(_model.PortalFilter, _model.PortalMaxAgeDays) ? "Nothing matches the filter"
                 : "This folder is empty";
+            int shown = IsMonitor ? MonitorTiles.Count : ItemsSource.Count;
             // Only with the body showing: a rolled-up fence would show it cut off under the title.
-            EmptyHint.Visibility = ItemsSource.Count == 0 && Scroller.Visibility == Visibility.Visible && !IsPortalUnavailable
+            EmptyHint.Visibility = shown == 0 && Scroller.Visibility == Visibility.Visible && !IsPortalUnavailable
                 ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -2096,15 +2122,16 @@ namespace Pickets
         private void FitToContents_Click(object sender, RoutedEventArgs e)
         {
             if (_model.Collapsed) SetCollapsed(false, animate: false);
-            int n = ItemsSource.Count;
+            int n = IsMonitor ? MonitorTiles.Count : ItemsSource.Count;
             if (n == 0) return;
 
             // Icons: narrow a fence whose tiles don't fill one row. A list keeps its width.
             if (!IsListView)
             {
-                int cols = Math.Max(1, (int)(Scroller.ViewportWidth / TileWidth));
+                double tile = IsMonitor ? MonitorTileWidth + 8 : TileWidth;
+                int cols = Math.Max(1, (int)(Scroller.ViewportWidth / tile));
                 if (n < cols)
-                    Width = Math.Max(200, Width - Scroller.ViewportWidth + n * TileWidth + 4);
+                    Width = Math.Max(200, Width - Scroller.ViewportWidth + n * tile + 4);
             }
             SetHeightWithStack(FittedHeight());
             ScheduleSave();
@@ -2115,7 +2142,9 @@ namespace Pickets
         {
             UpdateLayout();
             double chrome = ActualHeight - Scroller.ViewportHeight;
-            double wanted = chrome + (ItemsSource.Count > 0 ? Items.ActualHeight : 0) + 4;
+            double content = IsMonitor ? (MonitorTiles.Count > 0 ? MonitorItems.ActualHeight : 0)
+                                       : (ItemsSource.Count > 0 ? Items.ActualHeight : 0);
+            double wanted = chrome + content + 4;
             double maxHeight = Pickets.Services.ScreenLayout.WorkAreas()
                 .Where(a => a.Contains(new Point(Left + 10, Top + 10)))
                 .Select(a => a.Bottom - Top).DefaultIfEmpty(wanted).First();
@@ -2429,7 +2458,13 @@ namespace Pickets
                     return;
             }
 
-            if (ItemsSource.Count == 0 || (mods & (ModifierKeys.Control | ModifierKeys.Alt)) != 0) return;
+            if ((mods & (ModifierKeys.Control | ModifierKeys.Alt)) != 0) return;
+            if (IsMonitor)
+            {
+                if (mods == ModifierKeys.None && HandleMonitorKey(key)) e.Handled = true;
+                return;
+            }
+            if (ItemsSource.Count == 0) return;
 
             int count = ItemsSource.Count;
             int cur = _cursorIndex >= 0 && _cursorIndex < count ? _cursorIndex : -1;
@@ -2482,8 +2517,8 @@ namespace Pickets
 
         private void Scroller_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Clicks that land on an item are handled by the item itself.
-            if (FindItem(e.OriginalSource as DependencyObject) != null) return;
+            // Clicks that land on an item are handled by the item itself. Monitors have nothing to select.
+            if (IsMonitor || FindItem(e.OriginalSource as DependencyObject) != null) return;
 
             Scroller.Focus();
             _marqueeAdditive = (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control;
@@ -2830,14 +2865,21 @@ namespace Pickets
             CheckByTag(TitleSizeMenu, _model.TitleFontSize.ToString(inv));
             CheckByTag(TransparencyMenu, _model.BackgroundOpacity.ToString("0.00", inv));
             MiChangeFolder.Visibility = MiPortalFilter.Visibility = _model.IsPortal ? Visibility.Visible : Visibility.Collapsed;
+            // System monitors: which readings to show, and nothing about files.
+            var itemsOnly = IsMonitor ? Visibility.Collapsed : Visibility.Visible;
+            MiMonitorShow.Visibility = IsMonitor ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var mi in MiMonitorShow.Items.OfType<MenuItem>())
+                mi.IsChecked = mi.Tag is string metric && ShowsMetric(metric);
+            MiOpenFolder.Visibility = SortMenu.Visibility = MiSystemShortcuts.Visibility = itemsOnly;
+            IconSizeMenu.Header = IsMonitor ? "Tile size" : "Icon size";
             // A portal can hold a whole folder's worth of files, so "Open all" is for fences only.
-            MiOpenAll.Visibility = !_model.IsPortal && ItemsSource.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            MiOpenAll.Visibility = IsRealIcon && ItemsSource.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             MiOpenAll.Header = HasTabs ? $"Open all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Open all";
             MiCloseAll.Visibility = MiOpenAll.Visibility;
             MiCloseAll.Header = HasTabs ? $"Close all in “{_model.Tabs[_model.ActiveTab].Name}”" : "Close all";
             MiLock.IsChecked = _model.Locked;
             MiAutoHeight.IsChecked = _model.AutoHeight;
-            MiAddTab.Visibility = _model.IsPortal ? Visibility.Collapsed : Visibility.Visible;
+            MiAddTab.Visibility = IsRealIcon ? Visibility.Visible : Visibility.Collapsed;
             bool hasMedia = !string.IsNullOrWhiteSpace(_model.BackgroundMedia);
             MiRemoveBackground.IsEnabled = BgFitMenu.IsEnabled = BgDimMenu.IsEnabled = hasMedia;
             MiMuteBackground.IsEnabled = hasMedia && IsVideo(_model.BackgroundMedia!);

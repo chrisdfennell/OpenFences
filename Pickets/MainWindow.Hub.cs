@@ -219,7 +219,8 @@ namespace Pickets
                     {
                         Name = w.FenceName,
                         Details = w.IsPortal ? $"Folder portal · {items} · {w.FolderPath}"
-                                             : w.TabCount > 0 ? $"{items} · {w.TabCount} tabs" : items,
+                                : w.IsMonitor ? "System monitor · " + w.MonitorSummary
+                                : w.TabCount > 0 ? $"{items} · {w.TabCount} tabs" : items,
                         Swatch = swatch,
                         State = state,
                         StateBrush = stateBrush,
@@ -230,7 +231,7 @@ namespace Pickets
             FenceList.ItemsSource = rows;
 
             int fences = rows.Count;
-            int totalItems = _openWindows.Where(w => !w.IsPortal).Sum(w => w.ItemCount);
+            int totalItems = RealFences.Sum(w => w.ItemCount);
             int closed = _openWindows.Count(w => w.IsClosedByUser);
             SummaryText.Text = (fences == 1 ? "1 fence" : $"{fences} fences") +
                                $" · {totalItems} desktop items" +

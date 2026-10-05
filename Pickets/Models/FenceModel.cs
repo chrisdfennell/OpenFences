@@ -68,6 +68,15 @@ namespace Pickets
         // Show only this many items (after sorting), e.g. the 30 newest recent files.
         public int? PortalMaxItems { get; set; }
 
+        // A system monitor shows live readings (CPU, memory…) as tiles instead of desktop items.
+        public bool IsMonitor { get; set; } = false;
+        // Monitors only: which readings to show (MonitorMetrics keys); null = all of them.
+        public System.Collections.Generic.List<string>? Metrics { get; set; }
+
+        /// <summary>An ordinary fence: one that owns desktop items (not a portal or a monitor).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool HoldsDesktopItems => !IsPortal && !IsMonitor;
+
         public FenceSort Sort { get; set; } = FenceSort.Name;
         public FenceIconSize IconSize { get; set; } = FenceIconSize.Medium;
         public FenceView View { get; set; } = FenceView.Icons;

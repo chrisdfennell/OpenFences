@@ -17,7 +17,7 @@ namespace Pickets.Services
         {
             bool changed = false;
 
-            foreach (var group in fences.Where(f => !f.IsPortal)
+            foreach (var group in fences.Where(f => f.HoldsDesktopItems)
                                         .GroupBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
                                         .Where(g => g.Count() > 1)
                                         .ToList())
@@ -34,7 +34,7 @@ namespace Pickets.Services
             }
 
             var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var order = fences.Where(f => !f.IsPortal)
+            var order = fences.Where(f => f.HoldsDesktopItems)
                               .OrderBy(f => string.Equals(f.Name, catchAllName, StringComparison.OrdinalIgnoreCase) ? 1 : 0)
                               .ToList();
             foreach (var f in order)

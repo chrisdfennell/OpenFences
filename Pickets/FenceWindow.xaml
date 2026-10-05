@@ -179,6 +179,88 @@
                 </DockPanel>
             </Border>
         </DataTemplate>
+
+        <!-- ===== System monitor fences: live readings instead of desktop items ===== -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- A reading card; outlined while it has keyboard focus -->
+        <Style x:Key="MonitorCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource Fence.ItemHover}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="ToolTip" Value="Double-click for more details"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Fence.Edge}"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding IsKeyboardFocused, RelativeSource={RelativeSource AncestorType=controls:MonitorTileView}}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource Fence.SelectedEdge}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <ItemsPanelTemplate x:Key="MonitorTilePanel">
+            <WrapPanel/>
+        </ItemsPanelTemplate>
+        <DataTemplate x:Key="MonitorTileTemplate">
+            <Border Style="{StaticResource MonitorCard}"
+                    Width="{Binding MonitorTileWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                    Margin="4"
+                    Padding="10,7,10,9"
+                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown">
+                <StackPanel>
+                    <TextBlock Text="{Binding Label}" Foreground="{DynamicResource Fence.Hint}"
+                               FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Value}" Foreground="{DynamicResource Fence.LabelFg}"
+                               FontSize="{Binding MonitorValueSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                               FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource Fence.Hint}"
+                               FontSize="11" TextTrimming="CharacterEllipsis"/>
+                    <controls:Sparkline Height="{Binding MonitorGraphHeight, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Margin="0,6,0,0"
+                                        Values="{Binding Graph}"
+                                        Stroke="{DynamicResource Fence.Graph}"
+                                        Visibility="{Binding ShowsGraph, Converter={StaticResource BoolToVis}}"/>
+                    <controls:MeterBar Height="6" Margin="0,8,0,2"
+                                       Fraction="{Binding Fraction}"
+                                       Fill="{DynamicResource Fence.Graph}"
+                                       Track="{DynamicResource Fence.Track}"
+                                       Visibility="{Binding ShowsBar, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- List view: one compact row per reading -->
+        <ItemsPanelTemplate x:Key="MonitorRowPanel">
+            <StackPanel/>
+        </ItemsPanelTemplate>
+        <DataTemplate x:Key="MonitorRowTemplate">
+            <Border Style="{StaticResource MonitorCard}"
+                    Background="Transparent"
+                    Margin="2,1"
+                    Padding="8,4"
+                    MouseLeftButtonDown="MonitorTile_MouseLeftButtonDown">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Width="96"
+                               Text="{Binding Label}" Foreground="{DynamicResource Fence.LabelFg}"
+                               FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    <TextBlock DockPanel.Dock="Right" MinWidth="72" TextAlignment="Right"
+                               Text="{Binding Value}" Foreground="{DynamicResource Fence.LabelFg}"
+                               FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <Grid Height="16" Margin="8,0">
+                        <controls:Sparkline Values="{Binding Graph}"
+                                            Stroke="{DynamicResource Fence.Graph}"
+                                            Visibility="{Binding ShowsGraph, Converter={StaticResource BoolToVis}}"/>
+                        <controls:MeterBar Height="6" VerticalAlignment="Center"
+                                           Fraction="{Binding Fraction}"
+                                           Fill="{DynamicResource Fence.Graph}"
+                                           Track="{DynamicResource Fence.Track}"
+                                           Visibility="{Binding ShowsBar, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
     </Window.Resources>
 
     <!-- Root surface: rounded dark card + drop shadow -->
@@ -265,7 +347,15 @@
                 <Grid.ContextMenu>
                     <ContextMenu x:Name="FenceMenu">
                         <MenuItem Header="Rename…" Click="Rename_Click"/>
-                        <MenuItem Header="Open Folder" Click="OpenFolder_Click"/>
+                        <MenuItem x:Name="MiMonitorShow" Header="Show">
+                            <MenuItem Header="CPU"        Tag="cpu"     IsCheckable="True" Click="MonitorMetric_Click"/>
+                            <MenuItem Header="Memory"     Tag="memory"  IsCheckable="True" Click="MonitorMetric_Click"/>
+                            <MenuItem Header="Disk space" Tag="disk"    IsCheckable="True" Click="MonitorMetric_Click"/>
+                            <MenuItem Header="Network"    Tag="network" IsCheckable="True" Click="MonitorMetric_Click"/>
+                            <MenuItem Header="Battery"    Tag="battery" IsCheckable="True" Click="MonitorMetric_Click"
+                                      ToolTip="Shown on PCs that have a battery"/>
+                        </MenuItem>
+                        <MenuItem x:Name="MiOpenFolder" Header="Open Folder" Click="OpenFolder_Click"/>
                         <MenuItem x:Name="MiChangeFolder" Header="Change folder…" Click="ChangePortalFolder_Click"/>
                         <MenuItem x:Name="MiPortalFilter" Header="Filter…" Click="PortalFilter_Click"/>
                         <MenuItem x:Name="MiOpenAll" Header="Open all" Click="OpenAll_Click"
@@ -297,7 +387,7 @@
                             <MenuItem Header="Large"  Tag="Large"  IsCheckable="True" Click="IconSize_Click"/>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
+                        <MenuItem x:Name="MiSystemShortcuts" Header="Add System Shortcuts" Click="AddSystemShortcuts_Click"/>
                         <MenuItem x:Name="ColorMenu" Header="Color">
                             <MenuItem Header="Default" Tag="" IsCheckable="True" Click="Color_Click">
                                 <MenuItem.Icon><Rectangle Width="12" Height="12" RadiusX="3" RadiusY="3" Fill="{DynamicResource Fence.DefaultSwatch}" Stroke="#55607A" StrokeThickness="1"/></MenuItem.Icon>
@@ -428,6 +518,7 @@
               CanContentScroll="False"
               PanningMode="None">
 
+                <Grid>
                 <controls:FenceItemsControl x:Name="Items" SnapsToDevicePixels="True">
                     <!-- Icons or list (fence menu: View); switched in code by ApplyView -->
                     <ItemsControl.ItemsPanel>
@@ -437,6 +528,9 @@
                         <StaticResource ResourceKey="TileTemplate"/>
                     </ItemsControl.ItemTemplate>
                 </controls:FenceItemsControl>
+                <!-- System monitor fences show their readings here instead (FenceWindow.Monitor.cs) -->
+                <controls:MonitorItemsControl x:Name="MonitorItems" Visibility="Collapsed" SnapsToDevicePixels="True"/>
+                </Grid>
             </ScrollViewer>
 
                 <!-- Marquee selection rectangle (never blocks input) -->
