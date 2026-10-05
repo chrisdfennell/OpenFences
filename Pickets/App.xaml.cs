@@ -9,12 +9,11 @@ namespace Pickets
     // Fully-qualify to avoid WinForms ambiguity if present
     public partial class App : System.Windows.Application
     {
-        private const string InstanceMutexName = @"Local\Pickets.SingleInstance";
-        private const string ShowEventName = @"Local\Pickets.ShowMainWindow";
+        // A sandbox (Services/Sandbox) gets its own names, so it runs next to the real Pickets.
+        private static readonly string InstanceMutexName = @"Local\Pickets.SingleInstance" + Pickets.Services.Sandbox.InstanceSuffix;
+        private static readonly string ShowEventName = @"Local\Pickets.ShowMainWindow" + Pickets.Services.Sandbox.InstanceSuffix;
 
-        private readonly string _logPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Pickets", "error.log");
+        private readonly string _logPath = Path.Combine(Pickets.Services.Sandbox.DataDir, "error.log");
 
         // Held for the app's lifetime so a second launch can tell we're running.
         private readonly Mutex _instanceMutex;
@@ -31,7 +30,7 @@ namespace Pickets
             if (!_isPrimaryInstance || RestoreIconsOnly) return;
 
             // First start after the rename from OpenFences: bring the old settings along.
-            Pickets.Services.LegacyMigration.Run();
+            if (!Pickets.Services.Sandbox.IsActive) Pickets.Services.LegacyMigration.Run();
 
             this.DispatcherUnhandledException += (s, e) =>
             {

@@ -9,6 +9,9 @@ namespace Pickets
         public string Path { get; set; } = "";
         public string DisplayName { get; set; } = "";
 
+        // What anything that falls back to text (accessibility tools, debugging) shows.
+        public override string ToString() => DisplayName;
+
         private ImageSource? _icon;
         public ImageSource? Icon
         {

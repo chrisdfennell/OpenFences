@@ -63,6 +63,7 @@ namespace Pickets
         /// </summary>
         public static void SetDesktopIconsVisible(bool show)
         {
+            if (Pickets.Services.Sandbox.IsActive) return; // the real desktop isn't the sandbox's
             EnsureHandles();
             bool before = AreIconsVisible();
 
@@ -112,6 +113,7 @@ namespace Pickets
         /// </summary>
         public static void RestoreDesktopIconsOnExit()
         {
+            if (Pickets.Services.Sandbox.IsActive) return;
             try
             {
                 if (!DesktopIconsHiddenPerRegistry()) return; // already shown — nothing to do

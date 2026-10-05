@@ -21,9 +21,7 @@ namespace Pickets
     public partial class MainWindow : Window
     {
         // ---------- Paths & state ----------
-        private readonly string _configPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Pickets", "config.json");
+        private readonly string _configPath = Path.Combine(Sandbox.DataDir, "config.json");
 
         private AppConfig _config = new();                // holds Fences + Options
         private List<FenceModel> _fences => _config.Fences;
@@ -102,7 +100,7 @@ namespace Pickets
             StartProfileSchedule();
 
             // Right-click-drag rectangle to create an (empty) fence or a folder portal there
-            DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r));
+            if (!Sandbox.IsActive) DesktopRightDragFenceSelector.Start(CreateFenceFromRect, r => CreateFolderPortal(r));
 
             // Delete/Enter operate on the whole selection across all fences
             FenceWindow.RequestDeleteSelected = DeleteAllSelected;
@@ -111,7 +109,7 @@ namespace Pickets
             FenceWindow.RequestNewFenceWithItems = CreateFenceWithItems;
 
             // Left-drag on the empty desktop = lasso that selects items across fences
-            DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
+            if (!Sandbox.IsActive) DesktopLeftDragLasso.Start(OnLassoUpdate, OnLassoEnd);
 
             // GitHub release checks (startup + daily, if enabled in Settings)
             StartUpdateChecks();
@@ -164,7 +162,7 @@ namespace Pickets
         {
             _hotkeys?.Dispose();
             _hotkeys = null;
-            if (!_config.Options.GlobalHotkeys) return;
+            if (!_config.Options.GlobalHotkeys || Sandbox.IsActive) return; // the real Pickets owns them
 
             try
             {
@@ -293,6 +291,7 @@ namespace Pickets
         // First check shortly after launch (so startup isn't slowed), then once a day.
         private void StartUpdateChecks()
         {
+            if (Sandbox.IsActive) return;
             _updateTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
             _updateTimer.Tick += (_, __) =>
             {
@@ -1273,7 +1272,7 @@ namespace Pickets
 
         private void ApplyDoubleClickSetting()
         {
-            if (_config.Options.DoubleClickDesktopToToggleIcons || _config.Options.DoubleClickPeekFences)
+            if (!Sandbox.IsActive && (_config.Options.DoubleClickDesktopToToggleIcons || _config.Options.DoubleClickPeekFences))
                 DesktopDoubleClickMonitor.Start(OnDesktopDoubleClick);
             else
                 DesktopDoubleClickMonitor.Stop();
