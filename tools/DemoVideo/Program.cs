@@ -186,10 +186,10 @@ internal static class Program
             ShowInTaskbar = false,
             ShowActivated = false,
             Topmost = true,
-            Left = SceneX / Scale,
-            Top = SceneY / Scale,
-            Width = SceneW / Scale,
-            Height = SceneH / Scale,
+            Left = SceneX,
+            Top = SceneY,
+            Width = SceneW,
+            Height = SceneH,
             Content = wallpaper
         };
         _scene.Show();
@@ -199,8 +199,8 @@ internal static class Program
     {
         // A fence places itself where its model says once its window exists, so the model
         // carries the position (setting Left/Top alone gets overridden).
-        m.Left = (SceneX + x) / Scale;
-        m.Top = (SceneY + y) / Scale;
+        m.Left = SceneX + x;
+        m.Top = SceneY + y;
         var w = new FenceWindow(m) { ShowActivated = false, Topmost = true };
         w.Left = m.Left;
         w.Top = m.Top;
@@ -225,8 +225,8 @@ internal static class Program
         // Windows that size themselves to the monitor (Quick Look) get the scene's size instead.
         if (!double.IsNaN(width)) w.Width = width;
         if (!double.IsNaN(height)) w.Height = height;
-        w.Left = (SceneX + x) / Scale;
-        w.Top = (SceneY + y) / Scale;
+        w.Left = SceneX + x;
+        w.Top = SceneY + y;
         _overlays.Add(w);
         Pin();
     }
@@ -327,10 +327,18 @@ internal static class Program
     internal static Process StartRecording(string name, double seconds)
     {
         var mp4 = Path.Combine(_out, name + ".mp4");
+        // The scene is laid out in WPF units; on a scaled display (125%, 150%) it covers more screen
+        // pixels, so record that area and scale it back, and every PC makes the same 1280x720 clip.
+        static int Px(double units, bool even = false)
+        {
+            int px = (int)Math.Round(units * Scale);
+            return even ? px / 2 * 2 : px; // x264 needs an even size
+        }
         // gdigrab captures layered (transparent) windows like the fences; no mouse pointer.
         return Process.Start(new ProcessStartInfo(_ffmpeg,
             $"-y -hide_banner -loglevel error -f gdigrab -framerate 30 -draw_mouse 0 " +
-            $"-offset_x {SceneX} -offset_y {SceneY} -video_size {SceneW}x{SceneH} -t {seconds} -i desktop " +
+            $"-offset_x {Px(SceneX)} -offset_y {Px(SceneY)} -video_size {Px(SceneW, true)}x{Px(SceneH, true)} -t {seconds} -i desktop " +
+            $"-vf scale={SceneW}:{SceneH}:flags=lanczos " +
             $"-c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -movflags +faststart \"{mp4}\"")
         { UseShellExecute = false, CreateNoWindow = true })!;
     }
@@ -351,7 +359,8 @@ internal static class Program
         if (p.ExitCode != 0) throw new InvalidOperationException("ffmpeg failed: " + args);
     }
 
-    // Screen pixels per WPF unit (the scene is positioned in pixels, windows in WPF units).
+    // Screen pixels per WPF unit. Everything in the scene (windows, fences, offsets) is in WPF units;
+    // only the recording works in screen pixels.
     internal static double Scale
     {
         get
