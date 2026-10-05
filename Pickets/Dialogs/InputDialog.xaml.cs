@@ -9,6 +9,7 @@ namespace Pickets
         public InputDialog(string title, string prompt, string defaultValue = "")
         {
             InitializeComponent();
+            Title = title; // no title bar, but screen readers and Alt+Tab still use it
             TitleText.Text = title;
             PromptText.Text = prompt;
             InputBox.Text = defaultValue ?? "";
