@@ -507,7 +507,7 @@
                         <DockPanel Style="{StaticResource Hub.SettingRow}">
                             <Button DockPanel.Dock="Right" Style="{StaticResource Hub.DangerButton}" Content="Delete all fences…" Click="DeleteAllFences_Click"/>
                             <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Delete all fences"/>
-                                <TextBlock Style="{StaticResource Hub.RowText}" Text="Everything goes back into one Desktop fence. The current layout is saved first."/></StackPanel>
+                                <TextBlock Style="{StaticResource Hub.RowText}" Text="Your normal desktop icons come back. The current layout is saved first."/></StackPanel>
                         </DockPanel>
                     </Border>
                 </StackPanel>

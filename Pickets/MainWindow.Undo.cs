@@ -46,7 +46,7 @@ namespace Pickets
             foreach (var m in result.Changed)
                 _openWindows.FirstOrDefault(w => w.Model == m)?.ReloadAfterUndo();
 
-            BuildCatchAll(); // anything the restored fences don't place (e.g. new since)
+            PlaceUnownedItems(); // anything the restored fences don't place (e.g. new since)
             SaveConfig();
 
             if (active != null && _openWindows.Contains(active))

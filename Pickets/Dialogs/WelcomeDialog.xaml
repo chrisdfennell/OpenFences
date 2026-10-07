@@ -48,8 +48,8 @@
                 <DockPanel Margin="0,0,0,12">
                     <TextBlock Style="{StaticResource TipGlyph}" Text="▦"/>
                     <TextBlock Style="{StaticResource TipText}">
-                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Your desktop items now live in fences."/>
-                        <Run Text="Nothing is moved or copied. Anything not in another fence shows in the Desktop fence, and your normal desktop icons come back when you quit."/>
+                        <Run FontWeight="SemiBold" Foreground="{DynamicResource Dlg.Strong}" Text="Nothing changes until you say so."/>
+                        <Run Text="Your desktop stays as it is until you put items in a fence or let Pickets sort it. From then on your desktop items show inside fences (anything not in another fence shows in the Desktop fence). Nothing is moved or copied, and your normal desktop icons come back when you quit."/>
                     </TextBlock>
                 </DockPanel>
                 <DockPanel Margin="0,0,0,12">

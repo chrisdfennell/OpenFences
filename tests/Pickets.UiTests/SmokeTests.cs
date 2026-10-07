@@ -78,6 +78,102 @@ namespace Pickets.UiTests
             }
         }
 
+        [Fact]
+        public void A_first_start_leaves_the_desktop_alone_until_the_user_says_so()
+        {
+            var (sandbox, desktop, data) = NewSandbox();
+            File.WriteAllText(Path.Combine(desktop, "Notes.txt"), "x");
+            File.WriteAllText(Path.Combine(desktop, "Budget.xlsx"), "x");
+            // No config: a first start, with the welcome.
+
+            using var app = Start(sandbox);
+            try
+            {
+                var welcome = Retry(() => FindWindow(app.Id, "Welcome to Pickets"), timeoutMs: 30000);
+                Thread.Sleep(1500); // time for anything that would take over to happen
+                Assert.Null(FindWindow(app.Id, "Desktop fence"));
+
+                Click(welcome, "I'll set it up myself");
+                var main = WaitForWindow(app.Id, "Pickets");
+                ((WindowPattern)main.GetCurrentPattern(WindowPattern.Pattern)).Close();
+                Assert.True(app.WaitForExit(20000), "Pickets didn't quit after its window was closed.");
+
+                using var saved = JsonDocument.Parse(File.ReadAllText(Path.Combine(data, "config.json")));
+                Assert.Equal(0, saved.RootElement.GetProperty("Fences").GetArrayLength());
+                Assert.False(saved.RootElement.GetProperty("Options").GetProperty("DesktopTakenOver").GetBoolean());
+            }
+            finally
+            {
+                if (!app.HasExited) app.Kill();
+                Ui.DeleteTempFolders();
+            }
+        }
+
+        [Fact]
+        public void Organizing_from_the_welcome_sorts_every_item_without_a_Desktop_fence()
+        {
+            var (sandbox, desktop, _) = NewSandbox();
+            File.WriteAllText(Path.Combine(desktop, "Notes.txt"), "x");
+            File.WriteAllText(Path.Combine(desktop, "Setup.exe"), "x");
+
+            using var app = Start(sandbox);
+            try
+            {
+                Click(Retry(() => FindWindow(app.Id, "Welcome to Pickets"), timeoutMs: 30000), "Organize my desktop for me");
+                // "Auto-import complete" (a message box, also called Pickets).
+                var done = Retry(() => FindWindow(app.Id, "Pickets", w => w.FindFirst(TreeScope.Descendants, new AndCondition(
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
+                    new PropertyCondition(AutomationElement.NameProperty, "OK"))) != null));
+                Click(done, "OK");
+
+                Assert.Equal(new[] { "Setup.exe" }, TileNames(WaitForWindow(app.Id, "Apps fence"), "Apps"));
+                Assert.Equal(new[] { "Notes.txt" }, TileNames(WaitForWindow(app.Id, "Documents fence"), "Documents"));
+                Assert.Null(FindWindow(app.Id, "Desktop fence"));
+            }
+            finally
+            {
+                if (!app.HasExited) app.Kill();
+                Ui.DeleteTempFolders();
+            }
+        }
+
+        private static (string Sandbox, string Desktop, string Data) NewSandbox()
+        {
+            var sandbox = Ui.TempFolder();
+            var desktop = Directory.CreateDirectory(Path.Combine(sandbox, "Desktop")).FullName;
+            var data = Directory.CreateDirectory(Path.Combine(sandbox, "AppData")).FullName;
+            return (sandbox, desktop, data);
+        }
+
+        private static Process Start(string sandbox)
+        {
+            var start = new ProcessStartInfo(PicketsExe()) { UseShellExecute = false };
+            start.Environment["PICKETS_SANDBOX"] = sandbox;
+            return Process.Start(start)!;
+        }
+
+        // A window of the app by name, top-level or owned by another of its windows (dialogs
+        // such as the welcome show up inside the window that owns them).
+        private static AutomationElement? FindWindow(int processId, string name, Func<AutomationElement, bool>? where = null)
+        {
+            var named = new AndCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window),
+                new PropertyCondition(AutomationElement.NameProperty, name));
+            var tops = AutomationElement.RootElement.FindAll(TreeScope.Children,
+                new PropertyCondition(AutomationElement.ProcessIdProperty, processId)).Cast<AutomationElement>().ToList();
+            return tops.Where(t => t.Current.Name == name)
+                       .Concat(tops.SelectMany(t => t.FindAll(TreeScope.Descendants, named).Cast<AutomationElement>()))
+                       .FirstOrDefault(w => where == null || where(w));
+        }
+
+        private static void Click(AutomationElement window, string button)
+        {
+            var found = Retry(() => window.FindFirst(TreeScope.Descendants, new AndCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
+                new PropertyCondition(AutomationElement.NameProperty, button))));
+            ((InvokePattern)found.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        }
+
         private static string[] TileNames(AutomationElement fenceWindow, string listName)
         {
             var list = fenceWindow.FindFirst(TreeScope.Descendants, new AndCondition(
