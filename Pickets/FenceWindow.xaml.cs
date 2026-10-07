@@ -823,13 +823,15 @@ namespace Pickets
             return found.Select(i => candidates[i]).ToList();
         }
 
-        // Title-bar drag: the rest of the stack follows (Alt drags this fence alone).
+        // Title-bar drag: the rest of the stack follows with Alt held, or without it when Drag the
+        // whole stack is on.
         private List<(FenceWindow Fence, Rect Start)>? _stackDrag;
 
         private void BeginStackDrag()
         {
             _stackDrag = null;
-            if (!StacksOn || (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Alt) != 0) return;
+            bool alt = (System.Windows.Forms.Control.ModifierKeys & System.Windows.Forms.Keys.Alt) != 0;
+            if (!Pickets.Services.FenceStacks.DragsWholeStack(StacksOn, Options?.DragStacksTogether == true, alt)) return;
             var column = StackNeighbours(belowOnly: false);
             if (column.Count > 0)
                 _stackDrag = column.Select(f => (f, DesktopHelper.WindowRectPx(f.Hwnd))).ToList();

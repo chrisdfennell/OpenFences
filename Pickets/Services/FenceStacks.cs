@@ -5,12 +5,18 @@ namespace Pickets.Services
 {
     /// <summary>
     /// Stacks: fences snapped one under another (touching, or with the snap gap between them)
-    /// form a column. Dragging a title bar moves the whole column, and a fence that rolls up or
+    /// form a column. Dragging a title bar can move the whole column (see
+    /// <see cref="DragsWholeStack"/>), and a fence that rolls up or
     /// grows pulls the fences under it along, so the stack stays together. Everything here is in
     /// screen pixels; callers leave out hidden and locked fences, which also breaks a stack there.
     /// </summary>
     internal static class FenceStacks
     {
+        /// <summary>Whether a title-bar drag takes the rest of the stack along. A plain drag moves
+        /// just the fence unless Drag the whole stack is on; Alt does the other one.</summary>
+        public static bool DragsWholeStack(bool stacksOn, bool dragStacksTogether, bool alt) =>
+            stacksOn && dragStacksTogether != alt;
+
         /// <summary>True when <paramref name="lower"/> sits right under <paramref name="upper"/>:
         /// its top at the other's bottom (give or take the snap gap) and overlapping sideways.</summary>
         public static bool Touches(Rect upper, Rect lower, double gapPx)

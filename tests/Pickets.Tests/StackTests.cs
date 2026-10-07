@@ -10,6 +10,17 @@ namespace Pickets.Tests
         private const double Gap = 8;
 
         [Theory]
+        [InlineData(false, false, false)] // a plain drag moves just the fence
+        [InlineData(false, true, true)]   // Alt-drag moves the stack
+        [InlineData(true, false, true)]   // Drag the whole stack on: a plain drag moves the stack
+        [InlineData(true, true, false)]   // …and Alt-drag just the fence
+        public void A_title_bar_drag_moves_the_stack_with_alt_or_with_drag_the_whole_stack_on(bool dragTogether, bool alt, bool expected)
+        {
+            Assert.Equal(expected, FenceStacks.DragsWholeStack(stacksOn: true, dragTogether, alt));
+            Assert.False(FenceStacks.DragsWholeStack(stacksOn: false, dragTogether, alt)); // stacks off: never
+        }
+
+        [Theory]
         [InlineData(300, true)]   // touching
         [InlineData(308, true)]   // snapped with the gap
         [InlineData(299, true)]   // a pixel of overlap from rounding

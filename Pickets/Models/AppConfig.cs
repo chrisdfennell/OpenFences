@@ -25,9 +25,12 @@ namespace Pickets
         // …and optionally to a 20px grid.
         public bool SnapToGrid { get; set; } = false;
 
-        // Fences snapped one under another stay together: dragging a title bar moves the whole
-        // stack, and rolling one up pulls the ones below it up (Services/FenceStacks).
+        // Fences snapped one under another stay together: rolling one up pulls the ones below it
+        // up, and Alt-dragging a title bar moves the whole stack (Services/FenceStacks).
         public bool MoveStacksTogether { get; set; } = true;
+        // With stacks on, a plain title-bar drag moves the whole stack (and Alt-drag one fence)
+        // instead of the other way round.
+        public bool DragStacksTogether { get; set; } = false;
         // In a stack, opening one fence rolls the others up.
         public bool StackOneOpen { get; set; } = false;
 

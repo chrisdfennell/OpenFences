@@ -82,40 +82,61 @@ namespace Pickets.UiTests
         }
 
         [Fact]
-        public void Dragging_a_title_bar_moves_the_whole_stack_but_not_other_fences()
+        public void Dragging_a_title_bar_moves_just_that_fence_by_default()
         {
             Ui.Run(() =>
             {
                 FenceWindow.Options = new AppOptions { MoveStacksTogether = true };
-                var top = Open(Fence("Top", 100, 100, 300, 200));
-                var below = Open(Fence("Below", 100, 300, 300, 150));      // touching
-                var apart = Open(Fence("Apart", 600, 100, 300, 150));
-                Settle();
-                var start = Px(top);
-                var belowStart = Px(below);
-                var apartStart = Px(apart);
-
-                // What Windows sends during a title-bar drag.
-                var hwnd = new WindowInteropHelper(top).Handle;
-                SendMessage(hwnd, 0x0231 /*WM_ENTERSIZEMOVE*/, IntPtr.Zero, IntPtr.Zero);
-                var proposed = new RECT { Left = (int)start.Left + 60, Top = (int)start.Top + 40, Right = (int)start.Right + 60, Bottom = (int)start.Bottom + 40 };
-                var ptr = Marshal.AllocHGlobal(Marshal.SizeOf<RECT>());
-                try
-                {
-                    Marshal.StructureToPtr(proposed, ptr, false);
-                    SendMessage(hwnd, 0x0216 /*WM_MOVING*/, IntPtr.Zero, ptr);
-                    proposed = Marshal.PtrToStructure<RECT>(ptr); // after snapping
-                }
-                finally { Marshal.FreeHGlobal(ptr); }
-                SendMessage(hwnd, 0x0232 /*WM_EXITSIZEMOVE*/, IntPtr.Zero, IntPtr.Zero);
-                Ui.Pump(200);
-
-                int dx = proposed.Left - (int)start.Left, dy = proposed.Top - (int)start.Top;
+                var (dx, dy, below, apart) = DragTopOfStack();
                 Assert.NotEqual(0, dx);
-                Assert.Equal(belowStart.Left + dx, Px(below).Left);
-                Assert.Equal(belowStart.Top + dy, Px(below).Top);
-                Assert.Equal(apartStart, Px(apart));
+                Assert.Equal(below.Start, below.End);
+                Assert.Equal(apart.Start, apart.End);
             });
+        }
+
+        [Fact]
+        public void With_drag_the_whole_stack_a_title_bar_drag_moves_the_stack_but_not_other_fences()
+        {
+            Ui.Run(() =>
+            {
+                FenceWindow.Options = new AppOptions { MoveStacksTogether = true, DragStacksTogether = true };
+                var (dx, dy, below, apart) = DragTopOfStack();
+                Assert.NotEqual(0, dx);
+                Assert.Equal(below.Start.Left + dx, below.End.Left);
+                Assert.Equal(below.Start.Top + dy, below.End.Top);
+                Assert.Equal(apart.Start, apart.End);
+            });
+        }
+
+        /// <summary>Drags the top fence of a two-fence stack (with a third fence apart) by its
+        /// title bar: how far it moved, and where the other two were before and after.</summary>
+        private static (int Dx, int Dy, (Rect Start, Rect End) Below, (Rect Start, Rect End) Apart) DragTopOfStack()
+        {
+            var top = Open(Fence("Top", 100, 100, 300, 200));
+            var below = Open(Fence("Below", 100, 300, 300, 150));      // touching
+            var apart = Open(Fence("Apart", 600, 100, 300, 150));
+            Settle();
+            var start = Px(top);
+            var belowStart = Px(below);
+            var apartStart = Px(apart);
+
+            // What Windows sends during a title-bar drag.
+            var hwnd = new WindowInteropHelper(top).Handle;
+            SendMessage(hwnd, 0x0231 /*WM_ENTERSIZEMOVE*/, IntPtr.Zero, IntPtr.Zero);
+            var proposed = new RECT { Left = (int)start.Left + 60, Top = (int)start.Top + 40, Right = (int)start.Right + 60, Bottom = (int)start.Bottom + 40 };
+            var ptr = Marshal.AllocHGlobal(Marshal.SizeOf<RECT>());
+            try
+            {
+                Marshal.StructureToPtr(proposed, ptr, false);
+                SendMessage(hwnd, 0x0216 /*WM_MOVING*/, IntPtr.Zero, ptr);
+                proposed = Marshal.PtrToStructure<RECT>(ptr); // after snapping
+            }
+            finally { Marshal.FreeHGlobal(ptr); }
+            SendMessage(hwnd, 0x0232 /*WM_EXITSIZEMOVE*/, IntPtr.Zero, IntPtr.Zero);
+            Ui.Pump(200);
+
+            return (proposed.Left - (int)start.Left, proposed.Top - (int)start.Top,
+                    (belowStart, Px(below)), (apartStart, Px(apart)));
         }
 
         [Fact]
