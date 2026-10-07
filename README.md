@@ -13,7 +13,7 @@
 
 **Website:** [chrisdfennell.github.io/Pickets](https://chrisdfennell.github.io/Pickets/) · [Privacy policy](https://chrisdfennell.github.io/Pickets/privacy.html) · [Download](https://github.com/chrisdfennell/Pickets/releases/latest)
 
-Pickets organizes your Windows desktop into movable, resizable **fences**. Your real desktop items show up as tiles inside fences. Nothing is copied or moved and no shortcuts are created: a fence only decides where each desktop item appears, and quitting Pickets brings your normal desktop back.
+Pickets organizes your Windows desktop into movable, resizable **fences**. Your real desktop items show up as tiles inside fences. Nothing is copied or moved and no shortcuts are created: a fence only decides where each desktop item appears, and quitting Pickets brings your normal desktop back. Until you put items in a fence (or let Auto-Import do it), Pickets leaves your desktop alone.
 
 ![Pickets in action: fences with tabs, rolling a fence up, searching every fence, Quick Look, a live system monitor with a tile added and a warning color, picture and video backgrounds, and light and dark](Pickets/Docs/pickets-tour.gif "Pickets in action")
 
@@ -133,7 +133,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Save or restore a layout:** **Settings → Layouts**. To move to another PC: **Export…** there, then **Import…** on the new PC.
 - **Switch between Work and Home fences:** the profile button at the top of the Home page (**Make a profile…** the first time), or **Ctrl+Alt+P**.
 - **Rules for new files:** **Settings → Organizing → Edit rules…**.
-- **Start over:** **Settings → Start over → Delete all fences…** (the current layout is saved first).
+- **Start over:** **Settings → Start over → Delete all fences…** gives you your normal desktop back (the current layout is saved first).
 - **Bring back the window:** double-click the tray icon, or start Pickets again.
 - **See every shortcut:** press **F1** in a fence or in the Pickets window.
 - **Desktop icons missing after a crash:** Start menu → **Pickets - Restore desktop icons**, or run `Pickets.exe --restore-icons`. Exiting Pickets normally always brings them back.

@@ -8,6 +8,10 @@ namespace Pickets
         public bool HideIconsOnStartup { get; set; } = false;
         public bool DoubleClickDesktopToToggleIcons { get; set; } = true;
 
+        // Pickets has taken over the desktop (hid the real icons, Desktop fence): only once desktop
+        // items are first put in a fence. Null in configs from before this existed (Services/DesktopTakeover).
+        public bool? DesktopTakenOver { get; set; }
+
         // Continuously route newly added desktop items into fences using Rules.
         public bool AutoOrganize { get; set; } = false;
 

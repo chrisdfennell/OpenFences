@@ -66,7 +66,8 @@ namespace Pickets
             if (_config.Options.RunAtStartup || StartupHelper.IsRunAtStartupEnabled())
                 StartupHelper.SetRunAtStartup(true);
 
-            if (_config.Options.HideIconsOnStartup)
+            _config.Options.DesktopTakenOver = DesktopTakeover.IsTakenOver(_config.Options.DesktopTakenOver, _fences);
+            if (TakenOver && _config.Options.HideIconsOnStartup)
                 DesktopHelper.SetDesktopIconsVisible(false);
 
             // Double-click-empty-desktop behavior (toggle icons and/or peek fences)
@@ -77,7 +78,10 @@ namespace Pickets
 
             // Cross-fence drops route through here so an item leaves any prior fence.
             FenceWindow.RequestAssignItems = (target, paths) =>
+            {
                 Undoable(FenceWindow.MoveDescription(paths.Count, $"“{target.FenceName}”"), () => AssignItemsToFence(target, paths));
+                TakeOverIfNeeded(); // the first items dragged into a fence
+            };
 
             // Ctrl+Z in a fence undoes the last organizing action (MainWindow.Undo.cs).
             FenceWindow.RequestUndoable = Undoable;
@@ -86,11 +90,15 @@ namespace Pickets
             // Spawn fence windows from config
             SpawnFencesFromConfig();
 
-            // Sweep any desktop items not yet owned into the catch-all "Desktop" fence, then
-            // hide the real desktop icons — everything is rendered inside fences now.
-            BuildCatchAll();
+            // Once Pickets has taken over (Services/DesktopTakeover): sweep any desktop items not
+            // yet owned into the catch-all "Desktop" fence, then hide the real desktop icons —
+            // everything is rendered inside fences. Until then the desktop is left alone.
+            if (TakenOver)
+            {
+                BuildCatchAll();
+                DesktopHelper.SetDesktopIconsVisible(false);
+            }
             StartDesktopWatcher();
-            DesktopHelper.SetDesktopIconsVisible(false);
 
             // Tray + minimize-to-tray behavior
             StateChanged += MainWindow_StateChanged;
@@ -790,6 +798,26 @@ namespace Pickets
 
         private bool AnyFenceOwns(string path) => RealFences.Any(w => w.OwnsPath(path));
 
+        private bool TakenOver => _config.Options.DesktopTakenOver == true;
+
+        // The first time desktop items are in a fence, take over the desktop: the rest go into
+        // the Desktop fence and the real icons are hidden (they come back when Pickets quits).
+        private void TakeOverIfNeeded()
+        {
+            if (TakenOver || !DesktopTakeover.HoldsDesktopItems(_fences)) return;
+            _config.Options.DesktopTakenOver = true;
+            BuildCatchAll(); // saves
+            DesktopHelper.SetDesktopIconsVisible(false);
+        }
+
+        // After fences were replaced or restored: anything they don't place goes to the Desktop
+        // fence, or, before Pickets has taken over, the takeover starts if they hold items now.
+        private void PlaceUnownedItems()
+        {
+            if (TakenOver) BuildCatchAll();
+            else TakeOverIfNeeded();
+        }
+
         // Put every desktop item not already owned by a fence into the catch-all "Desktop" fence.
         private void BuildCatchAll()
         {
@@ -891,7 +919,7 @@ namespace Pickets
             {
                 if (path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) ||
                     path.EndsWith(".ini", StringComparison.OrdinalIgnoreCase)) return;
-                if (AnyFenceOwns(path)) return;
+                if (!TakenOver || AnyFenceOwns(path)) return; // the desktop is still left alone
 
                 string target = CatchAllFenceName;
                 if (_config.Options.AutoOrganize)
@@ -1167,6 +1195,7 @@ namespace Pickets
                         AssignItemsToFence(target, kv.Value);
                     }
                 });
+                TakeOverIfNeeded();
 
                 SaveConfig();
                 MessageBox.Show($"Auto-import complete.\n\nApps: {apps}\nDocuments: {docs}\nSystem: {sys}",
@@ -1180,13 +1209,13 @@ namespace Pickets
         }
 
         // ========== Delete all fences ==========
-        // Desktop items stay hidden while Pickets runs, so they still need somewhere to show:
-        // "delete all" leaves a single Desktop fence holding everything.
+        // With no fences left, Pickets gives the desktop back: the real icons show again and
+        // nothing is taken over until items are put in a fence again (Undo does that too).
         private void DeleteAllFences_Click(object? sender, RoutedEventArgs? e)
         {
             var ok = MessageBox.Show(
                 "Delete all fences and portals?\n\n" +
-                $"Nothing on your desktop is deleted: every item goes back into a single “{CatchAllFenceName}” fence. " +
+                "Nothing on your desktop is deleted: your normal desktop icons come back. " +
                 "Portals are removed but their folders are left alone.\n\n" +
                 "The current layout is saved first, so you can bring it back from Settings → Layouts.",
                 "Delete All Fences", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
@@ -1201,7 +1230,8 @@ namespace Pickets
                 _fences.Clear();
                 _peeked = false;
 
-                BuildCatchAll(); // creates the one Desktop fence with every desktop item
+                _config.Options.DesktopTakenOver = false;
+                DesktopHelper.SetDesktopIconsVisible(true);
                 SaveConfig();
             });
         }
@@ -1265,7 +1295,7 @@ namespace Pickets
             _undo.Clear(); // its steps belong to the fences that were just replaced
 
             SpawnFencesFromConfig();
-            BuildCatchAll(); // anything on the desktop the new set doesn't place
+            PlaceUnownedItems(); // anything on the desktop the new set doesn't place
             SaveConfig();
             // Settings' tile editor pointed at a monitor that's just been closed: show the new ones.
             _monitorTarget = null;

@@ -53,6 +53,7 @@ namespace Pickets.Services
             sb.AppendLine("Settings: " + string.Join(", ", new[]
             {
                 $"run at startup {OnOff(o.RunAtStartup)}",
+                $"desktop taken over {OnOff(o.DesktopTakenOver == true)}",
                 $"snap {OnOff(o.SnapToEdges)}",
                 $"grid {OnOff(o.SnapToGrid)}",
                 $"stacks {OnOff(o.MoveStacksTogether)}",
