@@ -84,7 +84,7 @@ After that, Pickets checks GitHub for new versions and installs them when you sa
 - **Size things quickly.** **Ctrl + mouse wheel** over a fence changes its icon size; **Fit to contents** (fence menu) sizes the fence to its tiles, and **Keep fitted to contents** makes it grow and shrink with them. Rolled-up fences show how many items they hold.
 - **Roll up and peek.** Double-click a title to roll a fence up; rest the mouse on it (or drag files over it) to open it until you move away.
 - **Snap and align.** Fences snap to screen edges and to each other while you move or resize them, with an optional grid. Hold **Alt** to move freely. Lock a fence to stop accidental moves.
-- **Stacks.** Fences snapped one under another stay together: drag any title bar to move the whole stack, and rolling one up pulls the ones below it up. Turn on **One open fence per stack** in Settings for an accordion that keeps a tall column compact. **Alt**-drag takes a fence out of its stack.
+- **Stacks.** Fences snapped one under another stay together: rolling one up pulls the ones below it up. Dragging a title bar moves just that fence; **Alt**-drag moves the whole stack (or turn on **Drag the whole stack** in Settings to swap the two). Turn on **One open fence per stack** for an accordion that keeps a tall column compact.
 
 ### Stays out of your way
 

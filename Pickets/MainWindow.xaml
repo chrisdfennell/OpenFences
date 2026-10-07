@@ -262,7 +262,13 @@
                             <DockPanel Style="{StaticResource Hub.SettingRow}">
                                 <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding MoveStacksTogether}" Click="Setting_Changed"/>
                                 <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Keep stacked fences together"/>
-                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Fences snapped one under another move as a stack, and rolling one up pulls the ones below it up. Hold Alt to drag a fence out of its stack."/></StackPanel>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Fences snapped one under another form a stack: rolling one up pulls the ones below it up. Hold Alt while dragging a title bar to move the whole stack."/></StackPanel>
+                            </DockPanel>
+                            <Border Style="{StaticResource Hub.RowDivider}"/>
+                            <DockPanel Style="{StaticResource Hub.SettingRow}">
+                                <CheckBox DockPanel.Dock="Right" Style="{StaticResource Hub.Toggle}" IsChecked="{Binding DragStacksTogether}" Click="Setting_Changed"/>
+                                <StackPanel><TextBlock Style="{StaticResource Hub.RowTitle}" Text="Drag the whole stack"/>
+                                    <TextBlock Style="{StaticResource Hub.RowText}" Text="Dragging a title bar moves every fence in its stack; hold Alt to move just that one. Works with Keep stacked fences together."/></StackPanel>
                             </DockPanel>
                             <Border Style="{StaticResource Hub.RowDivider}"/>
                             <DockPanel Style="{StaticResource Hub.SettingRow}">

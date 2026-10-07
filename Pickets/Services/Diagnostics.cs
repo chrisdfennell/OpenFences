@@ -56,6 +56,7 @@ namespace Pickets.Services
                 $"snap {OnOff(o.SnapToEdges)}",
                 $"grid {OnOff(o.SnapToGrid)}",
                 $"stacks {OnOff(o.MoveStacksTogether)}",
+                $"drag whole stack {OnOff(o.DragStacksTogether)}",
                 $"one open per stack {OnOff(o.StackOneOpen)}",
                 $"hover peek {OnOff(o.ExpandCollapsedOnHover)}",
                 $"public IP lookup {OnOff(o.MonitorPublicIp)}",
