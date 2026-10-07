@@ -9,6 +9,8 @@ namespace Pickets.Services
     /// e.g. "\PhysicalDisk(_Total)\Disk Read Bytes/sec" or, with a * instance, one value per
     /// instance ("\GPU Engine(*)\Utilization Percentage"). Rates need two readings, so the first
     /// <see cref="Collect"/> after opening gives no values yet.
+    /// Opening and collecting can load other programs' counter plug-ins and block for good, so
+    /// these are only used through SystemMonitor's own counter thread, never the UI thread.
     /// </summary>
     internal sealed class PdhCounter : IDisposable
     {

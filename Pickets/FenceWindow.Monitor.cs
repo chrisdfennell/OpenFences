@@ -62,10 +62,12 @@ namespace Pickets
 
             SystemMonitor.Sampled += OnSampled;
             SystemMonitor.Skipped += OnSkipped;
+            SystemMonitor.AvailabilityChanged += OnAvailabilityChanged;
             Closed += (_, __) =>
             {
                 SystemMonitor.Sampled -= OnSampled;
                 SystemMonitor.Skipped -= OnSkipped;
+                SystemMonitor.AvailabilityChanged -= OnAvailabilityChanged;
                 SystemMonitor.SetViewing(this, null);
             };
             MonitorTiles.CollectionChanged += (_, __) => { UpdateEmptyHint(); QueueAutoFit(); };
@@ -120,6 +122,9 @@ namespace Pickets
         // Rolled up, a reading may leave out what the other tiles show (network info, battery…),
         // so only the graphs take it; the rest would otherwise flash "Offline" or 0 on opening.
         private void OnSampled(SystemSnapshot snap) => SyncMonitorTiles(snap, MonitorOpen ? null : GraphedKinds());
+
+        // A kind of tile can't be read after all (no GPU counters, or they stopped answering): drop those tiles.
+        private void OnAvailabilityChanged() => SyncMonitorTiles(SystemMonitor.Latest, MonitorOpen ? null : GraphedKinds());
 
         // A fullscreen game was in front, so nothing was read: the graphs this fence keeps leave a gap.
         private void OnSkipped()

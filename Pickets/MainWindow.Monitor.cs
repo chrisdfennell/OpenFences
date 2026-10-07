@@ -66,6 +66,7 @@ namespace Pickets
         {
             SystemMonitor.SetInterval(_config.Options.MonitorIntervalSeconds);
             SystemMonitor.PublicIpEnabled = _config.Options.MonitorPublicIp;
+            SystemMonitor.AvailabilityChanged += RefreshMonitorSettings; // "not available on this PC"
             FenceWindow.RequestEditMonitorTiles = EditMonitorTiles;
             // A Network info tile's own Show public IP switch.
             FenceWindow.RequestPublicIp = on =>
