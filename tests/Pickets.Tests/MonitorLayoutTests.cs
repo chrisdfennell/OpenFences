@@ -103,10 +103,30 @@ namespace Pickets.Tests
         }
 
         [Fact]
-        public void Core_loads_come_in_core_order_without_the_total()
+        public void Core_loads_are_each_cores_busy_share_in_core_order()
         {
-            var values = new[] { ("10", 5.0), ("_Total", 50.0), ("2", 30.0), ("0", 120.0), ("1", 10.0) };
-            Assert.Equal(new[] { 100.0, 10, 30, 5 }, SystemMonitor.CoreLoads(values));
+            // Kernel time includes idle time; each core had 100 elapsed.
+            var before = new[]
+            {
+                new SystemMonitor.CpuTimes(Idle: 0, Kernel: 0, User: 0),
+                new SystemMonitor.CpuTimes(Idle: 500, Kernel: 600, User: 100),
+                new SystemMonitor.CpuTimes(Idle: 10, Kernel: 10, User: 0),
+            };
+            var after = new[]
+            {
+                new SystemMonitor.CpuTimes(Idle: 0, Kernel: 50, User: 50),     // flat out
+                new SystemMonitor.CpuTimes(Idle: 590, Kernel: 690, User: 110), // 10% busy
+                new SystemMonitor.CpuTimes(Idle: 110, Kernel: 110, User: 0),   // idle
+            };
+            Assert.Equal(new[] { 100.0, 10, 0 }, SystemMonitor.CoreLoads(before, after));
+        }
+
+        [Fact]
+        public void Core_loads_are_empty_when_the_number_of_cores_changed()
+        {
+            var one = new[] { new SystemMonitor.CpuTimes(0, 0, 0) };
+            var two = new[] { new SystemMonitor.CpuTimes(0, 10, 0), new SystemMonitor.CpuTimes(0, 10, 0) };
+            Assert.Empty(SystemMonitor.CoreLoads(one, two));
         }
 
         [Theory]

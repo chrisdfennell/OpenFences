@@ -53,6 +53,9 @@ namespace Pickets.Services
     /// <see cref="Sampled"/> is raised on it. A rolled-up monitor reads only what its graphs
     /// need; nothing is read while every monitor is closed or hidden, while a fullscreen game or
     /// app is in front, or while the PC is locked.
+    /// Performance counters (GPU, disk activity) are only ever used on one thread of their own
+    /// (<see cref="Pdh"/>), never the UI thread: they load other programs' plug-ins, which can
+    /// hang. If one does, those tiles go away until Pickets restarts, and the rest carry on.
     /// </summary>
     public static class SystemMonitor
     {
@@ -61,6 +64,10 @@ namespace Pickets.Services
 
         /// <summary>A reading was skipped because a fullscreen game or app was in front (on the UI thread).</summary>
         public static event Action? Skipped;
+
+        /// <summary>A kind of tile turned out not to be available after all (on the UI thread):
+        /// see <see cref="IsAvailable"/>.</summary>
+        public static event Action? AvailabilityChanged;
 
         /// <summary>The latest reading, so a monitor that opens shows numbers straight away.</summary>
         public static SystemSnapshot? Latest { get; private set; }
@@ -141,7 +148,8 @@ namespace Pickets.Services
             try
             {
                 var needs = _needs;
-                var snap = await Task.Run(() => Read(needs));
+                var pdh = await ReadPdh(needs);
+                var snap = await Task.Run(() => Read(needs, pdh));
                 if (_fixed) return; // switched to made-up readings meanwhile
                 Latest = snap;
                 Sampled?.Invoke(snap);
@@ -156,27 +164,69 @@ namespace Pickets.Services
         // ---------- What this PC has ----------
         private static readonly Dictionary<string, bool> Available = new();
 
+        private static readonly HashSet<string> Probing = new();
+        private static readonly Lazy<bool> CoresReadable = new(() => ProcessorTimes().Count > 0);
+
         /// <summary>False for a reading this PC can't give: no battery, or no GPU or disk
-        /// counters. Settings marks those tiles, and monitors leave them out.</summary>
+        /// counters. Settings marks those tiles, and monitors leave them out. Never waits: GPU
+        /// and disk activity count as available until a check in the background says otherwise
+        /// (then <see cref="AvailabilityChanged"/> is raised).</summary>
         public static bool IsAvailable(string kind)
         {
             if (_fixed) return true;
-            if (kind == MonitorMetrics.Battery) return ReadBattery() != null;
-            if (kind is not (MonitorMetrics.Gpu or MonitorMetrics.Cores or MonitorMetrics.DiskIo)) return true;
-            lock (Available)
+            switch (kind)
             {
-                if (Available.TryGetValue(kind, out var known)) return known;
-                using var probe = PdhCounter.TryOpen(kind switch
-                {
-                    MonitorMetrics.Gpu => GpuPath,
-                    MonitorMetrics.Cores => CoresPath,
-                    _ => DiskReadPath
-                });
-                // A PC without a GPU driver that reports usage has the counter but no instances.
-                bool ok = probe != null && (kind != MonitorMetrics.Gpu || (probe.Collect() && probe.Values().Count > 0));
-                return Available[kind] = ok;
+                case MonitorMetrics.Battery: return ReadBattery() != null;
+                case MonitorMetrics.Cores: return CoresReadable.Value;
+                case MonitorMetrics.Gpu or MonitorMetrics.DiskIo:
+                    if (Pdh.Stalled) return false;
+                    bool check;
+                    lock (Available)
+                    {
+                        if (Available.TryGetValue(kind, out var known)) return known;
+                        check = Probing.Add(kind);
+                    }
+                    if (check) Probe(kind);
+                    return true;
+                default: return true;
             }
         }
+
+        private static async void Probe(string kind)
+        {
+            bool ok = false;
+            try
+            {
+                var (done, has) = await Pdh.TryRun(() => kind == MonitorMetrics.Gpu ? HasGpuCounters() : HasDiskCounters());
+                ok = done && has;
+            }
+            catch { /* counted as not available */ }
+            lock (Available)
+            {
+                Available[kind] = ok;
+                Probing.Remove(kind);
+            }
+            if (!ok) OnUi(() => AvailabilityChanged?.Invoke());
+        }
+
+        // ---------- The performance counter thread ----------
+        private static readonly SerialWorker Pdh = CreatePdhWorker();
+
+        // Opening the GPU counters can take a few seconds on some PCs; a call that's still going
+        // well after that is stuck.
+        private static SerialWorker CreatePdhWorker()
+        {
+            var worker = new SerialWorker("Pickets performance counters", TimeSpan.FromSeconds(15));
+            worker.HasStalled += () =>
+            {
+                (System.Windows.Application.Current as App)?.SafeLog("System monitor", new TimeoutException(
+                    "Windows performance counters stopped answering, so the GPU and disk activity tiles are off until Pickets restarts."));
+                OnUi(() => AvailabilityChanged?.Invoke());
+            };
+            return worker;
+        }
+
+        private static void OnUi(Action action) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(action);
 
         /// <summary>The fixed drives ("C:"), for disk space tiles.</summary>
         public static List<DriveSample> FixedDrives() => ReadDrives();
@@ -200,23 +250,23 @@ namespace Pickets.Services
 
         // ---------- Readings ----------
         private const string GpuPath = @"\GPU Engine(*)\Utilization Percentage";
-        private const string CoresPath = @"\Processor(*)\% Processor Time";
         private const string DiskReadPath = @"\PhysicalDisk(_Total)\Disk Read Bytes/sec";
         private const string DiskWritePath = @"\PhysicalDisk(_Total)\Disk Write Bytes/sec";
 
         private static CpuTimes? _lastCpu;
+        private static List<CpuTimes>? _lastCores;
         private static Dictionary<string, (long down, long up)>? _lastNet;
         private static DateTime _lastNetAt;
-        private static PdhCounter? _gpu, _cores, _diskRead, _diskWrite;
-        private static bool _gpuTried, _coresTried, _diskTried;
 
-        private static SystemSnapshot Read(HashSet<string> needs)
+        /// <summary>The readings that come from performance counters (null when not read).</summary>
+        private readonly record struct PdhReadings(double? Gpu, double? DiskRead, double? DiskWrite);
+
+        private static SystemSnapshot Read(HashSet<string> needs, PdhReadings pdh)
         {
             bool Needs(params string[] kinds) => kinds.Any(needs.Contains);
 
             var (used, total) = Needs(MonitorMetrics.Memory) ? ReadMemory() : (0UL, 0UL);
             var net = Needs(MonitorMetrics.Network, MonitorMetrics.NetInfo) ? ReadNetwork() : default;
-            var (read, write) = Needs(MonitorMetrics.DiskIo) ? ReadDiskIo() : (null, null);
             var pub = Needs(MonitorMetrics.NetInfo) ? PublicIp(net.address) : (null, false);
             return new SystemSnapshot
             {
@@ -225,10 +275,10 @@ namespace Pickets.Services
                 CoreLoads = Needs(MonitorMetrics.Cores) ? ReadCores() : Array.Empty<double>(),
                 MemoryUsed = used,
                 MemoryTotal = total,
-                GpuPercent = Needs(MonitorMetrics.Gpu) ? ReadGpu() : null,
+                GpuPercent = pdh.Gpu,
                 Drives = Needs(MonitorMetrics.Disk) ? ReadDrives() : Array.Empty<DriveSample>(),
-                DiskReadBytesPerSec = read,
-                DiskWriteBytesPerSec = write,
+                DiskReadBytesPerSec = pdh.DiskRead,
+                DiskWriteBytesPerSec = pdh.DiskWrite,
                 NetDownBytesPerSec = net.down,
                 NetUpBytesPerSec = net.up,
                 NetName = net.name,
@@ -248,28 +298,93 @@ namespace Pickets.Services
             return prev is { } p ? CpuPercent(p, now) : 0;
         }
 
+        // Straight from Windows rather than a performance counter: nothing else gets loaded.
         private static IReadOnlyList<double> ReadCores()
         {
-            if (!_coresTried) { _coresTried = true; _cores = PdhCounter.TryOpen(CoresPath); }
-            if (_cores == null || !_cores.Collect()) return Array.Empty<double>();
-            return CoreLoads(_cores.Values());
+            var now = ProcessorTimes();
+            var prev = _lastCores;
+            _lastCores = now;
+            return prev == null ? Array.Empty<double>() : CoreLoads(prev, now);
+        }
+
+        /// <summary>Each logical processor's cumulative times, in core order (processor group by
+        /// group, for PCs with more than 64). Empty if Windows wouldn't say.</summary>
+        private static List<CpuTimes> ProcessorTimes()
+        {
+            var list = new List<CpuTimes>();
+            try
+            {
+                int itemSize = Marshal.SizeOf<SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION>();
+                ushort groups = GetActiveProcessorGroupCount();
+                for (ushort g = 0; g < groups; g++)
+                {
+                    int count = (int)GetActiveProcessorCount(g);
+                    if (count <= 0) continue;
+                    var items = new SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[count];
+                    ushort group = g;
+                    if (NtQuerySystemInformationEx(SystemProcessorPerformanceInformation, ref group, sizeof(ushort),
+                                                   items, (uint)(count * itemSize), out uint returned) != 0)
+                        return new List<CpuTimes>();
+                    for (int i = 0; i < Math.Min(count, (int)(returned / itemSize)); i++)
+                        list.Add(new CpuTimes(items[i].IdleTime, items[i].KernelTime, items[i].UserTime));
+                }
+            }
+            catch (DllNotFoundException) { return new List<CpuTimes>(); }
+            catch (EntryPointNotFoundException) { return new List<CpuTimes>(); }
+            return list;
+        }
+
+        // ---------- Performance counters (only ever on the Pdh thread) ----------
+        private static PdhCounter? _gpu, _diskRead, _diskWrite;
+        private static bool _gpuTried, _diskTried;
+
+        /// <summary>The GPU and disk activity readings <paramref name="needs"/> asks for, read on
+        /// the counter thread. All null if they weren't asked for, failed, or the thread is stuck.</summary>
+        private static async Task<PdhReadings> ReadPdh(HashSet<string> needs)
+        {
+            bool gpu = needs.Contains(MonitorMetrics.Gpu), disk = needs.Contains(MonitorMetrics.DiskIo);
+            if (!gpu && !disk) return default;
+            var (done, readings) = await Pdh.TryRun(() =>
+            {
+                var (read, write) = disk ? ReadDiskIo() : (null, null);
+                return new PdhReadings(gpu ? ReadGpu() : null, read, write);
+            });
+            return done ? readings : default;
+        }
+
+        private static PdhCounter? GpuCounter()
+        {
+            if (!_gpuTried) { _gpuTried = true; _gpu = PdhCounter.TryOpen(GpuPath); }
+            return _gpu;
+        }
+
+        private static void OpenDiskCounters()
+        {
+            if (_diskTried) return;
+            _diskTried = true;
+            _diskRead = PdhCounter.TryOpen(DiskReadPath);
+            _diskWrite = PdhCounter.TryOpen(DiskWritePath);
+        }
+
+        // A PC without a GPU driver that reports usage has the counter but no instances.
+        private static bool HasGpuCounters() => GpuCounter() is { } c && c.Collect() && c.Values().Count > 0;
+
+        private static bool HasDiskCounters()
+        {
+            OpenDiskCounters();
+            return _diskRead != null;
         }
 
         private static double? ReadGpu()
         {
-            if (!_gpuTried) { _gpuTried = true; _gpu = PdhCounter.TryOpen(GpuPath); }
-            if (_gpu == null || !_gpu.Collect()) return null;
-            return GpuPercent(_gpu.Values());
+            var gpu = GpuCounter();
+            if (gpu == null || !gpu.Collect()) return null;
+            return GpuPercent(gpu.Values());
         }
 
         private static (double?, double?) ReadDiskIo()
         {
-            if (!_diskTried)
-            {
-                _diskTried = true;
-                _diskRead = PdhCounter.TryOpen(DiskReadPath);
-                _diskWrite = PdhCounter.TryOpen(DiskWritePath);
-            }
+            OpenDiskCounters();
             double? r = _diskRead != null && _diskRead.Collect() ? _diskRead.Value() : null;
             double? w = _diskWrite != null && _diskWrite.Collect() ? _diskWrite.Value() : null;
             return (r, w);
@@ -462,13 +577,11 @@ namespace Pickets.Services
             return Math.Clamp(100.0 * (total - idle) / total, 0, 100);
         }
 
-        /// <summary>Each core's load (0…100) in core order, from the "\Processor(*)" instances
-        /// ("0", "1", … and "_Total", which is left out).</summary>
-        public static IReadOnlyList<double> CoreLoads(IEnumerable<(string Instance, double Value)> values) =>
-            values.Where(v => int.TryParse(v.Instance, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
-                  .OrderBy(v => int.Parse(v.Instance, CultureInfo.InvariantCulture))
-                  .Select(v => Math.Clamp(v.Value, 0, 100))
-                  .ToList();
+        /// <summary>Each core's load (0…100) between two readings of every core's times. Empty if
+        /// the number of cores changed in between.</summary>
+        public static IReadOnlyList<double> CoreLoads(IReadOnlyList<CpuTimes> before, IReadOnlyList<CpuTimes> after) =>
+            before.Count != after.Count ? Array.Empty<double>()
+                                        : after.Select((now, i) => CpuPercent(before[i], now)).ToList();
 
         /// <summary>GPU usage the way Task Manager shows it: each engine's use added up over every
         /// app ("pid_…_luid_…_phys_0_eng_0_engtype_3D"), and the busiest engine wins.</summary>
@@ -550,5 +663,30 @@ namespace Pickets.Services
 
         [DllImport("shell32.dll")]
         private static extern int SHQueryUserNotificationState(out int state);
+
+        private const int SystemProcessorPerformanceInformation = 8;
+
+        // Kernel time includes idle time, as with GetSystemTimes.
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION
+        {
+            public long IdleTime;
+            public long KernelTime;
+            public long UserTime;
+            public long DpcTime;
+            public long InterruptTime;
+            public uint InterruptCount;
+        }
+
+        // The Ex form takes a processor group, so PCs with more than 64 logical processors get them all.
+        [DllImport("ntdll.dll")]
+        private static extern int NtQuerySystemInformationEx(int infoClass, ref ushort group, uint groupSize,
+            [Out] SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[] info, uint infoSize, out uint returned);
+
+        [DllImport("kernel32.dll")]
+        private static extern ushort GetActiveProcessorGroupCount();
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetActiveProcessorCount(ushort group);
     }
 }
